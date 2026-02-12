@@ -93,41 +93,52 @@ function config_parse.save(path, lines, createDir)
   return true
 end
 
--- Get first value for key from lines.
+-- Get first value for key from lines. Skips commented-out lines.
 function config_parse.get(lines, key)
   for _, entry in ipairs(lines) do
-    if entry.key and entry.key == key then return entry.value end
+    if entry.key and entry.key == key and not entry.comment then return entry.value end
   end
   return nil
 end
 
--- Get all values for key (multi-value). Returns list.
+-- Get value and comment flag for key (first match, commented or not). For menu entry display / "has key" checks.
+function config_parse.getWithComment(lines, key)
+  for _, entry in ipairs(lines) do
+    if entry.key and entry.key == key then
+      return entry.value, entry.comment
+    end
+  end
+  return nil, nil
+end
+
+-- Get all values for key (multi-value). Skips commented-out lines.
 function config_parse.getMulti(lines, key)
   local out = {}
   for _, entry in ipairs(lines) do
-    if entry.key and entry.key == key then
+    if entry.key and entry.key == key and not entry.comment then
       table.insert(out, entry.value)
     end
   end
   return out
 end
 
--- Get all entries whose key has given prefix (e.g. "path1_OSDSYS_ITEM_").
+-- Get all entries whose key has given prefix (e.g. "path1_OSDSYS_ITEM_"). Skips commented-out lines.
 function config_parse.getByPrefix(lines, prefix)
   local out = {}
   for _, entry in ipairs(lines) do
-    if entry.key and entry.key:sub(1, #prefix) == prefix then
+    if entry.key and not entry.comment and entry.key:sub(1, #prefix) == prefix then
       table.insert(out, { key = entry.key, value = entry.value })
     end
   end
   return out
 end
 
--- Set first occurrence of key to value; if not found, append.
+-- Set first occurrence of key to value (commented or not); uncomments that line. If not found, append.
 function config_parse.set(lines, key, value)
   for _, entry in ipairs(lines) do
     if entry.key and entry.key == key then
       entry.value = value
+      entry.comment = nil
       return
     end
   end
@@ -163,7 +174,7 @@ function config_parse.getBootArgs(lines, key)
   local prefix = key .. "_arg"
   local out = {}
   for _, entry in ipairs(lines) do
-    if entry.key and entry.key:sub(1, #prefix) == prefix then
+    if entry.key and not entry.comment and entry.key:sub(1, #prefix) == prefix then
       table.insert(out, entry.value)
     end
   end
@@ -333,31 +344,56 @@ function config_parse.clampLength(s, limit)
 end
 
 -- OSDMENU.CNF menu entries: name_OSDSYS_ITEM_<N>, path1_OSDSYS_ITEM_<N>, path2_..., arg_OSDSYS_ITEM_<N> (multi).
+-- Commented-out name_/path_/arg_ lines form a "disabled" entry; show in list and allow enabling (triangle).
 
--- Return sorted list of menu entry indices that have a name.
+-- Return sorted list of menu entries: { idx = number, disabled = boolean } (includes commented entries).
 function config_parse.getMenuEntryIndices(lines)
-  local seen = {}
+  local byIdx = {}
   for _, entry in ipairs(lines) do
     if entry.key then
       local n = entry.key:match("^name_OSDSYS_ITEM_(%d+)$")
-      if n then seen[tonumber(n)] = true end
+      if n then
+        local idx = tonumber(n)
+        byIdx[idx] = not not entry.comment
+      end
     end
   end
   local out = {}
-  for k in pairs(seen) do table.insert(out, k) end
-  table.sort(out)
+  for k, disabled in pairs(byIdx) do table.insert(out, { idx = k, disabled = disabled }) end
+  table.sort(out, function(a, b) return a.idx < b.idx end)
   return out
 end
 
+-- Name for display (from commented or uncommented name_ line).
 function config_parse.getMenuEntryName(lines, idx)
-  return config_parse.get(lines, "name_OSDSYS_ITEM_" .. tostring(idx))
+  local val = config_parse.getWithComment(lines, "name_OSDSYS_ITEM_" .. tostring(idx))
+  return val
+end
+
+-- True if the menu entry at idx is commented (disabled).
+function config_parse.isMenuEntryDisabled(lines, idx)
+  local _, commented = config_parse.getWithComment(lines, "name_OSDSYS_ITEM_" .. tostring(idx))
+  return commented and true or false
+end
+
+-- Set all lines for this menu entry (name, path*, arg) to commented or not.
+function config_parse.setMenuEntryDisabled(lines, idx, disabled)
+  local idxStr = tostring(idx)
+  local nameKey = "name_OSDSYS_ITEM_" .. idxStr
+  local pathPat = "^path%d+_OSDSYS_ITEM_" .. idxStr .. "$"
+  local argKey = "arg_OSDSYS_ITEM_" .. idxStr
+  for _, entry in ipairs(lines) do
+    if entry.key and (entry.key == nameKey or entry.key:match(pathPat) or entry.key == argKey) then
+      entry.comment = disabled and true or nil
+    end
+  end
 end
 
 function config_parse.setMenuEntryName(lines, idx, name)
   config_parse.set(lines, "name_OSDSYS_ITEM_" .. tostring(idx), name or "")
 end
 
--- Paths: path1_OSDSYS_ITEM_<idx>, path2_..., etc. Return values in order.
+-- Paths: path1_OSDSYS_ITEM_<idx>, path2_..., etc. Return values in order (includes commented lines).
 function config_parse.getMenuEntryPaths(lines, idx)
   local idxStr = tostring(idx)
   local pattern = "^path(%d+)_OSDSYS_ITEM_" .. idxStr .. "$"
@@ -393,8 +429,14 @@ function config_parse.setMenuEntryPaths(lines, idx, paths)
   end
 end
 
+-- Args for this entry (includes commented lines so disabled entries keep their args).
 function config_parse.getMenuEntryArgs(lines, idx)
-  return config_parse.getMulti(lines, "arg_OSDSYS_ITEM_" .. tostring(idx))
+  local key = "arg_OSDSYS_ITEM_" .. tostring(idx)
+  local out = {}
+  for _, entry in ipairs(lines) do
+    if entry.key and entry.key == key then table.insert(out, entry.value) end
+  end
+  return out
 end
 
 -- Replace all arg_OSDSYS_ITEM_<idx> with the given list.
@@ -440,10 +482,11 @@ function config_parse.addMenuEntry(lines, idx, name)
   config_parse.set(lines, "name_OSDSYS_ITEM_" .. tostring(idx), name or "New entry")
 end
 
--- First index 1..200 not used by any menu entry.
+-- First index 1..200 not used by any menu entry (no name_ line at that index, commented or not).
 function config_parse.getFirstUnusedMenuEntryIndex(lines)
   for i = 1, 200 do
-    if not config_parse.get(lines, "name_OSDSYS_ITEM_" .. tostring(i)) then return i end
+    local val = config_parse.getWithComment(lines, "name_OSDSYS_ITEM_" .. tostring(i))
+    if val == nil then return i end
   end
   return 201
 end
@@ -453,8 +496,9 @@ function config_parse.changeMenuEntryIndex(lines, oldIdx, newIdx)
   if oldIdx == newIdx then return true end
   local oldStr = tostring(oldIdx)
   local newStr = tostring(newIdx)
-  if config_parse.get(lines, "name_OSDSYS_ITEM_" .. newStr) then return false end -- already used
-  local name = config_parse.get(lines, "name_OSDSYS_ITEM_" .. oldStr)
+  local existing = config_parse.getWithComment(lines, "name_OSDSYS_ITEM_" .. newStr)
+  if existing ~= nil then return false end -- already used
+  local name = config_parse.getMenuEntryName(lines, oldIdx)
   local paths = config_parse.getMenuEntryPaths(lines, oldIdx)
   local args = config_parse.getMenuEntryArgs(lines, oldIdx)
   config_parse.set(lines, "name_OSDSYS_ITEM_" .. newStr, name or "")
@@ -467,8 +511,8 @@ end
 -- Swap content of two menu entries (name, paths, args). Both indices must exist. Used for reordering.
 function config_parse.swapMenuEntryContent(lines, idxA, idxB)
   if idxA == idxB then return true end
-  local nameA = config_parse.get(lines, "name_OSDSYS_ITEM_" .. tostring(idxA))
-  local nameB = config_parse.get(lines, "name_OSDSYS_ITEM_" .. tostring(idxB))
+  local nameA = config_parse.getMenuEntryName(lines, idxA)
+  local nameB = config_parse.getMenuEntryName(lines, idxB)
   if not nameA or not nameB then return false end
   local pathsA = config_parse.getMenuEntryPaths(lines, idxA)
   local pathsB = config_parse.getMenuEntryPaths(lines, idxB)
@@ -519,23 +563,25 @@ function config_parse.regenerateLines(lines, categories)
     end
   else
     for _, e in ipairs(lines) do
-      if e.key and not isMenuKey(e.key) then
+      if e.key and not isMenuKey(e.key) and not e.comment then
         table.insert(out, { key = e.key, value = e.value })
       end
     end
   end
 
-  local indices = config_parse.getMenuEntryIndices(lines)
-  for _, idx in ipairs(indices) do
+  local entries = config_parse.getMenuEntryIndices(lines)
+  for _, ent in ipairs(entries) do
+    local idx = ent.idx
+    local disabled = ent.disabled
     local name = config_parse.getMenuEntryName(lines, idx) or ""
-    table.insert(out, { key = "name_OSDSYS_ITEM_" .. tostring(idx), value = name })
+    table.insert(out, { key = "name_OSDSYS_ITEM_" .. tostring(idx), value = name, comment = disabled })
     local paths = config_parse.getMenuEntryPaths(lines, idx)
     for i, p in ipairs(paths) do
-      table.insert(out, { key = "path" .. tostring(i) .. "_OSDSYS_ITEM_" .. tostring(idx), value = p })
+      table.insert(out, { key = "path" .. tostring(i) .. "_OSDSYS_ITEM_" .. tostring(idx), value = p, comment = disabled })
     end
     local args = config_parse.getMenuEntryArgs(lines, idx)
     for _, a in ipairs(args) do
-      table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = a })
+      table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = a, comment = disabled })
     end
     addSep()
   end

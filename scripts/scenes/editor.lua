@@ -130,22 +130,21 @@ local function run(ctx)
       elseif o.optType == "color" then
         valDisplay = nil
       elseif o.optType == "bool" then
-        local v = _.config_parse.get(ctx.lines, o.key) or "0"
+        local v = _.config_parse.get(ctx.lines, o.key) or o.default or "0"
         valDisplay = (v == "1") and _.common_str.on or _.common_str.off
       elseif o.optType == "boot_paths" then
         local paths = _.config_parse.getBootPaths(ctx.lines, o.key)
         if not paths or #paths == 0 then
           valDisplay = ""
         else
-          valDisplay = #paths == 1 and paths[1] or
-              (#paths .. " path(s)")
+          valDisplay = #paths .. (_.menu_str and _.menu_str.path_s or " path(s)")
         end
       else
         local multi = _.config_parse.getMulti(ctx.lines, o.key)
         if multi and #multi > 1 then
           valDisplay = #multi .. " paths"
         else
-          valDisplay = _.config_parse.get(ctx.lines, o.key) or ""
+          valDisplay = _.config_parse.get(ctx.lines, o.key) or o.default or ""
         end
       end
       if valDisplay == "" and (o.optType == "path" or o.optType == "boot_paths" or o.optType == "text" or o.optType == "enum") then
@@ -160,7 +159,7 @@ local function run(ctx)
           _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, valDisplay, valCol)
         end
       elseif o.optType == "color" then
-        local r, g, b, a = _.parseColor(_.config_parse.get(ctx.lines, o.key))
+        local r, g, b, a = _.parseColor(_.config_parse.get(ctx.lines, o.key) or o.default)
         local swatchColor = _.Color.new(r, g, b, a)
         _.Graphics.drawRect(_.VALUE_X, y, 28, _.scaleY(18), swatchColor)
       end
@@ -191,7 +190,7 @@ local function run(ctx)
     if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_L1 | _.PAD_R1 | _.PAD_L2 | _.PAD_R2)) ~= 0 then
       local o = ctx.optList[ctx.optSel]
       if o.optType == "enum" and o.enumVals and #o.enumVals > 0 then
-        local cur = _.config_parse.get(ctx.lines, o.key) or ""
+        local cur = _.config_parse.get(ctx.lines, o.key) or o.default or ""
         local allowUnset = (o.default == "")
         local idx = 0
         if cur == "" then
@@ -216,7 +215,7 @@ local function run(ctx)
         _.config_parse.set(ctx.lines, o.key, (idx == 0) and "" or o.enumVals[idx])
         ctx.configModified = true
       elseif (o.optType == "int" or o.optType == "string") then
-        local cur = _.config_parse.get(ctx.lines, o.key) or "0"
+        local cur = _.config_parse.get(ctx.lines, o.key) or o.default or "0"
         local num = tonumber(cur)
         if num then
           local minV, maxV = 0, 9999
@@ -247,12 +246,12 @@ local function run(ctx)
     if (_.padEffective & _.PAD_CROSS) ~= 0 then
       local o = ctx.optList[ctx.optSel]
       if o.optType == "bool" then
-        local cur = _.config_parse.get(ctx.lines, o.key) or "0"
+        local cur = _.config_parse.get(ctx.lines, o.key) or o.default or "0"
         _.config_parse.set(ctx.lines, o.key, (cur == "1") and "0" or "1")
         ctx.configModified = true
       elseif o.optType == "color" then
         ctx.colorOpt = o
-        local r, g, b, a = _.parseColor(_.config_parse.get(ctx.lines, o.key))
+        local r, g, b, a = _.parseColor(_.config_parse.get(ctx.lines, o.key) or o.default)
         ctx.colorVals = { r, g, b, a }
         ctx.colorCh = 1
         ctx.state = "color_edit"
@@ -260,7 +259,7 @@ local function run(ctx)
         ctx.textInputTitleIdMode = nil
         ctx.textInputPrompt = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or
             _.common_str.enter_text
-        ctx.textInputValue = _.config_parse.get(ctx.lines, o.key) or ""
+        ctx.textInputValue = _.config_parse.get(ctx.lines, o.key) or o.default or ""
         ctx.textInputMaxLen = (o.maxLen and o.maxLen > 0) and o.maxLen or 79
         ctx.textInputCallback = function(val)
           _.config_parse.set(ctx.lines, o.key, val or "")

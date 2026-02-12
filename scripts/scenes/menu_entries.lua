@@ -23,10 +23,12 @@ local function run(ctx)
     if i == 1 then
       label = _.menu_str.new_entry
     else
-      label = _.config_parse.getMenuEntryName(ctx.lines,
-        ctx.entryList[i - 1]) or (_.menu_str.item .. ctx.entryList[i - 1])
+      local ent = ctx.entryList[i - 1]
+      local idx = ent.idx
+      label = _.config_parse.getMenuEntryName(ctx.lines, idx) or (_.menu_str.item .. idx)
     end
     local col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.WHITE
+    if i >= 2 and ctx.entryList[i - 1].disabled then col = col == _.SELECTED_ENTRY and _.SELECTED_ENTRY or _.DIM end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entrySel, label, col)
   end
   if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -35,10 +37,24 @@ local function run(ctx)
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     ctx.entrySel = ctx.entrySel + 1; if ctx.entrySel > total then ctx.entrySel = 1 end
   end
+  if (_.padEffective & _.PAD_LEFT) ~= 0 then
+    ctx.entrySel = math.max(1, ctx.entrySel - 10)
+  end
+  if (_.padEffective & _.PAD_RIGHT) ~= 0 then
+    ctx.entrySel = math.min(total, ctx.entrySel + 10)
+  end
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
+    if ctx.entrySel >= 2 and ctx.entrySel <= #ctx.entryList + 1 then
+      local ent = ctx.entryList[ctx.entrySel - 1]
+      _.config_parse.setMenuEntryDisabled(ctx.lines, ent.idx, not ent.disabled)
+      ctx.configModified = true
+      ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
+    end
+  end
   if (_.padEffective & _.PAD_L1) ~= 0 then
     if ctx.entrySel >= 2 and #ctx.entryList >= 2 then
-      local curIdx = ctx.entryList[ctx.entrySel - 1]
-      local prevIdx = ctx.entryList[ctx.entrySel - 2]
+      local curIdx = ctx.entryList[ctx.entrySel - 1].idx
+      local prevIdx = ctx.entryList[ctx.entrySel - 2].idx
       if _.config_parse.swapMenuEntryContent(ctx.lines, curIdx, prevIdx) then
         ctx.configModified = true
         ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
@@ -48,8 +64,8 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_R1) ~= 0 then
     if ctx.entrySel >= 2 and ctx.entrySel <= #ctx.entryList then
-      local curIdx = ctx.entryList[ctx.entrySel - 1]
-      local nextIdx = ctx.entryList[ctx.entrySel]
+      local curIdx = ctx.entryList[ctx.entrySel - 1].idx
+      local nextIdx = ctx.entryList[ctx.entrySel].idx
       if _.config_parse.swapMenuEntryContent(ctx.lines, curIdx, nextIdx) then
         ctx.configModified = true
         ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
@@ -67,14 +83,14 @@ local function run(ctx)
       ctx.entryEditSub = 1
       ctx.state = "menu_entry_edit"
     else
-      ctx.entryIdx = ctx.entryList[ctx.entrySel - 1]
+      ctx.entryIdx = ctx.entryList[ctx.entrySel - 1].idx
       ctx.entryEditSub = 1
       ctx.state = "menu_entry_edit"
     end
   end
   if (_.padEffective & _.PAD_SQUARE) ~= 0 then
     if ctx.entrySel >= 2 and ctx.entrySel <= #ctx.entryList + 1 then
-      local idx = ctx.entryList[ctx.entrySel - 1]
+      local idx = ctx.entryList[ctx.entrySel - 1].idx
       _.config_parse.removeMenuEntry(ctx.lines, idx)
       ctx.configModified = true
       ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
@@ -82,7 +98,12 @@ local function run(ctx)
       if ctx.entrySel < 1 then ctx.entrySel = 1 end
     end
   end
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.menu_str.hint_items, nil, _.DIM,
+  local hints = _.menu_str.hint_items
+  if ctx.entrySel >= 2 and ctx.entrySel <= #ctx.entryList + 1 then
+    hints = ctx.entryList[ctx.entrySel - 1].disabled and (_.menu_str.hint_items_with_enable or hints)
+        or (_.menu_str.hint_items_with_disable or hints)
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hints, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then ctx.state = "editor" end
 end
