@@ -1,38 +1,85 @@
 
-.vscode/launch.json
-*.ttf
-*.bak
-*.otf
-bin/img/bg0.png
-bin/img/bg1.png
-bin/img/bg2.png
-bin/img/bg3.png
-bin/img/glow.png
-bin/img/logo.png
-bin/img/title.png
-bin/libpatch.lua
-bin/mods/test.lua
-bin/mods/test2.lua
-bin/reloader.lua
-bin/rl_intro.lua
-bin/SLUS_209.46
-bin/System/index.lua
+build*/
+release*/
+.vscode/settings.json
 *.elf
-*.o
-*.adp
-*.wav
-bin/audio/adpenc.exe
-bin/audio/back.adpcm
-bin/audio/convert.bat
-bin/audio/nav.adpcm
-bin/audio/select.adpcm
-bin/audio/loading.adpcm
-bin/audio/test/adpenc.exe
-bin/audio/test/convert.bat
-bin/test.pdf
-bin/System/noindex.lua
-*.a
-*.irx
+build/
+TODO.md
+# Created by https://www.toptal.com/developers/gitignore/api/macos,windows,linux
 
-obj/
-asm/
+### Linux ###
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*
+
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+### macOS Patch ###
+# iCloud generated files
+*.icloud
+
+### Windows ###
+# Windows thumbnail cache files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# End of https://www.toptal.com/developers/gitignore/api/macos,windows,linux
+

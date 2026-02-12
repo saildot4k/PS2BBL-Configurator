@@ -48,7 +48,7 @@ function Graphics.drawCircle(X, Y, radius, color, fill) end
 --- @param y2 number Coordinates for second vertice
 --- @param x3 number Coordinates for third  vertice
 --- @param y3 number Coordinates for third  vertice
---- @param color color  
+--- @param color color
 --- @overload fun(x:number, y:number, x2:number, y2:number, x3:number, y3:number)
 function Graphics.drawTriangle(x, y, x2, y2, x3, y3, color) end
 
@@ -71,10 +71,10 @@ function Graphics.drawQuad(x, y, x2, y2, x3, y3, x4, y4, color) end
 ---@param y3 number coordinates for third  corner
 ---@param x4 number coordinates for fourth corner
 ---@param y4 number coordinates for fourth corner
----@param color color 
----@param color2 color 
----@param color3 color 
----@param color4 color 
+---@param color color
+---@param color2 color
+---@param color3 color
+---@param color4 color
 function Graphics.drawQuad(x, y, x2, y2, x3, y3, x4, y4, color, color2, color3, color4) end
 
 --- @alias Texture integer
@@ -94,12 +94,12 @@ function Graphics.loadImage(path, delayed) end
 function Graphics.threadLoadImage(path, delayed) end
 
 --- @return integer stat status of the threaded image load
---- return values can be:  
+--- return values can be:
 --- - `-2`: no thread running, no texture avaiable for pickup
 --- - `-1`: error creating thread
 --- - ` 0`: thread running
 --- - ` 1`: thread finished, texture avaiable for pickup with `getLoadData`
---- - ` 2`: thread finished, failed to load texture  
+--- - ` 2`: thread finished, failed to load texture
 --- @see Graphics.threadLoadImage
 --- @see Graphics.getLoadData
 --- @nodiscard
@@ -204,13 +204,13 @@ function Font.ftLoad(path) end
 
 --- Changes font pixel size
 --- @param font ttf font handle
---- @param width integer 
+--- @param width integer
 --- @param height integer
 function Font.ftSetPixelSize(font, width, height) end
 
 --- Changes font char size
 --- @param font ttf font handle
---- @param width integer 
+--- @param width integer
 --- @param height integer
 function Font.ftSetCharSize(font, width, height) end
 
@@ -240,10 +240,16 @@ ALIGN_CENTER = (ALIGN_VCENTER | ALIGN_HCENTER);
 --- @param width  integer defines width  of draw area, text that goes beyond this area is not drawn
 --- @param height integer defines height of draw area, text that goes beyond this area is not drawn
 --- @param text string the text to be written
---- @param color color **[Optional]**: if not specified default is RGBA #80808080 
+--- @param color color **[Optional]**: if not specified default is RGBA #80808080
 --- @overload fun(font:ttf, x:integer, y:integer, fontalign:fontalign, width:integer, height:integer, text:string)
 --- @see Color.new
 function Font.ftPrint(font, x, y, fontalign, width, height, text, color) end
+
+--- Returns the rendered pixel width of the given text with the given font (same as used by ftPrint).
+--- @param font ttf font handle
+--- @param text string
+--- @return integer width in pixels
+function Font.ftCalcDimensions(font, text) end
 
 --- Unloads a font from RAM
 --- @param font ttf font handle
@@ -256,7 +262,7 @@ function Font.ftEnd() end
 
 --- Loads a GSFONT from FNT, PNG or BMP files
 --- @param path string path to font
---- @return gsfont fonthandle 
+--- @return gsfont fonthandle
 --- @nodiscard
 function Font.load(path) end
 
@@ -266,7 +272,7 @@ function Font.load(path) end
 --- @param y number Y coordinate
 --- @param scale number scale
 --- @param text string text to print
---- @param color color **[Optional]**: if not specified default is RGBA #80808080 
+--- @param color color **[Optional]**: if not specified default is RGBA #80808080
 --- @see Font.load
 --- @see Color.new
 --- @overload fun(font:gsfont, x:number, y:number, scale:number, text:string)
@@ -276,23 +282,3 @@ function Font.print(font, x, y, scale, text, color) end
 --- @param font gsfont GSFONT handle
 --- @see Font.load
 function Font.unload(font) end
-
---- Loads the OSD system font `rom0:FONTM`  
---- **WARNING:** Some systems, like the PSX-DESR and all Arcade PS2s do not have this file as part of their bios, wich makes this function useless on such machines
-function Font.fmLoad() end
-
---- Prints text with the OSD Font. you must call `Font.fmLoad` before using
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param scale number scaling factor for text
---- @param text string text to print
---- @param color color **[Optional]**: if not specified default is RGBA #80808080 
---- @overload fun(x:number, y:number, scale:number, text:string)
---- @see Color.new
---- @see Font.fmLoad
-function Font.fmPrint(x, y, scale, text, color) end
-
---- unloads the OSD Font from RAM
---- @see Font.fmLoad
-function Font.fmUnload() end
---#endregion

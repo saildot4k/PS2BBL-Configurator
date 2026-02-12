@@ -1,0 +1,3 @@
+[submodule "modules/mmceman"]
+	path = modules/mmceman
+	url = https://github.com/ps2-mmce/mmceman.git

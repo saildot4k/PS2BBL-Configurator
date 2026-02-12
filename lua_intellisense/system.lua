@@ -143,18 +143,9 @@ function System.removeFile(file) end
 ---internally it is the same than `System.moveFile`. use that instead
 ---@see System.moveFile
 ---
----@deprecated 
+---@deprecated
 ---@see System.moveFile
 function System.rename(source, dest) end
-
----Calculates MD5 checksum for a string (or data buffer)
----@param data string the data to obtain the checksum from
----@return string md5 the string representation of the obtained checksum
-function System.md5sum(data) end
-
----Same then C `sleep()`. waits for the specified ammount of seconds
----@param sec integer how many seconds to wait
-function System.md5sum(sec) end
 
 ---@return integer freebytes ammount of of free RAM on the Emotion Engine. expressed as bytes
 ---Total RAM:
@@ -216,62 +207,6 @@ mcinfo = {}
 --- @overload fun()
 function System.getMCInfo(port) end
 
---- Executes an ELF file
----@param path string the location of the ELF file to be executed
----@param reboot_iop boolean|integer if the I/O Processor should be rebooted before firing the ELF
----@param ...string argumments for the ELF file. path is assigned as argv[0]
-function System.loadELF(path, reboot_iop, ...) end
-
----@enum disctypes
----@type disctypes
-SCECdGDTFUNCFAIL =  -1; -- FAIL
----@type disctypes
-SCECdNODISC = 1; -- NO DISC
----@type disctypes
-SCECdDETCT = 2; -- disc detected, Reading...
----@type disctypes
-SCECdDETCTCD = 3; --CD detected, reading...
----@type disctypes
-SCECdDETCTDVDS = 4; -- DVD5 detected, reading...
----@type disctypes
-SCECdDETCTDVDD = 5; -- DVD9 detected, reading...
----@type disctypes
-SCECdUNKNOWN = 6; -- Unknown disc?
----@type disctypes
-SCECdPSCD = 7; -- PS1 CD
----@type disctypes
-SCECdPSCDDA = 8; -- PS1 CDDA
----@type disctypes
-SCECdPS2CD = 9; -- PS2 CD
----@type disctypes
-SCECdPS2CDDA = 10; -- PS2 CDDA
----@type disctypes
-SCECdPS2DVD = 11; -- PS2 DVD
----@type disctypes
-SCECdESRDVD_0 = 12; -- ESR DVD (off)
----@type disctypes
-SCECdESRDVD_1 = 13; -- ESR DVD (on)
----@type disctypes
-SCECdCDDA = 14; --Audio CD
----@type disctypes
-SCECdDVDV = 15; --Video DVD
----@type disctypes
-SCECdIllegalMedia = 16; -- Unsupported
-
----Checks if a valid disc is inserted on tray
----@return integer 0: Valid disc | 1: Invalid disc
-function System.checkValidDisc() end
-
---- Checks what kind of disc is inserted on the system
---- @return disctypes disctypes
----
---- @see disctypes
-function System.getDiscType() end
-
---- Checks if the disc tray is open
---- @return integer status 1 if its open, 0 otherwise
-function System.checkDiscTray() end
-
 ---@enum mountmode
 ---@type mountmode
 FIO_MT_RDWR = 0x00;
@@ -280,14 +215,30 @@ FIO_MT_RDWR = 0x00;
 --- Read ONLY mount mode
 FIO_MT_RDONLY = 0x01;
 
+--- Returns list of partition names for hdd0 or hdd1 (e.g. __common, __sysconf). Empty until APA/ps2hdd modules are loaded.
+--- @param hddNum integer 0 = hdd0:, 1 = hdd1:. Optional, defaults to 0.
+--- @return table array of partition name strings
+--- @overload fun():table
+function System.listHddPartitions(hddNum) end
+
+--- Loads an embedded IOP module by name. Dependencies (bitmask in irx_requires) are loaded automatically. Names: "usbd_mini", "bdm", "bdmfs_fatfs", "usbmass_bd_mini", "mx4sio_bd_mini", "mmceman", "ps2dev9", "ata_bd", "ps2hdd", "ps2fs". For HDD (hdd0: partitions) load "ata_bd" then "ps2hdd" and "ps2fs".
+--- @param name string module name
+--- @return integer 0 success, -1 unknown name, -2 load failed
+function System.loadModules(name) end
+
+--- Resolves logical deviceId (ata0, ata1, usb0, usb1, mx4sio) to current mountpoint (e.g. mass0:). Returns nil if not found.
+--- @param deviceId string e.g. "ata0", "usb0"
+--- @return string|nil mountpoint (e.g. "mass0:") or nil
+function System.getDeviceMountpoint(deviceId) end
+
 --- Mounts a filesystem via the fileXio driver
 --- @see mountmode
 --- @param mountpoint string path to the mountpoint that will be exposed
 --- @param path string path to the block to mount
 --- @param openmode mountmode [mountmode token](lua://mountmode). **[Optional param: deault `FIO_MT_RDWR`]**
 --- @return integer result
---- **EXAMPLE:** To mount an HDD PFS partition you would need to load the required IRX drivers, then do  
---- `System.fileXioMount("pfs:", "hdd0:PARTITION")`  
+--- **EXAMPLE:** To mount an HDD PFS partition you would need to load the required IRX drivers, then do
+--- `System.fileXioMount("pfs:", "hdd0:PARTITION")`
 --- @overload fun(mountpoint:string, path:string): integer:result
 --- @nodiscard
 function System.fileXioMount(mountpoint, path, FIO_MT_RDWR) end
@@ -299,31 +250,3 @@ function System.fileXioUmount(mountpoint) end
 
 --#endregion System
 
---#region IOP
-
----This is an example of how an IRX argumment list must be sent from enceladus
----it's a null separated list
-IRXArgummentExampleString = "argv[1]\0argv[2]\0argv[3]"
-
---- Uploads and executes an IRX driver from a file into the I/O Processor
---- @param path string path to the IRX file
---- @param argc integer lenght to the argv variable (use `string.len(argv)` ideally)
---- @param argv string null terminator delimited list of arguments
---- @return integer ID The assigned ID number to this IRX driver. if an error ocurred, modload will return a negative number: https://github.com/ps2dev/ps2sdk/blob/master/iop/kernel/include/kerr.h
---- @return integer RET The return value of the IRX driver, usually: 0 means driver remains resident on the IOP, and 1 means the driver requested to be unloaded  **NOTE:** if (ID<0) then RET will not have a return value, because the IRX did not run
---- @see IRXArgummentExampleString
---- @overload fun(path:string): ID:integer, RET:integer
-function IOP.loadModule(path, argc, argv) end
-
---- Uploads and executes an IRX driver from a buffer into the I/O Processor
---- @param ptr string buffer containing the IRX driver
---- @param ptrsize integer size of the buffer containing the IRX driver
---- @param argc integer length to the argv variable (use `string.len(argv)` ideally)
---- @param argv string null terminator delimited list of arguments
---- @return integer ID The assigned ID number to this IRX driver. if an error ocurred, modload will return a negative number: https://github.com/ps2dev/ps2sdk/blob/master/iop/kernel/include/kerr.h
---- @return integer RET The return value of the IRX driver, usually: 0 means driver remains resident on the IOP, and 1 means the driver requested to be unloaded  **NOTE:** if (ID<0) then RET will not have a return value, because the IRX did not run
---- @see IRXArgummentExampleString
---- @overload fun(ptr: string, ptrsize: integer): ID: integer, RET: integer
-function IOP.loadModuleBuffer(ptr, ptrsize, argc, argv) end
-
---#endregion IOP

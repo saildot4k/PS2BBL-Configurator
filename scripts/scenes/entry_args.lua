@@ -1,0 +1,133 @@
+--[[ Arguments list for a menu entry or MBR boot key (when ctx.bootKey is set and we're in MBR). ]]
+
+local function run(ctx)
+  local _ = ctx._
+  local isBoot = not not (ctx.bootKey and (ctx.context == "mbr" or ctx.fileType == "osdmbr_cnf"))
+  if not ctx.lines then
+    ctx.state = isBoot and "editor" or "menu_entry_edit"; return
+  end
+  if not isBoot and not ctx.entryIdx then
+    ctx.state = "menu_entry_edit"; return
+  end
+  if isBoot and not ctx.bootKey then
+    ctx.state = "editor"; return
+  end
+  local paths = isBoot and (_.config_parse.getBootPaths(ctx.lines, ctx.bootKey) or {}) or
+      _.config_parse.getMenuEntryPaths(ctx.lines, ctx.entryIdx)
+  local hasOsdOrShutdown = false
+  for _, p in ipairs(paths or {}) do
+    if (p or ""):upper() == "OSDSYS" or (p or ""):upper() == "POWEROFF" then
+      hasOsdOrShutdown = true; break
+    end
+  end
+  if not isBoot and hasOsdOrShutdown then
+    ctx.state = "menu_entry_edit"; return
+  end
+  local args = isBoot and (_.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}) or
+      (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
+  local hasCdrom = false
+  for _, p in ipairs(paths or {}) do
+    if p == "cdrom" then
+      hasCdrom = true; break
+    end
+  end
+  local total = (hasCdrom and #args) or (#args + 1)
+  if ctx.entryArgSel < 1 then ctx.entryArgSel = 1 end
+  if ctx.entryArgSel > total then ctx.entryArgSel = total end
+  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE then ctx.entryArgScroll = ctx.entryArgSel - _.MAX_VISIBLE end
+  if ctx.entryArgSel < ctx.entryArgScroll + 1 then ctx.entryArgScroll = ctx.entryArgSel - 1 end
+  local titleStr = isBoot and
+      ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..
+      " - " .. _.menu_str.arguments or (_.menu_str.args_for_entry .. ctx.entryIdx)
+  _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleStr, _.WHITE)
+  if not isBoot and hasCdrom then
+    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.75,
+      _.menu_str.cdrom_hint, _.DIM)
+  end
+  for i = ctx.entryArgScroll + 1, math.min(ctx.entryArgScroll + _.MAX_VISIBLE, total) do
+    local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.entryArgScroll - 1) * _.LINE_H
+    local a = (i <= #args) and args[i]
+    local label = (a and (a:sub(1, 52) .. (#a > 52 and "..." or ""))) or _.menu_str.add_argument
+    local col = (i == ctx.entryArgSel) and _.SELECTED_ENTRY or _.WHITE
+    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryArgSel, label, col)
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.menu_str.args_hint_items, nil, _.DIM,
+    _.w - 2 * _.MARGIN_X)
+  if (_.padEffective & _.PAD_UP) ~= 0 then
+    ctx.entryArgSel = ctx.entryArgSel - 1; if ctx.entryArgSel < 1 then ctx.entryArgSel = total end
+  end
+  if (_.padEffective & _.PAD_DOWN) ~= 0 then
+    ctx.entryArgSel = ctx.entryArgSel + 1; if ctx.entryArgSel > total then ctx.entryArgSel = 1 end
+  end
+  local function getArgs()
+    return isBoot and (_.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}) or
+        _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
+  end
+  local function setArgs(a)
+    if isBoot then
+      _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, a)
+      ctx.configModified = true
+    else
+      _.config_parse
+          .setMenuEntryArgs(ctx.lines, ctx.entryIdx, a)
+    end
+  end
+  if (_.padEffective & _.PAD_CROSS) ~= 0 then
+    if ctx.entryArgSel == total and not hasCdrom then
+      ctx.argEditIdx = nil
+      ctx.textInputTitleIdMode = nil
+      ctx.textInputPrompt = _.menu_str.new_argument_prompt
+      ctx.textInputValue = ""
+      ctx.textInputMaxLen = 79
+      ctx.textInputCallback = function(val)
+        if (val or "") ~= "" then
+          local args2 = getArgs(); table.insert(args2, val); setArgs(args2)
+        end
+        ctx.state = "entry_args"
+      end
+      ctx.textInputReturnState = "entry_args"
+      ctx.textInputGridSel = 1
+      ctx.textInputCursor = 1
+      ctx.textInputScroll = 1
+      ctx.state = "text_input"
+    elseif ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
+      ctx.argEditIdx = ctx.entryArgSel
+      ctx.textInputTitleIdMode = nil
+      ctx.textInputPrompt = _.menu_str.edit_argument_prompt
+      ctx.textInputValue = args[ctx.entryArgSel]
+      ctx.textInputMaxLen = 79
+      ctx.textInputCallback = function(val)
+        local args2 = getArgs(); args2[ctx.argEditIdx] = val or ""; setArgs(args2)
+        ctx.state = "entry_args"
+      end
+      ctx.textInputReturnState = "entry_args"
+      ctx.textInputGridSel = 1
+      ctx.textInputCursor = #ctx.textInputValue + 1
+      ctx.textInputScroll = 1
+      ctx.state = "text_input"
+    end
+  end
+  if (_.padEffective & _.PAD_L1) ~= 0 then
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args and ctx.entryArgSel > 1 then
+      args = getArgs(); args[ctx.entryArgSel], args[ctx.entryArgSel - 1] = args[ctx.entryArgSel - 1],
+          args[ctx.entryArgSel]; setArgs(args)
+      ctx.entryArgSel = ctx.entryArgSel - 1
+    end
+  end
+  if (_.padEffective & _.PAD_R1) ~= 0 then
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args and ctx.entryArgSel < #args then
+      args = getArgs(); args[ctx.entryArgSel], args[ctx.entryArgSel + 1] = args[ctx.entryArgSel + 1],
+          args[ctx.entryArgSel]; setArgs(args)
+      ctx.entryArgSel = ctx.entryArgSel + 1
+    end
+  end
+  if (_.padEffective & _.PAD_SQUARE) ~= 0 then
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
+      args = getArgs(); table.remove(args, ctx.entryArgSel); setArgs(args)
+      if ctx.entryArgSel > #args then ctx.entryArgSel = math.max(1, #args) end
+    end
+  end
+  if (_.padEffective & _.PAD_CIRCLE) ~= 0 then ctx.state = isBoot and "entry_paths" or "menu_entry_edit" end
+end
+
+return { run = run }

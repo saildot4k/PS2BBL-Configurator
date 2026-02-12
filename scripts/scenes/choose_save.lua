@@ -1,0 +1,53 @@
+--[[ Choose save location (multi-slot OSDMENU). ]]
+
+local function run(ctx)
+  local _ = ctx._
+  _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.editor_str.save_config_to, _.WHITE)
+  local choices = ctx.saveChoices or {}
+  if ctx.saveSel < 1 then ctx.saveSel = 1 end
+  if ctx.saveSel > #choices then ctx.saveSel = #choices end
+  for i = 1, math.min(_.MAX_VISIBLE, #choices) do
+    local p = choices[i] or ""
+    local label = (p:match("^mc0:") and _.dev_str.memory_card_1) or (p:match("^mc1:") and _.dev_str.memory_card_2) or
+        p:sub(1, 40)
+    local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
+    local col = (i == ctx.saveSel) and _.SELECTED_ENTRY or _.WHITE
+    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.saveSel, label, col)
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.editor_str.cross_save_circle_cancel_items, nil,
+    _.DIM, _.w - 2 * _.MARGIN_X)
+  if (_.padEffective & _.PAD_UP) ~= 0 then
+    ctx.saveSel = ctx.saveSel - 1; if ctx.saveSel < 1 then ctx.saveSel = #choices end
+  end
+  if (_.padEffective & _.PAD_DOWN) ~= 0 then
+    ctx.saveSel = ctx.saveSel + 1; if ctx.saveSel > #choices then ctx.saveSel = 1 end
+  end
+  if (_.padEffective & _.PAD_CROSS) ~= 0 and #choices > 0 then
+    local path = choices[ctx.saveSel]
+    local parentDir = path and path:match("^(.+)/[^/]+$")
+    ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
+    ctx.saveError = nil
+    local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
+    if ok then
+      ctx.currentPath = path
+      ctx.saveFlash = 60
+      ctx.configModified = false
+      ctx.saveError = nil
+      if ctx.returnToSelectConfigAfterSave then
+        ctx.returnToSelectConfigAfterSave = nil
+        ctx.returnToSelectConfigAfterSaveFlash = true
+      end
+      ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+    else
+      ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+      ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+    end
+    ctx.saveChoices = nil
+  end
+  if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
+    ctx.returnToSelectConfigAfterSave = nil
+    ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"; ctx.saveChoices = nil
+  end
+end
+
+return { run = run }

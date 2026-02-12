@@ -10,20 +10,20 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 charset = utf-8
 
-# because in this metadata, we can use markdown line break (double trailing whitespace)
-[lua_intellisense/*.lua]
-trim_trailing_whitespace = false
-
-# 4 space indentation
-[*.{c,cpp,h,hpp,js,css,html}]
-indent_style = space
-indent_size = 4
-
 # 2 space indentation
-[*.{json,xml,yaml,yml,lua}]
+[*.{c,h,js,css,html,json,xml,yaml,yml}]
 indent_style = space
 indent_size = 2
 
 # Tab indentation
 [Makefile*]
 indent_style = tab
+
+# Ignore paths
+[*.md]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset

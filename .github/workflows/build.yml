@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - v*
+  pull_request:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [run_build]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/ps2homebrew/ps2homebrew:main
+    steps:
+    - name: Install cmake
+      run: |
+        apk add cmake
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Fetch full clone
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        git fetch --prune --unshallow
+
+    - name: Compile non-VFS version
+      id: make
+      run: |
+        cmake -B build
+        cmake --build build
+
+    - name: Compile VFS version
+      id: make-vfs
+      run: |
+        cmake -B build -DEMBED_VFS=ON -DOUTDIR=release_vfs
+        cmake --build build
+        rm -rf build
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      if: steps.make.outcome == 'success'
+      with:
+        name: artifacts
+        path: |
+          release/**
+          release_vfs/**
+
+    - name: Get git describe
+      run: |
+        echo "GIT_VERSION=$(git describe --always --dirty --tags --exclude nightly)" >> $GITHUB_ENV
+
+    - name: Build release archive
+      run: |
+        cd release_vfs
+        zip -r ../osdmenu-configurator-${{ env.GIT_VERSION }}.zip ./*
+
+    - name: Create nightly release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      if: github.ref == 'refs/heads/main'
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "nightly"
+        prerelease: true
+        title: "Nightly build"
+        files: |
+          osdmenu-configurator-${{ env.GIT_VERSION }}.zip
+
+    - name: Create stable release
+      uses: "marvinpinto/action-automatic-releases@latest"
+      if: startsWith(github.ref, 'refs/tags/v')
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        draft: true
+        files: |
+          osdmenu-configurator-${{ env.GIT_VERSION }}.zip
+
