@@ -34,7 +34,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
   return {}
 end
 
--- optType: "path", "bool", "enum", "string", "int", "text", "color", "action", "header", "add_path"
+-- optType: "path", "bool", "enum", "string", "int", "text", "color", "action", "header"
 -- int: numeric value; +/- hints and L1/R1/L2/R2 apply. bool/path/text/color do not show numeric hints.
 config_options.osdmenu_cnf_categories = {
   {

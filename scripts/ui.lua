@@ -39,12 +39,14 @@ local dev_str = strings.devices
 local PAD_UP, PAD_DOWN, PAD_LEFT, PAD_RIGHT = common.PAD_UP, common.PAD_DOWN, common.PAD_LEFT, common.PAD_RIGHT
 local PAD_CROSS, PAD_CIRCLE, PAD_START, PAD_TRIANGLE, PAD_SQUARE = common.PAD_CROSS, common.PAD_CIRCLE, common.PAD_START,
     common.PAD_TRIANGLE, common.PAD_SQUARE
+local PAD_SELECT = common.PAD_SELECT
 local PAD_L1, PAD_R1, PAD_L2, PAD_R2 = common.PAD_L1, common.PAD_R1, common.PAD_L2, common.PAD_R2
-local WHITE, GRAY, DIM, BLACK = common.WHITE, common.GRAY, common.DIM, common.BGCOLOR
+local WHITE, GRAY, DIM, DIM_ENTRY, BLACK = common.WHITE, common.GRAY, common.DIM, common.DIM_ENTRY, common.BGCOLOR
 local HIGHLIGHT, SELECTED_ENTRY, PREFIX_W = common.HIGHLIGHT, common.SELECTED_ENTRY, common.PREFIX_W
 local FONT_SCALE, LINE_H, ROW_H = common.FONT_SCALE, common.LINE_H, common.ROW_H
 local MARGIN_X, MARGIN_Y = common.MARGIN_X, common.MARGIN_Y
 local MAX_VISIBLE = common.MAX_VISIBLE
+local MAX_VISIBLE_LIST = common.MAX_VISIBLE_LIST
 local VALUE_X, VALUE_MAX_LEN, VALUE_MAX_LEN_LONG = common.VALUE_X, common.VALUE_MAX_LEN, common.VALUE_MAX_LEN_LONG
 local DESC_Y_BOTTOM, HINT_Y = common.DESC_Y_BOTTOM, common.HINT_Y
 local KEYBOARD_ROWS, KEYBOARD_ROWS_SHIFTED, KEYBOARD_ROWS_TITLE_ID = common.KEYBOARD_ROWS, common.KEYBOARD_ROWS_SHIFTED,
@@ -247,6 +249,7 @@ local function mainLoop()
       LINE_H = LINE_H,
       ROW_H = ROW_H,
       MAX_VISIBLE = MAX_VISIBLE,
+      MAX_VISIBLE_LIST = MAX_VISIBLE_LIST,
       VALUE_X = VALUE_X,
       FONT_SCALE = FONT_SCALE,
       VALUE_MAX_LEN = VALUE_MAX_LEN,
@@ -257,6 +260,7 @@ local function mainLoop()
       WHITE = WHITE,
       GRAY = GRAY,
       DIM = DIM,
+      DIM_ENTRY = DIM_ENTRY,
       HIGHLIGHT = HIGHLIGHT,
       drawText = drawText,
       common = common,
@@ -298,6 +302,7 @@ local function mainLoop()
       PAD_RIGHT = PAD_RIGHT,
       PAD_CROSS = PAD_CROSS,
       PAD_CIRCLE = PAD_CIRCLE,
+      PAD_SELECT = PAD_SELECT,
       PAD_START = PAD_START,
       PAD_TRIANGLE = PAD_TRIANGLE,
       PAD_SQUARE = PAD_SQUARE,

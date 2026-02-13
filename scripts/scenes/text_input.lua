@@ -39,7 +39,7 @@ local function run(ctx)
   local keyList = {}
   for _, row in ipairs(rows) do for i = 1, #row do table.insert(keyList, row:sub(i, i)) end end
   if not ctx.textInputTitleIdMode then table.insert(keyList, " ") end
-  local rowLen = { 10, 10, 9, 7 }
+  local rowLen = ctx.textInputTitleIdMode and { 10, 10, 9, 7 } or { 10, 10, 9, 9 }
   if ctx.textInputGridSel < 1 then ctx.textInputGridSel = 1 end
   if ctx.textInputGridSel > #keyList then ctx.textInputGridSel = #keyList end
   local keyY = _.KEYBOARD_CENTER_Y - _.scaleY(50)
@@ -75,12 +75,18 @@ local function run(ctx)
     local spaceW = math.floor(specSlotW * 2 - _.KEY_GAP)
     local specStartX = _.KEYBOARD_CENTER_X - spaceW / 2
     local ky = math.floor(specY + _.KEY_GAP / 2)
-    drawKey(specStartX, ky, spaceW, kh, "", 37 == ctx.textInputGridSel)
+    drawKey(specStartX, ky, spaceW, kh, "", 39 == ctx.textInputGridSel)
   end
-  local rowStart = { 1, 11, 21, 30, 37 }
-  local rowSize = { 10, 10, 9, 7, 1 }
+  local rowStart = ctx.textInputTitleIdMode and { 1, 11, 21, 30 } or { 1, 11, 21, 30, 39 }
+  local rowSize = ctx.textInputTitleIdMode and { 10, 10, 9, 7 } or { 10, 10, 9, 9, 1 }
   local maxRow = ctx.textInputTitleIdMode and 4 or 5
-  local function rowOf(s) if s <= 10 then return 1 elseif s <= 20 then return 2 elseif s <= 29 then return 3 elseif s <= 36 then return 4 else return 5 end end
+  local function rowOf(s)
+    if ctx.textInputTitleIdMode then
+      if s <= 10 then return 1 elseif s <= 20 then return 2 elseif s <= 29 then return 3 else return 4 end
+    else
+      if s <= 10 then return 1 elseif s <= 20 then return 2 elseif s <= 29 then return 3 elseif s <= 38 then return 4 else return 5 end
+    end
+  end
   if (_.padEffective & _.PAD_LEFT) ~= 0 then
     ctx.textInputGridSel = ctx.textInputGridSel - 1; if ctx.textInputGridSel < 1 then ctx.textInputGridSel = #keyList end
   end
@@ -109,14 +115,14 @@ local function run(ctx)
       ctx.textInputCursor + 1)
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
-    if ctx.textInputGridSel <= 36 then
+    if ctx.textInputGridSel <= 38 then
       local ch = keyList[ctx.textInputGridSel]
       if ch and #ctx.textInputValue < ctx.textInputMaxLen then
         ctx.textInputValue = ctx.textInputValue:sub(1, ctx.textInputCursor - 1) ..
             ch .. ctx.textInputValue:sub(ctx.textInputCursor)
         ctx.textInputCursor = ctx.textInputCursor + 1
       end
-    elseif not ctx.textInputTitleIdMode and ctx.textInputGridSel == 37 then
+    elseif not ctx.textInputTitleIdMode and ctx.textInputGridSel == 39 then
       if #ctx.textInputValue < ctx.textInputMaxLen then
         ctx.textInputValue = ctx.textInputValue:sub(1, ctx.textInputCursor - 1) ..
             " " .. ctx.textInputValue:sub(ctx.textInputCursor)
@@ -126,8 +132,8 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_START) ~= 0 then
     ctx.textInputCallback(ctx.textInputValue)
-    ctx.state = ctx.textInputReturnState or "menu_entry_edit"
     ctx.textInputCallback = nil
+    -- Callback sets ctx.state (e.g. applyManualPath -> entry_paths); do not overwrite
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     ctx.textInputCallback = nil

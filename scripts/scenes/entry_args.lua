@@ -31,10 +31,10 @@ local function run(ctx)
       hasCdrom = true; break
     end
   end
-  local total = (hasCdrom and #args) or (#args + 1)
+  local total = #args
   if ctx.entryArgSel < 1 then ctx.entryArgSel = 1 end
-  if ctx.entryArgSel > total then ctx.entryArgSel = total end
-  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE then ctx.entryArgScroll = ctx.entryArgSel - _.MAX_VISIBLE end
+  if ctx.entryArgSel > total then ctx.entryArgSel = (total > 0) and total or 1 end
+  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE_LIST then ctx.entryArgScroll = ctx.entryArgSel - _.MAX_VISIBLE_LIST end
   if ctx.entryArgSel < ctx.entryArgScroll + 1 then ctx.entryArgScroll = ctx.entryArgSel - 1 end
   local titleStr = isBoot and
       ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..
@@ -44,10 +44,10 @@ local function run(ctx)
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.75,
       _.menu_str.cdrom_hint, _.DIM)
   end
-  for i = ctx.entryArgScroll + 1, math.min(ctx.entryArgScroll + _.MAX_VISIBLE, total) do
+  for i = ctx.entryArgScroll + 1, math.min(ctx.entryArgScroll + _.MAX_VISIBLE_LIST, total) do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.entryArgScroll - 1) * _.LINE_H
-    local a = (i <= #args) and args[i]
-    local label = (a and (a:sub(1, 52) .. (#a > 52 and "..." or ""))) or _.menu_str.add_argument
+    local a = args[i]
+    local label = (a and (a:sub(1, 52) .. (#a > 52 and "..." or ""))) or ""
     local col = (i == ctx.entryArgSel) and _.SELECTED_ENTRY or _.WHITE
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryArgSel, label, col)
   end
@@ -73,24 +73,7 @@ local function run(ctx)
     end
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
-    if ctx.entryArgSel == total and not hasCdrom then
-      ctx.argEditIdx = nil
-      ctx.textInputTitleIdMode = nil
-      ctx.textInputPrompt = _.menu_str.new_argument_prompt
-      ctx.textInputValue = ""
-      ctx.textInputMaxLen = 79
-      ctx.textInputCallback = function(val)
-        if (val or "") ~= "" then
-          local args2 = getArgs(); table.insert(args2, val); setArgs(args2)
-        end
-        ctx.state = "entry_args"
-      end
-      ctx.textInputReturnState = "entry_args"
-      ctx.textInputGridSel = 1
-      ctx.textInputCursor = 1
-      ctx.textInputScroll = 1
-      ctx.state = "text_input"
-    elseif ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
       ctx.argEditIdx = ctx.entryArgSel
       ctx.textInputTitleIdMode = nil
       ctx.textInputPrompt = _.menu_str.edit_argument_prompt
@@ -106,6 +89,24 @@ local function run(ctx)
       ctx.textInputScroll = 1
       ctx.state = "text_input"
     end
+  end
+  if (_.padEffective & _.PAD_SELECT) ~= 0 and not hasCdrom then
+    ctx.argEditIdx = nil
+    ctx.textInputTitleIdMode = nil
+    ctx.textInputPrompt = _.menu_str.new_argument_prompt
+    ctx.textInputValue = ""
+    ctx.textInputMaxLen = 79
+    ctx.textInputCallback = function(val)
+      if (val or "") ~= "" then
+        local args2 = getArgs(); table.insert(args2, val); setArgs(args2)
+      end
+      ctx.state = "entry_args"
+    end
+    ctx.textInputReturnState = "entry_args"
+    ctx.textInputGridSel = 1
+    ctx.textInputCursor = 1
+    ctx.textInputScroll = 1
+    ctx.state = "text_input"
   end
   if (_.padEffective & _.PAD_L1) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args and ctx.entryArgSel > 1 then

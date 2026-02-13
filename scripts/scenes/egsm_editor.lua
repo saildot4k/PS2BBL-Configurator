@@ -36,9 +36,9 @@ local function run(ctx)
   if ctx.egsmSel < 1 then ctx.egsmSel = 1 end
   if ctx.egsmSel > total then ctx.egsmSel = total end
   ctx.egsmScroll = ctx.egsmScroll or 0
-  if ctx.egsmSel > ctx.egsmScroll + _.MAX_VISIBLE then ctx.egsmScroll = ctx.egsmSel - _.MAX_VISIBLE end
+  if ctx.egsmSel > ctx.egsmScroll + _.MAX_VISIBLE_LIST then ctx.egsmScroll = ctx.egsmSel - _.MAX_VISIBLE_LIST end
   if ctx.egsmSel < ctx.egsmScroll + 1 then ctx.egsmScroll = ctx.egsmSel - 1 end
-  ctx.egsmScroll = math.max(0, math.min(ctx.egsmScroll, total - _.MAX_VISIBLE))
+  ctx.egsmScroll = math.max(0, math.min(ctx.egsmScroll, total - _.MAX_VISIBLE_LIST))
 
   local opts = _.config_parse.getEgsmEnumOptions and _.config_parse.getEgsmEnumOptions() or {}
   local function valueDisplay(val, commented)
@@ -49,7 +49,7 @@ local function run(ctx)
   end
 
   local startY = _.MARGIN_Y + _.scaleY(50)
-  for i = (ctx.egsmScroll or 0) + 1, math.min((ctx.egsmScroll or 0) + _.MAX_VISIBLE, total) do
+  for i = (ctx.egsmScroll or 0) + 1, math.min((ctx.egsmScroll or 0) + _.MAX_VISIBLE_LIST, total) do
     local y = startY + (i - (ctx.egsmScroll or 0) - 1) * _.LINE_H
     local col = (i == ctx.egsmSel) and _.SELECTED_ENTRY or _.WHITE
     if i == 1 then

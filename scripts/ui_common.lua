@@ -12,6 +12,7 @@ common.PAD_LEFT                    = 0x0080
 common.PAD_RIGHT                   = 0x0020
 common.PAD_CROSS                   = 0x4000
 common.PAD_CIRCLE                  = 0x2000
+common.PAD_SELECT                  = 0x0001
 common.PAD_START                   = 0x0008
 common.PAD_TRIANGLE                = 0x1000
 common.PAD_SQUARE                  = 0x8000
@@ -34,6 +35,8 @@ common.ROW_H                       = 24
 common.MARGIN_X, common.MARGIN_Y   = 40, 28
 common.DEFAULT_W, common.DEFAULT_H = 640, 448
 common.MAX_VISIBLE                 = 10
+common.MAX_VISIBLE_LIST = 12  -- menu entries, path picker, entry paths, entry args, eGSM editor
+common.DIM_ENTRY = Color.new(56, 56, 56)  -- darker than DIM for disabled list rows
 common.VALUE_X                     = 360
 common.VALUE_MAX_LEN               = 38
 common.VALUE_MAX_LEN_LONG          = 22
@@ -225,9 +228,9 @@ function common.buildEditorHintItems(selOpt, hintEditItems, getDefaultFn, enumHi
 end
 
 -- Keyboard
-common.KEYBOARD_ROWS = { "1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm" }
-common.KEYBOARD_ROWS_SHIFTED = { "!@#$%^&*()", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM" }
--- Title ID only: digits + uppercase letters, no shift (e.g. eGSM AAAA_000.00)
+common.KEYBOARD_ROWS = { "1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm:/" }
+common.KEYBOARD_ROWS_SHIFTED = { "!@#$%^&*()", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM:/" }
+-- Title ID only: digits + uppercase letters, no shift (e.g. eGSM AAAA_000.00). No :/ needed.
 common.KEYBOARD_ROWS_TITLE_ID = { "1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM" }
 common.KEYBOARD_CENTER_X, common.KEYBOARD_CENTER_Y = 320, 220
 common.KEY_WIDTH, common.KEY_HEIGHT = 34, 26

@@ -33,6 +33,53 @@ local function clearLoadedIfIopReset(ctx)
   ctx.pathPickerLoadedDeviceTypes = {}
 end
 
+-- Apply a manually entered path and leave path picker (used by "Enter path manually" text input callback).
+local function applyManualPath(ctx, val)
+  if not val or val == "" then
+    -- Done with empty path: return to entry paths or path_picker so we don't show "Choose device" / "No devices"
+    if ctx.pathPickerForEntryIdx then
+      ctx.entryIdx = ctx.pathPickerForEntryIdx
+      ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
+      ctx.pathPickerForEntryIdx = nil
+      ctx.pathPickerEditIdx = nil
+    else
+      ctx.state = ctx.pathPickerReturnState or "editor"
+    end
+    ctx.pathList = nil
+    ctx.pathPickerReturnState = nil
+    return
+  end
+  local _ = ctx._
+  if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
+  if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
+  ctx.pathList = nil
+  ctx.pathBrowsePath = nil
+  ctx.pfs0Mounted = nil
+  ctx.pfs1Mounted = nil
+  ctx.configModified = true
+  if applyBootPathAndReturn(ctx, val) then
+  elseif ctx.pathPickerForEntryIdx then
+    local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
+    if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = val else table.insert(paths, val) end
+    _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
+    ctx.entryIdx = ctx.pathPickerForEntryIdx
+    ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
+    ctx.pathPickerForEntryIdx = nil
+    ctx.pathPickerEditIdx = nil
+  elseif ctx.isAddPath then
+    local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or ctx.addPathKey
+    _.config_parse.append(ctx.lines, key, val)
+    ctx.state = "editor"
+  else
+    _.config_parse.set(ctx.lines, ctx.editKey or "", val)
+    ctx.state = "editor"
+  end
+  ctx.pathPickerBootKey = nil
+  ctx.pathPickerReturnState = nil
+  ctx.pathPickerBdmPrefix = nil
+  ctx.pathPickerBdmMountpoint = nil
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Wildcard confirm: path is mc0/mc1/mmce0/mmce1; Cross = Yes (use wildcard), Circle = No (use as-is)
@@ -202,49 +249,73 @@ local function run(ctx)
           if not e then return true end
           return (e.exclusive and hasOtherPaths) or false
         end
+        local totalCount = #ctx.pathList + 1  -- index 1 = "Enter path manually"
         if ctx.pathPickerSel < 1 then ctx.pathPickerSel = 1 end
-        if ctx.pathPickerSel > #ctx.pathList then ctx.pathPickerSel = #ctx.pathList end
-        if isGreyed(ctx.pathList[ctx.pathPickerSel]) then
+        if ctx.pathPickerSel > totalCount then ctx.pathPickerSel = totalCount end
+        if ctx.pathPickerSel >= 2 and isGreyed(ctx.pathList[ctx.pathPickerSel - 1]) then
           for idx = 1, #ctx.pathList do
             if not isGreyed(ctx.pathList[idx]) then
-              ctx.pathPickerSel = idx; break
+              ctx.pathPickerSel = idx + 1; break
             end
           end
+          if ctx.pathPickerSel >= 2 and isGreyed(ctx.pathList[ctx.pathPickerSel - 1]) then
+            ctx.pathPickerSel = 1
+          end
         end
-        if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
-          ctx.pathPickerScroll = ctx.pathPickerSel -
-              _.MAX_VISIBLE
+        if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
+          ctx.pathPickerScroll = ctx.pathPickerSel - _.MAX_VISIBLE_LIST
         end
         if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
-        for i = 1, math.min(_.MAX_VISIBLE, #ctx.pathList - ctx.pathPickerScroll) do
-          local idx = ctx.pathPickerScroll + i
-          local e = ctx.pathList[idx]
-          local displayName = e.desc or e.name or _.common_str.empty
-          local greyed = isGreyed(e)
+        for i = 1, math.min(_.MAX_VISIBLE_LIST, totalCount - ctx.pathPickerScroll) do
+          local listIdx = ctx.pathPickerScroll + i
+          local displayName
+          local greyed = false
+          local e = nil
+          if listIdx == 1 then
+            displayName = _.path_str.enter_path_manually or "Enter path manually"
+          else
+            e = ctx.pathList[listIdx - 1]
+            displayName = e and (e.desc or e.name or _.common_str.empty) or _.common_str.empty
+            greyed = isGreyed(e)
+          end
           local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
-          local col = greyed and _.DIM or ((idx == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY)
-          _.drawListRow(_.MARGIN_X + 20, y, idx == ctx.pathPickerSel, displayName, col)
+          local col = greyed and _.DIM or ((listIdx == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY)
+          _.drawListRow(_.MARGIN_X + 20, y, listIdx == ctx.pathPickerSel, displayName, col)
         end
         if (_.padEffective & _.PAD_UP) ~= 0 then
           local idx = ctx.pathPickerSel
-          for _ = 1, #ctx.pathList do
-            idx = idx - 1; if idx < 1 then idx = #ctx.pathList end
-            if not isGreyed(ctx.pathList[idx]) then
+          for _ = 1, totalCount do
+            idx = idx - 1; if idx < 1 then idx = totalCount end
+            if idx == 1 or not isGreyed(ctx.pathList[idx - 1]) then
               ctx.pathPickerSel = idx; break
             end
           end
         end
         if (_.padEffective & _.PAD_DOWN) ~= 0 then
           local idx = ctx.pathPickerSel
-          for _ = 1, #ctx.pathList do
-            idx = idx + 1; if idx > #ctx.pathList then idx = 1 end
-            if not isGreyed(ctx.pathList[idx]) then
+          for _ = 1, totalCount do
+            idx = idx + 1; if idx > totalCount then idx = 1 end
+            if idx == 1 or not isGreyed(ctx.pathList[idx - 1]) then
               ctx.pathPickerSel = idx; break
             end
           end
         end
         if (_.padEffective & _.PAD_CROSS) ~= 0 then
-          local e = ctx.pathList[ctx.pathPickerSel]
+          if ctx.pathPickerSel == 1 then
+            ctx.textInputTitleIdMode = nil
+            ctx.textInputPrompt = _.path_str.enter_path_prompt or "Enter path"
+            ctx.textInputValue = ""
+            ctx.textInputMaxLen = 79
+            ctx.textInputCallback = function(val)
+              applyManualPath(ctx, val)
+            end
+            ctx.textInputReturnState = "path_picker"
+            ctx.textInputGridSel = 1
+            ctx.textInputCursor = 1
+            ctx.textInputScroll = 1
+            ctx.state = "text_input"
+          else
+          local e = ctx.pathList[ctx.pathPickerSel - 1]
           if isGreyed(e) then
             -- exclusive and other paths exist; ignore
           elseif e.special then
@@ -351,6 +422,7 @@ local function run(ctx)
             end
           end
         end
+        end
       else
         _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(60), _.FONT_SCALE, _.path_str.no_devices, _
           .GRAY)
@@ -393,16 +465,16 @@ local function run(ctx)
     local parts = ctx.pathList or {}
     if ctx.pathPickerSel < 1 then ctx.pathPickerSel = 1 end
     if ctx.pathPickerSel > #parts then ctx.pathPickerSel = #parts end
-    if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
+    if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
       ctx.pathPickerScroll = ctx.pathPickerSel -
-          _.MAX_VISIBLE
+          _.MAX_VISIBLE_LIST
     end
     if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
     if #parts > 0 then
       _.drawText(_.font, _.drawMode, _.w - 72, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #parts,
         _.DIM)
     end
-    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + _.MAX_VISIBLE, #parts) do
+    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + _.MAX_VISIBLE_LIST, #parts) do
       local p = parts[i]
       if not p then break end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.pathPickerScroll - 1) * _.LINE_H
@@ -475,10 +547,10 @@ local function run(ctx)
       ctx.pathBrowsePath = nil
       local n = #(ctx.pathList or {})
       ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerDeviceSel or 1, n))
-      ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE)))
-      if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
+      ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
+      if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
         ctx.pathPickerScroll = ctx.pathPickerSel -
-            _.MAX_VISIBLE
+            _.MAX_VISIBLE_LIST
       end
       if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
     end
@@ -496,9 +568,9 @@ local function run(ctx)
     else
       ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerSel, #show))
     end
-    if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
+    if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
       ctx.pathPickerScroll = ctx.pathPickerSel -
-          _.MAX_VISIBLE
+          _.MAX_VISIBLE_LIST
     end
     if ctx.pathPickerSel > 0 and ctx.pathPickerSel < ctx.pathPickerScroll + 1 then
       ctx.pathPickerScroll = ctx
@@ -508,7 +580,7 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.w - 72, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #show,
         _.DIM)
     end
-    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + _.MAX_VISIBLE, #show) do
+    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + _.MAX_VISIBLE_LIST, #show) do
       local e = show[i]
       if not e then break end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.pathPickerScroll - 1) * _.LINE_H
@@ -609,10 +681,10 @@ local function run(ctx)
           ctx.pathBrowsePath = "hdd0:"
           local n = #(ctx.pathList or {})
           ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerPartitionSel or 1, n))
-          ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE)))
-          if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
+          ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
+          if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
             ctx.pathPickerScroll = ctx.pathPickerSel -
-                _.MAX_VISIBLE
+                _.MAX_VISIBLE_LIST
           end
           if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
         else
@@ -626,10 +698,10 @@ local function run(ctx)
             ctx.pathBrowsePath = nil
             local n = #(ctx.pathList or {})
             ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerDeviceSel or 1, n))
-            ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE)))
-            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
+            ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
+            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
               ctx.pathPickerScroll = ctx.pathPickerSel -
-                  _.MAX_VISIBLE
+                  _.MAX_VISIBLE_LIST
             end
             if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
           else
@@ -639,9 +711,9 @@ local function run(ctx)
             ctx.pathPickerSel = math.max(1, math.min(table.remove(stack) or 1, #(ctx.pathList or {})))
             ctx.pathPickerBrowseSelStack = #stack > 0 and stack or nil
             ctx.pathPickerScroll = math.max(0,
-              math.min(ctx.pathPickerScroll or 0, math.max(0, #(ctx.pathList or {}) - _.MAX_VISIBLE)))
-            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then ctx.pathPickerScroll = ctx.pathPickerSel -
-              _.MAX_VISIBLE end
+              math.min(ctx.pathPickerScroll or 0, math.max(0, #(ctx.pathList or {}) - _.MAX_VISIBLE_LIST)))
+            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then ctx.pathPickerScroll = ctx.pathPickerSel -
+              _.MAX_VISIBLE_LIST end
             if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
           end
         end
@@ -655,10 +727,10 @@ local function run(ctx)
         ctx.pathBrowsePath = nil
         local n = #(ctx.pathList or {})
         ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerDeviceSel or 1, n))
-        ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE)))
-        if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE then
+        ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
+        if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
           ctx.pathPickerScroll = ctx.pathPickerSel -
-              _.MAX_VISIBLE
+              _.MAX_VISIBLE_LIST
         end
         if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
       end
