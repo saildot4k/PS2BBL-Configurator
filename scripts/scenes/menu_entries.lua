@@ -14,9 +14,14 @@ local function run(ctx)
   _.drawText(_.font, _.drawMode, 540, _.MARGIN_Y, 0.9, counterStr, _.DIM)
   if ctx.entrySel < 1 then ctx.entrySel = 1 end
   if total > 0 and ctx.entrySel > total then ctx.entrySel = total end
-  if ctx.entrySel > ctx.entryScroll + _.MAX_VISIBLE_LIST then ctx.entryScroll = ctx.entrySel - _.MAX_VISIBLE_LIST end
-  if ctx.entrySel < ctx.entryScroll + 1 then ctx.entryScroll = ctx.entrySel - 1 end
-  for i = ctx.entryScroll + 1, math.min(ctx.entryScroll + _.MAX_VISIBLE_LIST, total) do
+  local maxVis = _.MAX_VISIBLE_LIST
+  if total > maxVis then
+    ctx.entryScroll = ctx.entrySel - math.floor(maxVis / 2)
+    ctx.entryScroll = math.max(0, math.min(ctx.entryScroll, total - maxVis))
+  else
+    ctx.entryScroll = 0
+  end
+  for i = ctx.entryScroll + 1, math.min(ctx.entryScroll + maxVis, total) do
     local ent = ctx.entryList[i]
     local idx = ent.idx
     local label = _.config_parse.getMenuEntryName(ctx.lines, idx) or (_.menu_str.item .. idx)
@@ -32,10 +37,10 @@ local function run(ctx)
     ctx.entrySel = ctx.entrySel + 1; if ctx.entrySel > total then ctx.entrySel = 1 end
   end
   if (_.padEffective & _.PAD_LEFT) ~= 0 then
-    ctx.entrySel = math.max(1, ctx.entrySel - 10)
+    ctx.entrySel = math.max(1, ctx.entrySel - maxVis)
   end
   if (_.padEffective & _.PAD_RIGHT) ~= 0 then
-    ctx.entrySel = math.min(total, ctx.entrySel + 10)
+    ctx.entrySel = math.min(total, ctx.entrySel + maxVis)
   end
   if (_.padEffective & _.PAD_SELECT) ~= 0 then
     local belowIdx = (total == 0) and 0 or ctx.entryList[ctx.entrySel].idx
@@ -99,7 +104,18 @@ local function run(ctx)
     hints = ctx.entryList[ctx.entrySel].disabled and (_.menu_str.hint_items_with_enable or hints)
         or (_.menu_str.hint_items_with_disable or hints)
   end
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hints, nil, _.DIM,
+  local pageStr = tostring(maxVis)
+  local hintsAdjusted = {}
+  for _, item in ipairs(hints) do
+    local label = item.label
+    if item.pad == "left" then
+      label = "-" .. pageStr
+    elseif item.pad == "right" then
+      label = "+" .. pageStr
+    end
+    hintsAdjusted[#hintsAdjusted + 1] = { pad = item.pad, label = label, row = item.row }
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintsAdjusted, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then ctx.state = "editor" end
 end

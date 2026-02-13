@@ -35,8 +35,8 @@ common.ROW_H                       = 24
 common.MARGIN_X, common.MARGIN_Y   = 40, 28
 common.DEFAULT_W, common.DEFAULT_H = 640, 448
 common.MAX_VISIBLE                 = 10
-common.MAX_VISIBLE_LIST = 12  -- menu entries, path picker, entry paths, entry args, eGSM editor
-common.DIM_ENTRY = Color.new(56, 56, 56)  -- darker than DIM for disabled list rows
+common.MAX_VISIBLE_LIST            = 12  -- menu entries, path picker, entry paths, entry args, eGSM editor
+common.DIM_ENTRY                   = Color.new(56, 56, 56) -- darker than DIM for disabled list rows
 common.VALUE_X                     = 360
 common.VALUE_MAX_LEN               = 38
 common.VALUE_MAX_LEN_LONG          = 22
@@ -53,7 +53,7 @@ common.PAD_HINT_SIDE_MARGIN        = 16
 common.PAD_HINT_ITEM_GAP           = 20
 common.PAD_HINT_TOTAL_H            = common.PAD_HINT_ROW_H * 2 +
     common
-    .PAD_HINT_ROW_GAP   -- height when 2 rows, so desc can sit above
+    .PAD_HINT_ROW_GAP -- height when 2 rows, so desc can sit above
 common.DESC_TO_HINT_MARGIN         = 20
 common.DESC_Y_BOTTOM               = common.HINT_Y - common.PAD_HINT_TOTAL_H - common.DESC_TO_HINT_MARGIN
 common.PAD_HINT_DEFAULT_WIDTH      = 560
@@ -227,10 +227,10 @@ function common.buildEditorHintItems(selOpt, hintEditItems, getDefaultFn, enumHi
   return out
 end
 
--- Keyboard
-common.KEYBOARD_ROWS = { "1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm:/" }
-common.KEYBOARD_ROWS_SHIFTED = { "!@#$%^&*()", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM:/" }
--- Title ID only: digits + uppercase letters, no shift (e.g. eGSM AAAA_000.00). No :/ needed.
+-- Keyboard: full QWERTY rows 1-=, q-], a-', z-/
+common.KEYBOARD_ROWS = { "1234567890-=", "qwertyuiop[]", "asdfghjkl;'", "zxcvbnm,./" }
+common.KEYBOARD_ROWS_SHIFTED = { "!@#$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:\"", "ZXCVBNM<>?" }
+-- Title ID only: digits + uppercase letters, no shift (e.g. eGSM AAAA_000.00). No symbols.
 common.KEYBOARD_ROWS_TITLE_ID = { "1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM" }
 common.KEYBOARD_CENTER_X, common.KEYBOARD_CENTER_Y = 320, 220
 common.KEY_WIDTH, common.KEY_HEIGHT = 34, 26

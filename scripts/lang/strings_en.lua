@@ -46,7 +46,7 @@ strings.editor = {
   saved = "Saved",
   cross_open_circle_back_items = { { pad = "cross", label = "Enter" }, { pad = "circle", label = "Back" } },
   start_save_circle_back_items = { { pad = "start", label = "Save" }, { pad = "circle", label = "Back" } },
-  hint_edit_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Reset", row = 1 }, { pad = "start", label = "Save", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-1", row = 2 }, { pad = "L1", label = "-10", row = 2 }, { pad = "L2", label = "-50", row = 2 }, { pad = "R2", label = "+50", row = 2 }, { pad = "R1", label = "+10", row = 2 }, { pad = "right", label = "+1", row = 2 } },
+  hint_edit_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Reset", row = 1 }, { pad = "start", label = "Save", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-1", row = 2 }, { pad = "L1", label = "-12", row = 2 }, { pad = "L2", label = "-50", row = 2 }, { pad = "R2", label = "+50", row = 2 }, { pad = "R1", label = "+12", row = 2 }, { pad = "right", label = "+1", row = 2 } },
   no_option_list = "No option list for this file type",
   save_config_to = "Save config to",
   save_failed = "Save failed",
@@ -64,17 +64,16 @@ strings.editor = {
   green = "Green",
   blue = "Blue",
   alpha = "Alpha",
-  color_edit_hint_items = { { pad = "cross", label = "Apply", row = 1 }, { pad = "up", label = "Up", row = 1 }, { pad = "down", label = "Down", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-1", row = 2 }, { pad = "L1", label = "-10", row = 2 }, { pad = "L2", label = "-50", row = 2 }, { pad = "R2", label = "+50", row = 2 }, { pad = "R1", label = "+10", row = 2 }, { pad = "right", label = "+1", row = 2 } },
+  color_edit_hint_items = { { pad = "cross", label = "Apply", row = 1 }, { pad = "up", label = "Up", row = 1 }, { pad = "down", label = "Down", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-1", row = 2 }, { pad = "L1", label = "-12", row = 2 }, { pad = "L2", label = "-50", row = 2 }, { pad = "R2", label = "+50", row = 2 }, { pad = "R1", label = "+12", row = 2 }, { pad = "right", label = "+1", row = 2 } },
 }
 
 -- Menu entries
 strings.menu_entries = {
   edit_menu_entries = "Edit menu entries",
   item = "Item ",
-  disabled = "Disabled",
-  hint_items = { { pad = "cross", label = "Enter", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-10", row = 2 }, { pad = "L1", label = "Move up", row = 2 }, { pad = "R1", label = "Move down", row = 2 }, { pad = "right", label = "+10", row = 2 } },
-  hint_items_with_enable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-10", row = 2 }, { pad = "L1", label = "Move up", row = 2 }, { pad = "R1", label = "Move down", row = 2 }, { pad = "right", label = "+10", row = 2 } },
-  hint_items_with_disable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-10", row = 2 }, { pad = "L1", label = "Move up", row = 2 }, { pad = "R1", label = "Move down", row = 2 }, { pad = "right", label = "+10", row = 2 } },
+  hint_items = { { pad = "cross", label = "Enter", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Move up", row = 2 }, { pad = "R1", label = "Move down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
+  hint_items_with_enable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Move up", row = 2 }, { pad = "R1", label = "Move down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
+  hint_items_with_disable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Move up", row = 2 }, { pad = "R1", label = "Move down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
   entry_index = "Entry ",
   name = "Name: ",
   paths = "Paths: ",
@@ -148,7 +147,6 @@ strings.common = {
   off = "Off",
   not_set = "(not set)",
   empty = "(empty)",
-  dash = "—",
   enter_text = "Enter text",
   hint_prev = "Previous",
   hint_next = "Next",

@@ -217,7 +217,9 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1,
         ctx.isAddPath and _.path_str.add_path_choose_device or _.path_str.choose_device, _.WHITE)
       if ctx.pathList and #ctx.pathList > 0 and not ctx.pathPickerLoading then
-        _.drawText(_.font, _.drawMode, _.w - 72, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #ctx.pathList, _.DIM)
+        local totalCount = #ctx.pathList + 1
+        _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. totalCount,
+          _.DIM)
         local exclusiveSet = {}
         for _, dev in ipairs(ctx.pathList) do
           if dev.exclusive and dev.name then exclusiveSet[dev.name] = true end
@@ -249,7 +251,7 @@ local function run(ctx)
           if not e then return true end
           return (e.exclusive and hasOtherPaths) or false
         end
-        local totalCount = #ctx.pathList + 1  -- index 1 = "Enter path manually"
+        local totalCount = #ctx.pathList + 1 -- index 1 = "Enter path manually"
         if ctx.pathPickerSel < 1 then ctx.pathPickerSel = 1 end
         if ctx.pathPickerSel > totalCount then ctx.pathPickerSel = totalCount end
         if ctx.pathPickerSel >= 2 and isGreyed(ctx.pathList[ctx.pathPickerSel - 1]) then
@@ -262,11 +264,14 @@ local function run(ctx)
             ctx.pathPickerSel = 1
           end
         end
-        if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-          ctx.pathPickerScroll = ctx.pathPickerSel - _.MAX_VISIBLE_LIST
+        local maxVis = _.MAX_VISIBLE_LIST
+        if totalCount > maxVis then
+          ctx.pathPickerScroll = ctx.pathPickerSel - math.floor(maxVis / 2)
+          ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll, totalCount - maxVis))
+        else
+          ctx.pathPickerScroll = 0
         end
-        if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
-        for i = 1, math.min(_.MAX_VISIBLE_LIST, totalCount - ctx.pathPickerScroll) do
+        for i = 1, math.min(maxVis, totalCount - ctx.pathPickerScroll) do
           local listIdx = ctx.pathPickerScroll + i
           local displayName
           local greyed = false
@@ -315,113 +320,113 @@ local function run(ctx)
             ctx.textInputScroll = 1
             ctx.state = "text_input"
           else
-          local e = ctx.pathList[ctx.pathPickerSel - 1]
-          if isGreyed(e) then
-            -- exclusive and other paths exist; ignore
-          elseif e.special then
-            local pathVal = e.name or ""
-            if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
-            if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
-            ctx.pathList = nil
-            ctx.pfs0Mounted = nil
-            ctx.pfs1Mounted = nil
-            if ctx.pathPickerBootKey and ctx.lines then
-              if ctx.pathPickerEditIdx then
-                local paths = _.config_parse.getBootPaths(ctx.lines, ctx.pathPickerBootKey) or {}
-                paths[ctx.pathPickerEditIdx] = pathVal
-                _.config_parse.setBootPaths(ctx.lines, ctx.pathPickerBootKey, paths)
+            local e = ctx.pathList[ctx.pathPickerSel - 1]
+            if isGreyed(e) then
+              -- exclusive and other paths exist; ignore
+            elseif e.special then
+              local pathVal = e.name or ""
+              if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
+              if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
+              ctx.pathList = nil
+              ctx.pfs0Mounted = nil
+              ctx.pfs1Mounted = nil
+              if ctx.pathPickerBootKey and ctx.lines then
+                if ctx.pathPickerEditIdx then
+                  local paths = _.config_parse.getBootPaths(ctx.lines, ctx.pathPickerBootKey) or {}
+                  paths[ctx.pathPickerEditIdx] = pathVal
+                  _.config_parse.setBootPaths(ctx.lines, ctx.pathPickerBootKey, paths)
+                else
+                  _.config_parse.append(ctx.lines, ctx.pathPickerBootKey, pathVal)
+                end
+                if e.noargs then _.config_parse.setBootArgs(ctx.lines, ctx.pathPickerBootKey, {}) end
+                ctx.state = ctx.pathPickerReturnState or "editor"
+                ctx.pathPickerBootKey = nil
+                ctx.pathPickerReturnState = nil
+                ctx.pathPickerForEntryIdx = nil
+                ctx.pathPickerEditIdx = nil
+              elseif ctx.pathPickerForEntryIdx then
+                local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
+                if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = pathVal else table.insert(paths, pathVal) end
+                _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
+                if e.noargs then _.config_parse.setMenuEntryArgs(ctx.lines, ctx.pathPickerForEntryIdx, {}) end
+                ctx.entryIdx = ctx.pathPickerForEntryIdx
+                ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
+                ctx.pathPickerForEntryIdx = nil
+                ctx.pathPickerEditIdx = nil
+              elseif ctx.isAddPath then
+                local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or
+                    ctx.addPathKey
+                _.config_parse.append(ctx.lines, key, pathVal)
+                ctx.state = "editor"
               else
-                _.config_parse.append(ctx.lines, ctx.pathPickerBootKey, pathVal)
+                _.config_parse.set(ctx.lines, ctx.editKey or "", pathVal)
+                ctx.state = "editor"
               end
-              if e.noargs then _.config_parse.setBootArgs(ctx.lines, ctx.pathPickerBootKey, {}) end
-              ctx.state = ctx.pathPickerReturnState or "editor"
-              ctx.pathPickerBootKey = nil
-              ctx.pathPickerReturnState = nil
-              ctx.pathPickerForEntryIdx = nil
-              ctx.pathPickerEditIdx = nil
-            elseif ctx.pathPickerForEntryIdx then
-              local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-              if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = pathVal else table.insert(paths, pathVal) end
-              _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
-              if e.noargs then _.config_parse.setMenuEntryArgs(ctx.lines, ctx.pathPickerForEntryIdx, {}) end
-              ctx.entryIdx = ctx.pathPickerForEntryIdx
-              ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
-              ctx.pathPickerForEntryIdx = nil
-              ctx.pathPickerEditIdx = nil
-            elseif ctx.isAddPath then
-              local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or
-              ctx.addPathKey
-              _.config_parse.append(ctx.lines, key, pathVal)
-              ctx.state = "editor"
+              ctx.configModified = true
             else
-              _.config_parse.set(ctx.lines, ctx.editKey or "", pathVal)
-              ctx.state = "editor"
-            end
-            ctx.configModified = true
-          else
-            if e.deviceType == "hdd" and not e.deviceId then
-              ctx.pathPickerDeviceSel = ctx.pathPickerSel
-              ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
-              if ctx.pathPickerLoadedDeviceTypes["hdd"] then
-                if System and System.loadModules then System.loadModules("hdd") end
-                if _.common.isHddPresent and _.common.isHddPresent() then
-                  ctx.pathPickerSub = "partitions"
-                  ctx.pathList = _.file_selector.getHddPartitions(0) or {}
-                  ctx.pathBrowsePath = "hdd0:"
-                  ctx.pathPickerSel = 1
-                  ctx.pathPickerScroll = 0
+              if e.deviceType == "hdd" and not e.deviceId then
+                ctx.pathPickerDeviceSel = ctx.pathPickerSel
+                ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
+                if ctx.pathPickerLoadedDeviceTypes["hdd"] then
+                  if System and System.loadModules then System.loadModules("hdd") end
+                  if _.common.isHddPresent and _.common.isHddPresent() then
+                    ctx.pathPickerSub = "partitions"
+                    ctx.pathList = _.file_selector.getHddPartitions(0) or {}
+                    ctx.pathBrowsePath = "hdd0:"
+                    ctx.pathPickerSel = 1
+                    ctx.pathPickerScroll = 0
+                  else
+                    ctx.pathPickerLoading = { deviceType = "hdd", staticHdd = true }
+                    ctx.pathPickerLoadingFrames = 0
+                  end
                 else
                   ctx.pathPickerLoading = { deviceType = "hdd", staticHdd = true }
                   ctx.pathPickerLoadingFrames = 0
                 end
-              else
-                ctx.pathPickerLoading = { deviceType = "hdd", staticHdd = true }
-                ctx.pathPickerLoadingFrames = 0
-              end
-            elseif e.deviceId and e.deviceType then
-              ctx.pathPickerDeviceSel = ctx.pathPickerSel
-              ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
-              if e.deviceType == "mx4sio" and ctx.pathPickerLoadedDeviceTypes["mmce"] then clearLoadedIfIopReset(ctx) end
-              if ctx.pathPickerLoadedDeviceTypes[e.deviceType] then
-                if System and System.loadModules then System.loadModules(e.deviceType) end
-                local mp = (System and System.getDeviceMountpoint) and System.getDeviceMountpoint(e.deviceId) or nil
-                if mp and mp ~= "" then
-                  local mpNorm = (mp:sub(-1) == ":") and mp or (mp .. ":")
-                  ctx.pathPickerBdmMountpoint = mpNorm
-                  ctx.pathPickerBdmPrefix = _.file_selector.getBdmPathPrefix(e.deviceId)
-                  ctx.pathBrowsePath = (mp:sub(-1) == ":") and (mp .. "/") or mp
-                  ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
-                  ctx.pathPickerSub = "browse"
-                  ctx.pathPickerSel = 1
-                  ctx.pathPickerScroll = 0
+              elseif e.deviceId and e.deviceType then
+                ctx.pathPickerDeviceSel = ctx.pathPickerSel
+                ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
+                if e.deviceType == "mx4sio" and ctx.pathPickerLoadedDeviceTypes["mmce"] then clearLoadedIfIopReset(ctx) end
+                if ctx.pathPickerLoadedDeviceTypes[e.deviceType] then
+                  if System and System.loadModules then System.loadModules(e.deviceType) end
+                  local mp = (System and System.getDeviceMountpoint) and System.getDeviceMountpoint(e.deviceId) or nil
+                  if mp and mp ~= "" then
+                    local mpNorm = (mp:sub(-1) == ":") and mp or (mp .. ":")
+                    ctx.pathPickerBdmMountpoint = mpNorm
+                    ctx.pathPickerBdmPrefix = _.file_selector.getBdmPathPrefix(e.deviceId)
+                    ctx.pathBrowsePath = (mp:sub(-1) == ":") and (mp .. "/") or mp
+                    ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+                    ctx.pathPickerSub = "browse"
+                    ctx.pathPickerSel = 1
+                    ctx.pathPickerScroll = 0
+                  else
+                    ctx.pathPickerLoading = { deviceId = e.deviceId, deviceType = e.deviceType }
+                    ctx.pathPickerLoadingFrames = 0
+                  end
                 else
                   ctx.pathPickerLoading = { deviceId = e.deviceId, deviceType = e.deviceType }
                   ctx.pathPickerLoadingFrames = 0
                 end
               else
-                ctx.pathPickerLoading = { deviceId = e.deviceId, deviceType = e.deviceType }
-                ctx.pathPickerLoadingFrames = 0
+                ctx.pathPickerDeviceSel = ctx.pathPickerSel
+                -- Static device (mc, mmce) without deviceId: use name as path. Load MMCE module when selecting mmce.
+                ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
+                if e.deviceType == "mmce" and ctx.pathPickerLoadedDeviceTypes["mx4sio"] then clearLoadedIfIopReset(ctx) end
+                if e.deviceType and System and System.loadModules then System.loadModules(e.deviceType) end
+                local browsePath = e.name or ""
+                if browsePath and browsePath ~= "" and browsePath:find(":") then
+                  ctx.pathBrowsePath = (browsePath:sub(-1) == ":") and (browsePath .. "/") or browsePath
+                  ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+                else
+                  ctx.pathBrowsePath = nil
+                  ctx.pathList = {}
+                end
+                ctx.pathPickerSub = "browse"
+                ctx.pathPickerSel = 1
+                if e.deviceType then ctx.pathPickerLoadedDeviceTypes[e.deviceType] = true end
               end
-            else
-              ctx.pathPickerDeviceSel = ctx.pathPickerSel
-              -- Static device (mc, mmce) without deviceId: use name as path. Load MMCE module when selecting mmce.
-              ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
-              if e.deviceType == "mmce" and ctx.pathPickerLoadedDeviceTypes["mx4sio"] then clearLoadedIfIopReset(ctx) end
-              if e.deviceType and System and System.loadModules then System.loadModules(e.deviceType) end
-              local browsePath = e.name or ""
-              if browsePath and browsePath ~= "" and browsePath:find(":") then
-                ctx.pathBrowsePath = (browsePath:sub(-1) == ":") and (browsePath .. "/") or browsePath
-                ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
-              else
-                ctx.pathBrowsePath = nil
-                ctx.pathList = {}
-              end
-              ctx.pathPickerSub = "browse"
-              ctx.pathPickerSel = 1
-              if e.deviceType then ctx.pathPickerLoadedDeviceTypes[e.deviceType] = true end
             end
           end
-        end
         end
       else
         _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(60), _.FONT_SCALE, _.path_str.no_devices, _
@@ -465,16 +470,18 @@ local function run(ctx)
     local parts = ctx.pathList or {}
     if ctx.pathPickerSel < 1 then ctx.pathPickerSel = 1 end
     if ctx.pathPickerSel > #parts then ctx.pathPickerSel = #parts end
-    if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-      ctx.pathPickerScroll = ctx.pathPickerSel -
-          _.MAX_VISIBLE_LIST
+    local maxVis = _.MAX_VISIBLE_LIST
+    if #parts > maxVis then
+      ctx.pathPickerScroll = ctx.pathPickerSel - math.floor(maxVis / 2)
+      ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll, #parts - maxVis))
+    else
+      ctx.pathPickerScroll = 0
     end
-    if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
     if #parts > 0 then
-      _.drawText(_.font, _.drawMode, _.w - 72, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #parts,
+      _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #parts,
         _.DIM)
     end
-    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + _.MAX_VISIBLE_LIST, #parts) do
+    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + maxVis, #parts) do
       local p = parts[i]
       if not p then break end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.pathPickerScroll - 1) * _.LINE_H
@@ -493,6 +500,12 @@ local function run(ctx)
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
       ctx.pathPickerSel = ctx.pathPickerSel + 1; if ctx.pathPickerSel > #parts then ctx.pathPickerSel = 1 end
+    end
+    if (_.padEffective & _.PAD_LEFT) ~= 0 then
+      ctx.pathPickerSel = math.max(1, ctx.pathPickerSel - maxVis)
+    end
+    if (_.padEffective & _.PAD_RIGHT) ~= 0 then
+      ctx.pathPickerSel = math.min(#parts, ctx.pathPickerSel + maxVis)
     end
     if (_.padEffective & _.PAD_SQUARE) ~= 0 and #parts > 0 then
       local p = parts[ctx.pathPickerSel]
@@ -568,19 +581,18 @@ local function run(ctx)
     else
       ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerSel, #show))
     end
-    if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-      ctx.pathPickerScroll = ctx.pathPickerSel -
-          _.MAX_VISIBLE_LIST
-    end
-    if ctx.pathPickerSel > 0 and ctx.pathPickerSel < ctx.pathPickerScroll + 1 then
-      ctx.pathPickerScroll = ctx
-          .pathPickerSel - 1
+    local maxVis = _.MAX_VISIBLE_LIST
+    if #show > maxVis and ctx.pathPickerSel > 0 then
+      ctx.pathPickerScroll = ctx.pathPickerSel - math.floor(maxVis / 2)
+      ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll, #show - maxVis))
+    elseif #show <= maxVis then
+      ctx.pathPickerScroll = 0
     end
     if #show > 0 then
-      _.drawText(_.font, _.drawMode, _.w - 72, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #show,
+      _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #show,
         _.DIM)
     end
-    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + _.MAX_VISIBLE_LIST, #show) do
+    for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + maxVis, #show) do
       local e = show[i]
       if not e then break end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.pathPickerScroll - 1) * _.LINE_H
@@ -600,6 +612,12 @@ local function run(ctx)
       end
       if (_.padEffective & _.PAD_DOWN) ~= 0 then
         ctx.pathPickerSel = ctx.pathPickerSel + 1; if ctx.pathPickerSel > #show then ctx.pathPickerSel = 1 end
+      end
+      if (_.padEffective & _.PAD_LEFT) ~= 0 then
+        ctx.pathPickerSel = math.max(1, ctx.pathPickerSel - maxVis)
+      end
+      if (_.padEffective & _.PAD_RIGHT) ~= 0 then
+        ctx.pathPickerSel = math.min(#show, ctx.pathPickerSel + maxVis)
       end
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 then
@@ -712,8 +730,10 @@ local function run(ctx)
             ctx.pathPickerBrowseSelStack = #stack > 0 and stack or nil
             ctx.pathPickerScroll = math.max(0,
               math.min(ctx.pathPickerScroll or 0, math.max(0, #(ctx.pathList or {}) - _.MAX_VISIBLE_LIST)))
-            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then ctx.pathPickerScroll = ctx.pathPickerSel -
-              _.MAX_VISIBLE_LIST end
+            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
+              ctx.pathPickerScroll = ctx.pathPickerSel -
+                  _.MAX_VISIBLE_LIST
+            end
             if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
           end
         end
