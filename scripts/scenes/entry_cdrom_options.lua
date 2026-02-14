@@ -11,13 +11,15 @@ local function run(ctx)
   if not isBoot and not ctx.entryIdx then
     ctx.state = "menu_entry_edit"; return
   end
-  local args = isBoot and (_.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}) or
-      _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
+  local args = isBoot and (function()
+    local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
+    local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+  end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
   local opts = _.config_options.cdrom_options or {}
   if ctx.cdromOptSel < 1 then ctx.cdromOptSel = 1 end
   if ctx.cdromOptSel > #opts then ctx.cdromOptSel = #opts end
   local function hasArg(key)
-    for _, a in ipairs(args) do if a == key then return true end end
+    for _, a in ipairs(args) do if (type(a) == "table" and a.value or a) == key then return true end end
     return false
   end
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.launch_disc_options_title, _.WHITE)
@@ -53,21 +55,28 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 and #opts > 0 then
     local key = opts[ctx.cdromOptSel].key
-    args = isBoot and (_.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}) or
-        _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
+    args = isBoot and (function()
+      local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
+      local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+    end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
     if hasArg(key) then
       local newArgs = {}
-      for _, a in ipairs(args) do if a ~= key then table.insert(newArgs, a) end end
+      for _, a in ipairs(args) do
+        local av = type(a) == "table" and a.value or a
+        if av ~= key then table.insert(newArgs, type(a) == "table" and a or { value = a, disabled = false }) end
+      end
       if isBoot then
-        _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, newArgs)
+        local v = {} for _, item in ipairs(newArgs) do table.insert(v, type(item) == "table" and item.value or item) end
+        _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
       else
         _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, newArgs)
       end
       ctx.configModified = true
     else
-      table.insert(args, key)
+      table.insert(args, { value = key, disabled = false })
       if isBoot then
-        _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, args)
+        local v = {} for _, item in ipairs(args) do table.insert(v, type(item) == "table" and item.value or item) end
+        _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
       else
         _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, args)
       end

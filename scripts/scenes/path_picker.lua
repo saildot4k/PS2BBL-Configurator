@@ -60,7 +60,10 @@ local function applyManualPath(ctx, val)
   if applyBootPathAndReturn(ctx, val) then
   elseif ctx.pathPickerForEntryIdx then
     local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-    if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = val else table.insert(paths, val) end
+    if ctx.pathPickerEditIdx then
+      local item = paths[ctx.pathPickerEditIdx]
+      if type(item) == "table" then item.value = val else paths[ctx.pathPickerEditIdx] = { value = val, disabled = false } end
+    else table.insert(paths, { value = val, disabled = false }) end
     _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
     ctx.entryIdx = ctx.pathPickerForEntryIdx
     ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -97,7 +100,10 @@ local function run(ctx)
         ctx.state = "editor"
       elseif mode == "entry" then
         local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-        if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = chosenVal else table.insert(paths, chosenVal) end
+        if ctx.pathPickerEditIdx then
+          local item = paths[ctx.pathPickerEditIdx]
+          if type(item) == "table" then item.value = chosenVal else paths[ctx.pathPickerEditIdx] = { value = chosenVal, disabled = false } end
+        else table.insert(paths, { value = chosenVal, disabled = false }) end
         _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
         ctx.entryIdx = ctx.pathPickerForEntryIdx
         ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -151,7 +157,7 @@ local function run(ctx)
         local msg = _.path_str.waiting_for_device_drivers
         local tw = _.common.calcTextWidth(_.font, msg, 1)
         local cx = _.common.centerX(_, tw)
-        local cy = math.floor((_.MARGIN_Y + _.HINT_Y) / 2) - math.floor((_.LINE_H or 20) / 2)
+        local cy = math.floor((_.MARGIN_Y + _.HINT_Y) / 2) - math.floor(_.LINE_H / 2)
         _.drawText(_.font, _.drawMode, cx, cy, 1, msg, _.WHITE)
       end
       _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7,
@@ -207,10 +213,10 @@ local function run(ctx)
     else
       if ctx.pathPickerLoadingTimeoutMsg then
         local msg = _.path_str.device_timeout
-        local tw = _.common.calcTextWidth(_.font, msg, _.FONT_SCALE or 0.9)
+        local tw = _.common.calcTextWidth(_.font, msg, _.FONT_SCALE)
         local cx = _.common.centerX(_, tw)
-        local cy = math.floor((_.MARGIN_Y + _.HINT_Y) / 2) - math.floor((_.LINE_H or 20) / 2)
-        _.drawText(_.font, _.drawMode, cx, cy, _.FONT_SCALE or 0.9, msg, _.DIM)
+        local cy = math.floor((_.MARGIN_Y + _.HINT_Y) / 2) - math.floor(_.LINE_H / 2)
+        _.drawText(_.font, _.drawMode, cx, cy, _.FONT_SCALE, msg, _.DIM)
       end
     end
     if not ctx.pathPickerLoadingTimeoutMsg and not ctx.pathPickerLoading then
@@ -233,7 +239,8 @@ local function run(ctx)
         if ctx.pathPickerForEntryIdx and ctx.lines then
           local entryPaths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
           for _, p in ipairs(entryPaths) do
-            if not pathIsExclusive(p) then
+            local pv = type(p) == "table" and p.value or p
+            if not pathIsExclusive(pv) then
               entryHasOtherPaths = true; break
             end
           end
@@ -277,7 +284,7 @@ local function run(ctx)
           local greyed = false
           local e = nil
           if listIdx == 1 then
-            displayName = _.path_str.enter_path_manually or "Enter path manually"
+            displayName = _.path_str.enter_path_manually
           else
             e = ctx.pathList[listIdx - 1]
             displayName = e and (e.desc or e.name or _.common_str.empty) or _.common_str.empty
@@ -308,7 +315,7 @@ local function run(ctx)
         if (_.padEffective & _.PAD_CROSS) ~= 0 then
           if ctx.pathPickerSel == 1 then
             ctx.textInputTitleIdMode = nil
-            ctx.textInputPrompt = _.path_str.enter_path_prompt or "Enter path"
+            ctx.textInputPrompt = _.path_str.enter_path_prompt
             ctx.textInputValue = ""
             ctx.textInputMaxLen = 79
             ctx.textInputCallback = function(val)
@@ -346,7 +353,10 @@ local function run(ctx)
                 ctx.pathPickerEditIdx = nil
               elseif ctx.pathPickerForEntryIdx then
                 local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-                if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = pathVal else table.insert(paths, pathVal) end
+                if ctx.pathPickerEditIdx then
+                  local item = paths[ctx.pathPickerEditIdx]
+                  if type(item) == "table" then item.value = pathVal else paths[ctx.pathPickerEditIdx] = { value = pathVal, disabled = false } end
+                else table.insert(paths, { value = pathVal, disabled = false }) end
                 _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
                 if e.noargs then _.config_parse.setMenuEntryArgs(ctx.lines, ctx.pathPickerForEntryIdx, {}) end
                 ctx.entryIdx = ctx.pathPickerForEntryIdx
@@ -515,7 +525,10 @@ local function run(ctx)
       if applyBootPathAndReturn(ctx, val) then
       elseif ctx.pathPickerForEntryIdx then
         local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-        if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = val else table.insert(paths, val) end
+        if ctx.pathPickerEditIdx then
+          local item = paths[ctx.pathPickerEditIdx]
+          if type(item) == "table" then item.value = val else paths[ctx.pathPickerEditIdx] = { value = val, disabled = false } end
+        else table.insert(paths, { value = val, disabled = false }) end
         _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
         ctx.entryIdx = ctx.pathPickerForEntryIdx
         ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -656,7 +669,10 @@ local function run(ctx)
           elseif applyBootPathAndReturn(ctx, val) then
           elseif ctx.pathPickerForEntryIdx then
             local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-            if ctx.pathPickerEditIdx then paths[ctx.pathPickerEditIdx] = val else table.insert(paths, val) end
+            if ctx.pathPickerEditIdx then
+              local item = paths[ctx.pathPickerEditIdx]
+              if type(item) == "table" then item.value = val else paths[ctx.pathPickerEditIdx] = { value = val, disabled = false } end
+            else table.insert(paths, { value = val, disabled = false }) end
             _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
             ctx.entryIdx = ctx.pathPickerForEntryIdx
             ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"

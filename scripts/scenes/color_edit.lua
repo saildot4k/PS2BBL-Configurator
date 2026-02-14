@@ -8,15 +8,16 @@ local function run(ctx)
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, colorLabel .. _.editor_str.edit_color_suffix, _.WHITE)
     local r, g, b, a = ctx.colorVals[1], ctx.colorVals[2], ctx.colorVals[3], ctx.colorVals[4]
     local rawStr = _.formatColor(r, g, b, a)
-    local rawW = (_.common and _.common.calcTextWidth and _.common.calcTextWidth(_.font, rawStr, 0.8)) or (22 * #rawStr)
-    local boxSize = math.max(40, math.min(220, rawW))
+    local boxSize = 180
     local centerY = math.floor((_.MARGIN_Y + _.HINT_Y) / 2)
     local row0Y = centerY - 2 * _.LINE_H
     local rightBlockH = boxSize + 4 + _.LINE_H
     local previewTop = centerY - math.floor(rightBlockH / 2)
     local rightX = _.w - _.MARGIN_X - boxSize
     _.Graphics.drawRect(rightX, previewTop, boxSize, boxSize, _.Color.new(r, g, b, a))
-    _.drawText(_.font, _.drawMode, rightX, previewTop + boxSize + 4, 0.8, rawStr, _.GRAY)
+    local rawW = (_.common and _.common.calcTextWidth and _.common.calcTextWidth(_.font, rawStr, 0.8)) or (22 * #rawStr)
+    local rawTextX = rightX + math.floor((boxSize - rawW) / 2)
+    _.drawText(_.font, _.drawMode, rawTextX, previewTop + boxSize + 4, 0.8, rawStr, _.GRAY)
     local valueColRight = rightX - 48
     local chNames = { _.editor_str.red, _.editor_str.green, _.editor_str.blue, _.editor_str.alpha }
     for ch = 1, 4 do

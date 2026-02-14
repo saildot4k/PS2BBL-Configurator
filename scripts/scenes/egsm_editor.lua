@@ -40,7 +40,6 @@ local function run(ctx)
   if ctx.egsmSel < ctx.egsmScroll + 1 then ctx.egsmScroll = ctx.egsmSel - 1 end
   ctx.egsmScroll = math.max(0, math.min(ctx.egsmScroll, total - _.MAX_VISIBLE_LIST))
 
-  local opts = _.config_parse.getEgsmEnumOptions and _.config_parse.getEgsmEnumOptions() or {}
   local function valueDisplay(val, commented)
     if commented or val == "disabled" or val == "" then
       return _.strings.egsm.disabled
@@ -79,44 +78,17 @@ local function run(ctx)
     ctx.egsmSel = ctx.egsmSel + 1; if ctx.egsmSel > total then ctx.egsmSel = 1 end
   end
 
-  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT)) ~= 0 and #opts > 0 then
-    if ctx.egsmSel == 1 then
-      local cur = _.config_parse.getEgsmDefault(ctx.lines)
-      if cur == "" then cur = "disabled" end
-      local idx = 1
-      for ei, v in ipairs(opts) do
-        if v == cur then
-          idx = ei; break
-        end
-      end
-      if (_.padEffective & _.PAD_LEFT) ~= 0 then
-        idx = idx - 1; if idx < 1 then idx = #opts end
-      end
-      if (_.padEffective & _.PAD_RIGHT) ~= 0 then
-        idx = idx + 1; if idx > #opts then idx = 1 end
-      end
-      _.config_parse.setEgsmDefault(ctx.lines, opts[idx])
-    elseif ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries then
-      local ent = entries[ctx.egsmSel - 1]
-      local cur = (ent.commented or ent.value == "disabled") and "disabled" or ent.value
-      if cur == "" then cur = "disabled" end
-      local idx = 1
-      for ei, v in ipairs(opts) do
-        if v == cur then
-          idx = ei; break
-        end
-      end
-      if (_.padEffective & _.PAD_LEFT) ~= 0 then
-        idx = idx - 1; if idx < 1 then idx = #opts end
-      end
-      if (_.padEffective & _.PAD_RIGHT) ~= 0 then
-        idx = idx + 1; if idx > #opts then idx = 1 end
-      end
-      _.config_parse.setEgsmEntry(ctx.lines, ent.titleId, opts[idx], (opts[idx] == "disabled"))
+  if (_.padEffective & _.PAD_CROSS) ~= 0 and (ctx.egsmSel == 1 or (ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries)) then
+    ctx.egsmEditDefault = (ctx.egsmSel == 1)
+    if not ctx.egsmEditDefault then
+      ctx.egsmEditTitleId = entries[ctx.egsmSel - 1].titleId
+    else
+      ctx.egsmEditTitleId = nil
     end
-  end
-
-  if (_.padEffective & _.PAD_CROSS) ~= 0 and ctx.egsmSel == total then
+    ctx.egsmVideoIdx = nil
+    ctx.egsmCompatIdx = nil
+    ctx.state = "egsm_value_edit"
+  elseif (_.padEffective & _.PAD_CROSS) ~= 0 and ctx.egsmSel == total then
     ctx.textInputPrompt = _.strings.egsm.title_id_prompt
     ctx.textInputValue = ""
     ctx.textInputMaxLen = 15

@@ -18,7 +18,8 @@ local function run(ctx)
   local hasArgsPaths = false
   local hasSpecialArgsPath = false
   for i, p in ipairs(paths) do
-    local flags = _.file_selector.getPathFlags and _.file_selector.getPathFlags(p) or {}
+    local pv = type(p) == "table" and p.value or p
+    local flags = _.file_selector.getPathFlags and _.file_selector.getPathFlags(pv) or {}
     if flags.exclusive then hasExclusivePath = true end
     if not flags.noargs then hasArgsPaths = true end
     if flags.specialargs then hasSpecialArgsPath = true end
@@ -64,13 +65,21 @@ local function run(ctx)
         label = _.menu_str.arguments .. (#args == 0 and "" or (" (" .. #args .. ")"))
       end
     else
-      local pathStr = paths[i]
+      local pathStr = type(paths[i]) == "table" and paths[i].value or paths[i]
       label = pathLabel(pathStr or "")
     end
     local col = (i == ctx.entryPathSel) and _.SELECTED_ENTRY or _.WHITE
+    if not isBoot and i <= pathRows and type(paths[i]) == "table" and paths[i].disabled then
+      col = (i == ctx.entryPathSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)
+    end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryPathSel, label, col)
   end
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.menu_str.paths_hint_items, nil, _.DIM,
+  local pathHints = _.menu_str.paths_hint_items
+  if not isBoot and ctx.entryPathSel >= 1 and ctx.entryPathSel <= pathRows and type(paths[ctx.entryPathSel]) == "table" then
+    pathHints = paths[ctx.entryPathSel].disabled and (_.menu_str.paths_hint_items_with_enable or pathHints)
+        or (_.menu_str.paths_hint_items_with_disable or pathHints)
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, pathHints, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_UP) ~= 0 then
     ctx.entryPathSel = ctx.entryPathSel - 1; if ctx.entryPathSel < 1 then ctx.entryPathSel = total end
@@ -89,6 +98,10 @@ local function run(ctx)
     ctx.pathPickerContext = isBoot and "mbr" or "osdmenu"
     ctx.pathPickerReturnState = "entry_paths"
     ctx.state = "path_picker"
+  end
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and not isBoot and ctx.entryPathSel >= 1 and ctx.entryPathSel <= pathRows and type(paths[ctx.entryPathSel]) == "table" then
+    _.config_parse.setPathDisabled(ctx.lines, ctx.entryIdx, ctx.entryPathSel, not paths[ctx.entryPathSel].disabled)
+    ctx.configModified = true
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if isBoot and (hasArgsPaths or hasSpecialArgsPath) and ctx.entryPathSel == argsRow then

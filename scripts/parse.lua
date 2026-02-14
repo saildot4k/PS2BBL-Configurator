@@ -26,10 +26,11 @@ function config_parse.parse(content)
   for line in (content .. "\n"):gmatch("(.-)\n") do
     local rest = trim(line)
     if rest:match("^#") then
-      local afterHash = trim(rest:sub(2))
+      local doubleComment = rest:match("^##") and true or false
+      local afterHash = trim(rest:sub(doubleComment and 3 or 2))
       local ke, ve = afterHash:match("^(.+)%s*=%s*(.*)$")
       if ke and ve ~= nil then
-        table.insert(lines, { key = trim(ke), value = trim(ve), comment = true })
+        table.insert(lines, { key = trim(ke), value = trim(ve), comment = doubleComment and 2 or true })
       else
         table.insert(lines, { comment = line })
       end
@@ -54,7 +55,8 @@ function config_parse.serialize(lines)
   local t = {}
   for _, entry in ipairs(lines) do
     if entry.key and entry.comment then
-      table.insert(t, "# " .. entry.key .. " = " .. (entry.value or ""))
+      local prefix = (entry.comment == 2) and "## " or "# "
+      table.insert(t, prefix .. entry.key .. " = " .. (entry.value or ""))
     elseif type(entry.comment) == "string" then
       table.insert(t, entry.comment == "" and "" or entry.comment)
     elseif entry.key then
@@ -216,16 +218,42 @@ function config_parse.parseTitleIdInput(s)
   return nil
 end
 
--- eGSM option: video (empty, fp1, fp2, 1080ix1, 1080ix2, 1080ix3) and optional :c (c = 1,2,3).
-local EGSM_VIDEO = { "", "fp1", "fp2", "1080ix1", "1080ix2", "1080ix3" }
-local EGSM_COMPAT = { "", "1", "2", "3" }
-
-function config_parse.getEgsmVideoOptions()
-  return EGSM_VIDEO
+-- eGSM option arrays live in config_options (options.lua). Parse delegates to them for getters and uses them for parse/build/validate.
+local function getEgsmVideoOpts()
+  local opt = _G.CONFIG_UI and _G.CONFIG_UI.config_options
+  return opt and opt.getEgsmVideoOptions and opt.getEgsmVideoOptions()
+end
+local function getEgsmCompatOpts()
+  local opt = _G.CONFIG_UI and _G.CONFIG_UI.config_options
+  return opt and opt.getEgsmCompatOptions and opt.getEgsmCompatOptions()
 end
 
+function config_parse.getEgsmVideoOptions()
+  return getEgsmVideoOpts()
+end
 function config_parse.getEgsmCompatOptions()
-  return EGSM_COMPAT
+  return getEgsmCompatOpts()
+end
+
+-- Parse eGSM value string into 1-based video and compat indices. "disabled" or "" -> 1, 1.
+function config_parse.parseEgsmValue(s)
+  if type(s) ~= "string" or s == "" or s == "disabled" then return 1, 1 end
+  local v, c = s:match("^([^:]*):?(.*)$")
+  if not v then return 1, 1 end
+  local EGSM_VIDEO, EGSM_COMPAT = getEgsmVideoOpts(), getEgsmCompatOpts()
+  local vi, ci = 1, 1
+  for i, opt in ipairs(EGSM_VIDEO) do if opt == v then vi = i break end end
+  for i, opt in ipairs(EGSM_COMPAT) do if opt == c then ci = i break end end
+  return vi, ci
+end
+
+-- Build eGSM value string from 1-based video and compat indices (per loader README v:c format).
+function config_parse.buildEgsmValue(videoIdx, compatIdx)
+  local EGSM_VIDEO, EGSM_COMPAT = getEgsmVideoOpts(), getEgsmCompatOpts()
+  local v = EGSM_VIDEO[videoIdx] or ""
+  local c = EGSM_COMPAT[compatIdx] or ""
+  if v == "" then return "" end
+  return v .. (c ~= "" and (":" .. c) or "")
 end
 
 function config_parse.isValidEgsmOption(s)
@@ -233,6 +261,7 @@ function config_parse.isValidEgsmOption(s)
   if s == "" or s == "disabled" then return true end
   local v, c = s:match("^([^:]*):?(.*)$")
   if not v then return false end
+  local EGSM_VIDEO, EGSM_COMPAT = getEgsmVideoOpts(), getEgsmCompatOpts()
   for _, opt in ipairs(EGSM_VIDEO) do
     if v == opt then
       if c == "" then return true end
@@ -243,20 +272,6 @@ function config_parse.isValidEgsmOption(s)
     end
   end
   return false
-end
-
--- eGSM enum options for UI: disabled, then video and video:compat (no empty/—).
-function config_parse.getEgsmEnumOptions()
-  local out = { "disabled" }
-  for _, v in ipairs(EGSM_VIDEO) do
-    if v ~= "" then
-      table.insert(out, v)
-      for _, c in ipairs(EGSM_COMPAT) do
-        if c ~= "" then table.insert(out, v .. ":" .. c) end
-      end
-    end
-  end
-  return out
 end
 
 -- OSDGSM.CNF: default and per-title entries (title ID = AAAA_000.00). Commented = disabled; stored value is "" (empty), not "disabled".
@@ -399,6 +414,8 @@ function config_parse.isMenuEntryDisabled(lines, idx)
 end
 
 -- Set all lines for this menu entry (name, path*, arg) to commented or not.
+-- When disabling: use comment = 2 (##) for path/arg lines that were already commented (per-item disabled), so enabling the entry later restores their disabled state.
+-- When enabling: uncomment only lines with comment == true; leave comment = true where comment == 2 (was double-disabled).
 function config_parse.setMenuEntryDisabled(lines, idx, disabled)
   local idxStr = tostring(idx)
   local nameKey = "name_OSDSYS_ITEM_" .. idxStr
@@ -406,7 +423,11 @@ function config_parse.setMenuEntryDisabled(lines, idx, disabled)
   local argKey = "arg_OSDSYS_ITEM_" .. idxStr
   for _, entry in ipairs(lines) do
     if entry.key and (entry.key == nameKey or entry.key:match(pathPat) or entry.key == argKey) then
-      entry.comment = disabled and true or nil
+      if disabled then
+        entry.comment = entry.comment and 2 or true  -- already commented (per-item) -> ## (2)
+      else
+        if entry.comment == 2 then entry.comment = true else entry.comment = nil end  -- ## -> keep commented; # -> uncomment
+      end
     end
   end
 end
@@ -415,15 +436,22 @@ function config_parse.setMenuEntryName(lines, idx, name)
   config_parse.set(lines, "name_OSDSYS_ITEM_" .. tostring(idx), name or "")
 end
 
--- Paths: path1_OSDSYS_ITEM_<idx>, path2_..., etc. Return values in order (includes commented lines).
+-- Paths: path1_OSDSYS_ITEM_<idx>, path2_..., etc. Return in order: { value, disabled [, comment] } (includes commented lines).
+-- When entry is disabled: only comment == 2 (##) is "individually disabled"; comment == true (#) shows as enabled.
+-- When entry is enabled: any comment (true or 2) means disabled. comment is preserved for regenerateLines.
 function config_parse.getMenuEntryPaths(lines, idx)
   local idxStr = tostring(idx)
+  local entryDisabled = config_parse.isMenuEntryDisabled(lines, idx)
   local pattern = "^path(%d+)_OSDSYS_ITEM_" .. idxStr .. "$"
   local byNum = {}
   for _, entry in ipairs(lines) do
     if entry.key then
       local num = entry.key:match(pattern)
-      if num then byNum[tonumber(num)] = entry.value end
+      if num then
+        local c = entry.comment
+        local disabled = entryDisabled and (c == 2) or (not entryDisabled and (not not c))
+        byNum[tonumber(num)] = { value = entry.value, disabled = disabled, comment = c }
+      end
     end
   end
   local out = {}
@@ -433,7 +461,7 @@ function config_parse.getMenuEntryPaths(lines, idx)
   return out
 end
 
--- Replace all path*_OSDSYS_ITEM_<idx> with the given list.
+-- Replace all path*_OSDSYS_ITEM_<idx> with the given list. Each item is { value, disabled } or a plain value (treated as enabled).
 function config_parse.setMenuEntryPaths(lines, idx, paths)
   local idxStr = tostring(idx)
   local pattern = "^path(%d+)_OSDSYS_ITEM_" .. idxStr .. "$"
@@ -446,22 +474,32 @@ function config_parse.setMenuEntryPaths(lines, idx, paths)
       i = i + 1
     end
   end
-  for pnum, pval in ipairs(paths or {}) do
-    config_parse.append(lines, "path" .. tostring(pnum) .. "_OSDSYS_ITEM_" .. idxStr, pval)
+  local entryDisabled = config_parse.isMenuEntryDisabled(lines, idx)
+  for pnum, item in ipairs(paths or {}) do
+    local v = type(item) == "table" and item.value or item
+    local disabled = type(item) == "table" and item.disabled
+    table.insert(lines, { key = "path" .. tostring(pnum) .. "_OSDSYS_ITEM_" .. idxStr, value = v, comment = disabled and (entryDisabled and 2 or true) or nil })
   end
 end
 
--- Args for this entry (includes commented lines so disabled entries keep their args).
+-- Args for this entry (includes commented lines). Return in order: { value, disabled [, comment] }.
+-- When entry is disabled: only comment == 2 (##) is "individually disabled"; comment == true (#) shows as enabled.
+-- When entry is enabled: any comment (true or 2) means disabled. comment is preserved for regenerateLines.
 function config_parse.getMenuEntryArgs(lines, idx)
   local key = "arg_OSDSYS_ITEM_" .. tostring(idx)
+  local entryDisabled = config_parse.isMenuEntryDisabled(lines, idx)
   local out = {}
   for _, entry in ipairs(lines) do
-    if entry.key and entry.key == key then table.insert(out, entry.value) end
+    if entry.key and entry.key == key then
+      local c = entry.comment
+      local disabled = entryDisabled and (c == 2) or (not entryDisabled and (not not c))
+      table.insert(out, { value = entry.value, disabled = disabled, comment = c })
+    end
   end
   return out
 end
 
--- Replace all arg_OSDSYS_ITEM_<idx> with the given list.
+-- Replace all arg_OSDSYS_ITEM_<idx> with the given list. Each item is { value, disabled } or a plain value (treated as enabled).
 function config_parse.setMenuEntryArgs(lines, idx, args)
   local key = "arg_OSDSYS_ITEM_" .. tostring(idx)
   local i = 1
@@ -472,8 +510,39 @@ function config_parse.setMenuEntryArgs(lines, idx, args)
       i = i + 1
     end
   end
-  for _, v in ipairs(args or {}) do
-    config_parse.append(lines, key, v)
+  local entryDisabled = config_parse.isMenuEntryDisabled(lines, idx)
+  for _, item in ipairs(args or {}) do
+    local v = type(item) == "table" and item.value or item
+    local disabled = type(item) == "table" and item.disabled
+    table.insert(lines, { key = key, value = v, comment = disabled and (entryDisabled and 2 or true) or nil })
+  end
+end
+
+-- Set disabled state of one path (1-based path index). Menu entry only.
+-- When entry is disabled, use comment = 2 (##) so path shows as individually disabled.
+function config_parse.setPathDisabled(lines, idx, pathNum, disabled)
+  local key = "path" .. tostring(pathNum) .. "_OSDSYS_ITEM_" .. tostring(idx)
+  for _, entry in ipairs(lines) do
+    if entry.key and entry.key == key then
+      entry.comment = disabled and (config_parse.isMenuEntryDisabled(lines, idx) and 2 or true) or nil
+      return
+    end
+  end
+end
+
+-- Set disabled state of one argument (1-based arg index). Menu entry only.
+-- When entry is disabled, use comment = 2 (##) so arg shows as individually disabled.
+function config_parse.setArgDisabled(lines, idx, argNum, disabled)
+  local key = "arg_OSDSYS_ITEM_" .. tostring(idx)
+  local n = 0
+  for _, entry in ipairs(lines) do
+    if entry.key and entry.key == key then
+      n = n + 1
+      if n == argNum then
+        entry.comment = disabled and (config_parse.isMenuEntryDisabled(lines, idx) and 2 or true) or nil
+        return
+      end
+    end
   end
 end
 
@@ -499,9 +568,9 @@ function config_parse.removeMenuEntry(lines, idx)
   end
 end
 
--- Add a new menu entry with given index (name only; paths/args empty). Caller can set paths after.
+-- Add a new menu entry with given index (name only; paths/args empty). Caller can set paths after. name may be "" (empty).
 function config_parse.addMenuEntry(lines, idx, name)
-  config_parse.set(lines, "name_OSDSYS_ITEM_" .. tostring(idx), name or "New entry")
+  config_parse.set(lines, "name_OSDSYS_ITEM_" .. tostring(idx), name == nil and "New entry" or name)
 end
 
 -- Move menu entry from oldIdx to newIdx (copy name/paths/args to new index, then remove old). Fails if newIdx is used by another entry.
@@ -598,12 +667,19 @@ function config_parse.regenerateLines(lines, categories)
     table.insert(out, { key = "name_OSDSYS_ITEM_" .. tostring(idx), value = name, comment = disabled })
     local paths = config_parse.getMenuEntryPaths(lines, idx)
     for i, p in ipairs(paths) do
+      local pv = type(p) == "table" and p.value or p
+      local pc = type(p) == "table" and p.comment or nil
+      -- ## only when entry disabled AND path was individually disabled (comment == 2); else # or nil
+      local pcomment = disabled and (pc == 2 and 2 or true) or (pc and true or nil)
       table.insert(out,
-        { key = "path" .. tostring(i) .. "_OSDSYS_ITEM_" .. tostring(idx), value = p, comment = disabled })
+        { key = "path" .. tostring(i) .. "_OSDSYS_ITEM_" .. tostring(idx), value = pv, comment = pcomment })
     end
     local args = config_parse.getMenuEntryArgs(lines, idx)
     for _, a in ipairs(args) do
-      table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = a, comment = disabled })
+      local av = type(a) == "table" and a.value or a
+      local ac = type(a) == "table" and a.comment or nil
+      local acomment = disabled and (ac == 2 and 2 or true) or (ac and true or nil)
+      table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = av, comment = acomment })
     end
     addSep()
   end

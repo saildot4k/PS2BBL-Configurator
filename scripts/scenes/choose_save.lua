@@ -37,16 +37,32 @@ local function run(ctx)
         ctx.returnToSelectConfigAfterSave = nil
         ctx.returnToSelectConfigAfterSaveFlash = true
       end
-      ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+      if ctx.returnToMenuEntriesAfterSave then
+        ctx.returnToMenuEntriesAfterSave = nil
+        ctx.state = "menu_entries"
+      else
+        ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+      end
     else
       ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
-      ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+      if ctx.returnToMenuEntriesAfterSave then
+        ctx.returnToMenuEntriesAfterSave = nil
+        ctx.state = "menu_entries"
+      else
+        ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+      end
     end
     ctx.saveChoices = nil
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     ctx.returnToSelectConfigAfterSave = nil
-    ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"; ctx.saveChoices = nil
+    if ctx.returnToMenuEntriesAfterSave then
+      ctx.returnToMenuEntriesAfterSave = nil
+      ctx.state = "menu_entries"
+    else
+      ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
+    end
+    ctx.saveChoices = nil
   end
 end
 

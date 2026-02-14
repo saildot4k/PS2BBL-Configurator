@@ -10,14 +10,16 @@ local function run(ctx)
   local args = _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
   local hasOsdOrShutdown = false
   for _, p in ipairs(paths) do
-    if (p or ""):upper() == "OSDSYS" or (p or ""):upper() == "POWEROFF" then
+    local pv = type(p) == "table" and p.value or p
+    if (pv or ""):upper() == "OSDSYS" or (pv or ""):upper() == "POWEROFF" then
       hasOsdOrShutdown = true; break
     end
   end
   local subOpts = { _.menu_str.edit_name, _.menu_str.paths_label }
   local hasCdrom = false
   for _, p in ipairs(paths) do
-    if p == "cdrom" then
+    local pv = type(p) == "table" and p.value or p
+    if pv == "cdrom" then
       hasCdrom = true; break
     end
   end
@@ -51,7 +53,9 @@ local function run(ctx)
     if opt == _.menu_str.edit_name then
       ctx.textInputTitleIdMode = nil
       ctx.textInputPrompt = _.menu_str.entry_name_prompt
-      ctx.textInputValue = _.config_parse.getMenuEntryName(ctx.lines, ctx.entryIdx) or ""
+      local name = _.config_parse.getMenuEntryName(ctx.lines, ctx.entryIdx) or ""
+      if name == _.menu_str.add_entry_label then name = "" end
+      ctx.textInputValue = name
       ctx.textInputMaxLen = _.config_parse.LIMIT_NAME
       ctx.textInputCallback = function(val)
         _.config_parse.setMenuEntryName(ctx.lines, ctx.entryIdx, val)
@@ -60,7 +64,7 @@ local function run(ctx)
       end
       ctx.textInputReturnState = "menu_entry_edit"
       ctx.textInputGridSel = 1
-      ctx.textInputCursor = #(_.config_parse.getMenuEntryName(ctx.lines, ctx.entryIdx) or "") + 1
+      ctx.textInputCursor = #ctx.textInputValue + 1
       ctx.textInputScroll = 1
       ctx.state = "text_input"
     elseif opt == _.menu_str.paths_label then

@@ -16,18 +16,22 @@ local function run(ctx)
       _.config_parse.getMenuEntryPaths(ctx.lines, ctx.entryIdx)
   local hasOsdOrShutdown = false
   for _, p in ipairs(paths or {}) do
-    if (p or ""):upper() == "OSDSYS" or (p or ""):upper() == "POWEROFF" then
+    local pv = type(p) == "table" and p.value or p
+    if (pv or ""):upper() == "OSDSYS" or (pv or ""):upper() == "POWEROFF" then
       hasOsdOrShutdown = true; break
     end
   end
   if not isBoot and hasOsdOrShutdown then
     ctx.state = "menu_entry_edit"; return
   end
-  local args = isBoot and (_.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}) or
-      (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
+  local args = isBoot and (function()
+    local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
+    local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+  end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
   local hasCdrom = false
   for _, p in ipairs(paths or {}) do
-    if p == "cdrom" then
+    local pv = type(p) == "table" and p.value or p
+    if pv == "cdrom" then
       hasCdrom = true; break
     end
   end
@@ -47,11 +51,20 @@ local function run(ctx)
   for i = ctx.entryArgScroll + 1, math.min(ctx.entryArgScroll + _.MAX_VISIBLE_LIST, total) do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.entryArgScroll - 1) * _.LINE_H
     local a = args[i]
-    local label = (a and (a:sub(1, 52) .. (#a > 52 and "..." or ""))) or ""
+    local av = type(a) == "table" and a.value or a
+    local label = (av and (av:sub(1, 52) .. (#av > 52 and "..." or ""))) or ""
     local col = (i == ctx.entryArgSel) and _.SELECTED_ENTRY or _.WHITE
+    if not isBoot and type(a) == "table" and a.disabled then
+      col = (i == ctx.entryArgSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)
+    end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryArgSel, label, col)
   end
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.menu_str.args_hint_items, nil, _.DIM,
+  local argHints = _.menu_str.args_hint_items
+  if not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and type(args[ctx.entryArgSel]) == "table" then
+    argHints = args[ctx.entryArgSel].disabled and (_.menu_str.args_hint_items_with_enable or argHints)
+        or (_.menu_str.args_hint_items_with_disable or argHints)
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, argHints, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_UP) ~= 0 then
     ctx.entryArgSel = ctx.entryArgSel - 1; if ctx.entryArgSel < 1 then ctx.entryArgSel = total end
@@ -60,27 +73,41 @@ local function run(ctx)
     ctx.entryArgSel = ctx.entryArgSel + 1; if ctx.entryArgSel > total then ctx.entryArgSel = 1 end
   end
   local function getArgs()
-    return isBoot and (_.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}) or
-        _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
+    if isBoot then
+      local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
+      local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+    end
+    return _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {}
   end
   local function setArgs(a)
     if isBoot then
-      _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, a)
+      local v = {} for _, item in ipairs(a or {}) do table.insert(v, type(item) == "table" and item.value or item) end
+      _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
       ctx.configModified = true
     else
-      _.config_parse
-          .setMenuEntryArgs(ctx.lines, ctx.entryIdx, a)
+      _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, a)
+      ctx.configModified = true
     end
+  end
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and type(args[ctx.entryArgSel]) == "table" then
+    _.config_parse.setArgDisabled(ctx.lines, ctx.entryIdx, ctx.entryArgSel, not args[ctx.entryArgSel].disabled)
+    ctx.configModified = true
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
       ctx.argEditIdx = ctx.entryArgSel
       ctx.textInputTitleIdMode = nil
       ctx.textInputPrompt = _.menu_str.edit_argument_prompt
-      ctx.textInputValue = args[ctx.entryArgSel]
+      ctx.textInputValue = type(args[ctx.entryArgSel]) == "table" and args[ctx.entryArgSel].value or args[ctx.entryArgSel]
       ctx.textInputMaxLen = 79
       ctx.textInputCallback = function(val)
-        local args2 = getArgs(); args2[ctx.argEditIdx] = val or ""; setArgs(args2)
+        local args2 = getArgs()
+        if type(args2[ctx.argEditIdx]) == "table" then
+          args2[ctx.argEditIdx].value = val or ""
+        else
+          args2[ctx.argEditIdx] = { value = val or "", disabled = false }
+        end
+        setArgs(args2)
         ctx.state = "entry_args"
       end
       ctx.textInputReturnState = "entry_args"
@@ -98,7 +125,7 @@ local function run(ctx)
     ctx.textInputMaxLen = 79
     ctx.textInputCallback = function(val)
       if (val or "") ~= "" then
-        local args2 = getArgs(); table.insert(args2, val); setArgs(args2)
+        local args2 = getArgs(); table.insert(args2, { value = val, disabled = false }); setArgs(args2)
       end
       ctx.state = "entry_args"
     end
@@ -109,23 +136,21 @@ local function run(ctx)
     ctx.state = "text_input"
   end
   if (_.padEffective & _.PAD_L1) ~= 0 then
-    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args and ctx.entryArgSel > 1 then
-      args = getArgs(); args[ctx.entryArgSel], args[ctx.entryArgSel - 1] = args[ctx.entryArgSel - 1],
-          args[ctx.entryArgSel]; setArgs(args)
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and ctx.entryArgSel > 1 then
+      local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel - 1] = args2[ctx.entryArgSel - 1], args2[ctx.entryArgSel]; setArgs(args2)
       ctx.entryArgSel = ctx.entryArgSel - 1
     end
   end
   if (_.padEffective & _.PAD_R1) ~= 0 then
-    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args and ctx.entryArgSel < #args then
-      args = getArgs(); args[ctx.entryArgSel], args[ctx.entryArgSel + 1] = args[ctx.entryArgSel + 1],
-          args[ctx.entryArgSel]; setArgs(args)
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and ctx.entryArgSel < total then
+      local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel + 1] = args2[ctx.entryArgSel + 1], args2[ctx.entryArgSel]; setArgs(args2)
       ctx.entryArgSel = ctx.entryArgSel + 1
     end
   end
   if (_.padEffective & _.PAD_SQUARE) ~= 0 then
-    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
-      args = getArgs(); table.remove(args, ctx.entryArgSel); setArgs(args)
-      if ctx.entryArgSel > #args then ctx.entryArgSel = math.max(1, #args) end
+    if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total then
+      local args2 = getArgs(); table.remove(args2, ctx.entryArgSel); setArgs(args2)
+      if ctx.entryArgSel > #args2 then ctx.entryArgSel = math.max(1, #args2) end
     end
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then ctx.state = isBoot and "entry_paths" or "menu_entry_edit" end

@@ -276,8 +276,15 @@ local function runSelectConfig(s, pad)
   end
   if (pad & PAD_CIRCLE) ~= 0 then
     if s.context == "osdmenu" then
-      s.state = "choose_mc"
-      s.mainSel = 1
+      local slots = common.getPresentMcSlots()
+      if #slots <= 1 then
+        s.state = "main"
+        s.mainSel = 1
+        s.chosenMcSlot = nil
+      else
+        s.state = "choose_mc"
+        s.mainSel = 1
+      end
     else
       s.state = "main"
       s.mainSel = 1

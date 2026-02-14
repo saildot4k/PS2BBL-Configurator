@@ -18,8 +18,6 @@ local function initContext()
     optScroll = 0,
     saveFlash = 0,
     editKey = nil,
-    editOpt = nil,
-    editEnumIdx = 1,
     pathPickerSub = nil,
     pathPickerSel = 1,
     pathPickerScroll = 0,

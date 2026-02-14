@@ -12,6 +12,7 @@ local function run(ctx)
   local counterStr = (numEntries == 0 and "0 / 0") or (tostring(ctx.entrySel) .. " / " .. tostring(numEntries))
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.edit_menu_entries, _.WHITE)
   _.drawText(_.font, _.drawMode, 540, _.MARGIN_Y, 0.9, counterStr, _.DIM)
+  _.common.drawSaveError(ctx)
   if ctx.entrySel < 1 then ctx.entrySel = 1 end
   if total > 0 and ctx.entrySel > total then ctx.entrySel = total end
   local maxVis = _.MAX_VISIBLE_LIST
@@ -24,10 +25,12 @@ local function run(ctx)
   for i = ctx.entryScroll + 1, math.min(ctx.entryScroll + maxVis, total) do
     local ent = ctx.entryList[i]
     local idx = ent.idx
-    local label = _.config_parse.getMenuEntryName(ctx.lines, idx) or (_.menu_str.item .. idx)
+    local name = _.config_parse.getMenuEntryName(ctx.lines, idx)
+    local label = (name == "" or not name) and _.common_str.empty or (name or (_.menu_str.item .. idx))
     local y = startY + (i - ctx.entryScroll - 1) * _.LINE_H
     local col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.WHITE
-    if ent.disabled then col = col == _.SELECTED_ENTRY and _.SELECTED_ENTRY or (_.DIM_ENTRY or _.DIM) end
+    if label == _.common_str.empty then col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.DIM end
+    if ent.disabled then col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM) end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entrySel, label, col)
   end
   if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -44,7 +47,7 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_SELECT) ~= 0 then
     local belowIdx = (total == 0) and 0 or ctx.entryList[ctx.entrySel].idx
-    local newIdx = _.config_parse.insertMenuEntryBelow(ctx.lines, belowIdx, _.menu_str.add_entry_label)
+    local newIdx = _.config_parse.insertMenuEntryBelow(ctx.lines, belowIdx, "")
     ctx.configModified = true
     ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
     ctx.entrySel = (total == 0) and 1 or (ctx.entrySel + 1)
@@ -117,6 +120,35 @@ local function run(ctx)
   end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintsAdjusted, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
+  if ctx.saveFlash and ctx.saveFlash > 0 then
+    _.common.drawSavedSplash(ctx)
+  end
+  if (_.padEffective & _.PAD_START) ~= 0 then
+    ctx.saveError = nil
+    local locations = _.getLocations(ctx.context, ctx.fileType, ctx.chosenMcSlot)
+    if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
+      ctx.saveChoices = locations
+      ctx.saveSel = 1
+      ctx.returnToMenuEntriesAfterSave = true
+      ctx.state = "choose_save"
+    else
+      local path = ctx.currentPath or (locations and locations[1])
+      if path and path ~= "" then
+        ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
+        local parentDir = path:match("^(.+)/[^/]+$")
+        local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
+        if ok then
+          ctx.currentPath = path
+          ctx.saveFlash = 60
+          ctx.configModified = false
+        else
+          ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+        end
+      else
+        ctx.saveError = _.editor_str.no_save_location
+      end
+    end
+  end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then ctx.state = "editor" end
 end
 

@@ -141,4 +141,14 @@ config_options.osdmbr_cnf = {
 -- OSDGSM.CNF: edited in egsm_editor state (default + title overrides on one screen). Option list not used.
 config_options.osdgsm_cnf = {}
 
+-- eGSM value options (loader README: video empty/fp1/fp2/1080ix1..3, compat empty/1/2/3). Single source of truth for parse/UI.
+config_options.EGSM_VIDEO = { "", "fp1", "fp2", "1080ix1", "1080ix2", "1080ix3" }
+config_options.EGSM_COMPAT = { "", "1", "2", "3" }
+function config_options.getEgsmVideoOptions()
+  return config_options.EGSM_VIDEO
+end
+function config_options.getEgsmCompatOptions()
+  return config_options.EGSM_COMPAT
+end
+
 return config_options

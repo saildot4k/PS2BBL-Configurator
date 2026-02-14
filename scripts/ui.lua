@@ -26,6 +26,7 @@ local scene_entry_args = dofile("scripts/scenes/entry_args.lua")
 local scene_text_input = dofile("scripts/scenes/text_input.lua")
 local scene_path_picker = dofile("scripts/scenes/path_picker.lua")
 local scene_egsm_editor = dofile("scripts/scenes/egsm_editor.lua")
+local scene_egsm_value_edit = dofile("scripts/scenes/egsm_value_edit.lua")
 
 local strings = _G.CONFIG_UI.strings
 local editor_str = strings.editor
@@ -43,6 +44,8 @@ local PAD_SELECT = common.PAD_SELECT
 local PAD_L1, PAD_R1, PAD_L2, PAD_R2 = common.PAD_L1, common.PAD_R1, common.PAD_L2, common.PAD_R2
 local WHITE, GRAY, DIM, DIM_ENTRY, BLACK = common.WHITE, common.GRAY, common.DIM, common.DIM_ENTRY, common.BGCOLOR
 local HIGHLIGHT, SELECTED_ENTRY, PREFIX_W = common.HIGHLIGHT, common.SELECTED_ENTRY, common.PREFIX_W
+local SELECTED_ENTRY_DIM = common.SELECTED_ENTRY_DIM
+local TEXT_CURSOR_COLOR = common.TEXT_CURSOR_COLOR
 local FONT_SCALE, LINE_H, ROW_H = common.FONT_SCALE, common.LINE_H, common.ROW_H
 local MARGIN_X, MARGIN_Y = common.MARGIN_X, common.MARGIN_Y
 local MAX_VISIBLE = common.MAX_VISIBLE
@@ -98,7 +101,7 @@ local function mainLoop()
   local pfsMounted = false
   local prevPad = 0
   local optList, optSel, optScroll, saveFlash = nil, 1, 0, 0
-  local editKey, editOpt, editEnumIdx = nil, nil, 1
+  local editKey = nil
   local pathPickerSub = nil
   local pathPickerSel, pathPickerScroll = 1, 0
   local pathBrowsePath, pathList = nil, nil
@@ -257,11 +260,13 @@ local function mainLoop()
       DESC_Y_BOTTOM = DESC_Y_BOTTOM,
       HINT_Y = HINT_Y,
       SELECTED_ENTRY = SELECTED_ENTRY,
+      SELECTED_ENTRY_DIM = SELECTED_ENTRY_DIM,
       WHITE = WHITE,
       GRAY = GRAY,
       DIM = DIM,
       DIM_ENTRY = DIM_ENTRY,
       HIGHLIGHT = HIGHLIGHT,
+      TEXT_CURSOR_COLOR = TEXT_CURSOR_COLOR,
       drawText = drawText,
       common = common,
       config_parse = config_parse,
@@ -366,6 +371,10 @@ local function mainLoop()
       syncToS(c)
       scene_egsm_editor.run(c)
       syncFromS(c)
+    elseif state == "egsm_value_edit" then
+      syncToS(c)
+      scene_egsm_value_edit.run(c)
+      syncFromS(c)
     elseif state == "text_input" then
       syncToS(c)
       scene_text_input.run(c)
@@ -384,7 +393,7 @@ local function mainLoop()
   end
   local sceneNames = { "main", "choose_mc", "select_config", "initHdd", "open", "choose_load", "editor", "choose_save",
     "color_edit", "menu_entries", "menu_entry_edit", "entry_cdrom_options", "entry_paths", "entry_args", "egsm_editor",
-    "text_input", "path_picker" }
+    "egsm_value_edit", "text_input", "path_picker" }
   local scenes = {}
   for _, name in ipairs(sceneNames) do scenes[name] = { run = runOneFrame } end
   -- Main-flow scenes use runSceneLoop (clear, layout, handler, flip until state change).

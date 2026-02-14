@@ -25,7 +25,9 @@ common.GRAY                        = Color.new(160, 160, 160)
 common.DIM                         = Color.new(96, 96, 96)
 common.BGCOLOR                     = Color.new(20, 20, 20)
 common.HIGHLIGHT                   = Color.new(255, 220, 100)
-common.SELECTED_ENTRY              = Color.new(0x00, 0x72, 0xA0, 0x80)
+common.SELECTED_ENTRY              = Color.new(0x00, 0x72, 0xA0)
+common.SELECTED_ENTRY_DIM          = Color.new(0, 50, 80)
+common.TEXT_CURSOR_COLOR           = Color.new(0x00, 0x72, 0xA0)
 common.PREFIX_W                    = 16
 
 -- Layout
@@ -51,9 +53,7 @@ common.PAD_HINT_ROW_H              = 28
 common.PAD_HINT_ROW_GAP            = 6
 common.PAD_HINT_SIDE_MARGIN        = 16
 common.PAD_HINT_ITEM_GAP           = 20
-common.PAD_HINT_TOTAL_H            = common.PAD_HINT_ROW_H * 2 +
-    common
-    .PAD_HINT_ROW_GAP -- height when 2 rows, so desc can sit above
+common.PAD_HINT_TOTAL_H            = common.PAD_HINT_ROW_H * 2 + common.PAD_HINT_ROW_GAP  -- height when 2 rows
 common.DESC_TO_HINT_MARGIN         = 20
 common.DESC_Y_BOTTOM               = common.HINT_Y - common.PAD_HINT_TOTAL_H - common.DESC_TO_HINT_MARGIN
 common.PAD_HINT_DEFAULT_WIDTH      = 560
@@ -74,8 +74,7 @@ local padIconNames                 = {
   l1 = "L1",
   l2 = "L2",
   l3 = "L3",
-  r1 =
-  "R1",
+  r1 = "R1",
   r2 = "R2",
   r3 = "R3"
 }

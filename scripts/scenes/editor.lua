@@ -102,7 +102,16 @@ local function run(ctx)
         ctx.entryScroll = 0
       else
         ctx.editorCategoryIdx = ctx.optSel
-        ctx.optList = cat.options or {}
+        local rawOpts = cat.options or {}
+        -- DKWDRV custom path not applicable for HOSDMenu (no MC path)
+        if ctx.context == "hosdmenu" then
+          ctx.optList = {}
+          for _, o in ipairs(rawOpts) do
+            if o.key ~= "path_DKWDRV_ELF" then ctx.optList[#ctx.optList + 1] = o end
+          end
+        else
+          ctx.optList = rawOpts
+        end
         ctx.optSel = 1
         ctx.optScroll = 0
       end
@@ -116,9 +125,14 @@ local function run(ctx)
     end
   elseif ctx.optList and #ctx.optList > 0 then
     local startY = _.MARGIN_Y + _.scaleY(58)
-    if ctx.optSel < ctx.optScroll + 1 then ctx.optScroll = ctx.optSel - 1 end
-    if ctx.optSel > ctx.optScroll + _.MAX_VISIBLE then ctx.optScroll = ctx.optSel - _.MAX_VISIBLE end
-    for i = ctx.optScroll + 1, math.min(ctx.optScroll + _.MAX_VISIBLE, #ctx.optList) do
+    local maxVis = _.MAX_VISIBLE
+    if #ctx.optList > maxVis then
+      ctx.optScroll = ctx.optSel - math.floor(maxVis / 2)
+      ctx.optScroll = math.max(0, math.min(ctx.optScroll, #ctx.optList - maxVis))
+    else
+      ctx.optScroll = 0
+    end
+    for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #ctx.optList) do
       local o = ctx.optList[i]
       local y = startY + (i - ctx.optScroll - 1) * _.ROW_H
       local col = (i == ctx.optSel) and _.SELECTED_ENTRY or _.WHITE
@@ -137,7 +151,7 @@ local function run(ctx)
         if not paths or #paths == 0 then
           valDisplay = ""
         else
-          valDisplay = #paths .. (_.menu_str and _.menu_str.path_s or " path(s)")
+          valDisplay = #paths .. _.menu_str.path_s
         end
       else
         local multi = _.config_parse.getMulti(ctx.lines, o.key)
@@ -174,7 +188,7 @@ local function run(ctx)
         _.drawText(_.font, _.drawMode, x, _.DESC_Y_BOTTOM, 0.72, descStr, _.DIM)
       end
     end
-    if #ctx.optList > _.MAX_VISIBLE then
+    if #ctx.optList > maxVis then
       _.drawText(_.font, _.drawMode, _.w - 72, startY - _.scaleY(4), 0.7, ctx.optSel .. "/" .. #ctx.optList, _.DIM)
     end
     local hintItems = _.common.buildEditorHintItems(selOpt, _.editor_str.hint_edit_items,
