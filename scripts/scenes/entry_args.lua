@@ -26,7 +26,9 @@ local function run(ctx)
   end
   local args = isBoot and (function()
     local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
-    local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+    local t = {}
+    for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
+    return t
   end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
   local hasCdrom = false
   for _, p in ipairs(paths or {}) do
@@ -38,7 +40,8 @@ local function run(ctx)
   local total = #args
   if ctx.entryArgSel < 1 then ctx.entryArgSel = 1 end
   if ctx.entryArgSel > total then ctx.entryArgSel = (total > 0) and total or 1 end
-  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE_LIST then ctx.entryArgScroll = ctx.entryArgSel - _.MAX_VISIBLE_LIST end
+  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE_LIST then ctx.entryArgScroll = ctx.entryArgSel -
+    _.MAX_VISIBLE_LIST end
   if ctx.entryArgSel < ctx.entryArgScroll + 1 then ctx.entryArgScroll = ctx.entryArgSel - 1 end
   local titleStr = isBoot and
       ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..
@@ -75,13 +78,16 @@ local function run(ctx)
   local function getArgs()
     if isBoot then
       local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
-      local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+      local t = {}
+      for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
+      return t
     end
     return _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {}
   end
   local function setArgs(a)
     if isBoot then
-      local v = {} for _, item in ipairs(a or {}) do table.insert(v, type(item) == "table" and item.value or item) end
+      local v = {}
+      for _, item in ipairs(a or {}) do table.insert(v, type(item) == "table" and item.value or item) end
       _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
       ctx.configModified = true
     else
@@ -98,7 +104,8 @@ local function run(ctx)
       ctx.argEditIdx = ctx.entryArgSel
       ctx.textInputTitleIdMode = nil
       ctx.textInputPrompt = _.menu_str.edit_argument_prompt
-      ctx.textInputValue = type(args[ctx.entryArgSel]) == "table" and args[ctx.entryArgSel].value or args[ctx.entryArgSel]
+      ctx.textInputValue = type(args[ctx.entryArgSel]) == "table" and args[ctx.entryArgSel].value or
+      args[ctx.entryArgSel]
       ctx.textInputMaxLen = 79
       ctx.textInputCallback = function(val)
         local args2 = getArgs()
@@ -137,13 +144,15 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_L1) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and ctx.entryArgSel > 1 then
-      local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel - 1] = args2[ctx.entryArgSel - 1], args2[ctx.entryArgSel]; setArgs(args2)
+      local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel - 1] = args2[ctx.entryArgSel - 1],
+          args2[ctx.entryArgSel]; setArgs(args2)
       ctx.entryArgSel = ctx.entryArgSel - 1
     end
   end
   if (_.padEffective & _.PAD_R1) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and ctx.entryArgSel < total then
-      local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel + 1] = args2[ctx.entryArgSel + 1], args2[ctx.entryArgSel]; setArgs(args2)
+      local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel + 1] = args2[ctx.entryArgSel + 1],
+          args2[ctx.entryArgSel]; setArgs(args2)
       ctx.entryArgSel = ctx.entryArgSel + 1
     end
   end

@@ -231,6 +231,7 @@ end
 function config_parse.getEgsmVideoOptions()
   return getEgsmVideoOpts()
 end
+
 function config_parse.getEgsmCompatOptions()
   return getEgsmCompatOpts()
 end
@@ -242,8 +243,14 @@ function config_parse.parseEgsmValue(s)
   if not v then return 1, 1 end
   local EGSM_VIDEO, EGSM_COMPAT = getEgsmVideoOpts(), getEgsmCompatOpts()
   local vi, ci = 1, 1
-  for i, opt in ipairs(EGSM_VIDEO) do if opt == v then vi = i break end end
-  for i, opt in ipairs(EGSM_COMPAT) do if opt == c then ci = i break end end
+  for i, opt in ipairs(EGSM_VIDEO) do if opt == v then
+      vi = i
+      break
+    end end
+  for i, opt in ipairs(EGSM_COMPAT) do if opt == c then
+      ci = i
+      break
+    end end
   return vi, ci
 end
 
@@ -274,36 +281,33 @@ function config_parse.isValidEgsmOption(s)
   return false
 end
 
--- OSDGSM.CNF: default and per-title entries (title ID = AAAA_000.00). Commented = disabled; stored value is "" (empty), not "disabled".
+-- OSDGSM.CNF: default and per-title entries (title ID = AAAA_000.00). Commented = disabled; value is always stored (even when commented).
 function config_parse.getEgsmDefault(lines)
   for _, e in ipairs(lines) do
-    if e.key == "default" then return (e.comment and "disabled") or (e.value or "") end
+    if e.key == "default" then return (e.value or ""), (e.comment and true or false) end
   end
-  return ""
+  return "", false
 end
 
-function config_parse.setEgsmDefault(lines, value)
-  local isDisabled = (value == "disabled")
-  local storeVal = isDisabled and "" or (value or "")
+function config_parse.setEgsmDefault(lines, value, commented)
+  local storeVal = value or ""
   for _, e in ipairs(lines) do
     if e.key == "default" then
       e.value = storeVal
-      e.comment = isDisabled
+      e.comment = commented and true or false
       return
     end
   end
   config_parse.append(lines, "default", storeVal)
   local e = lines[#lines]
-  if e and e.key == "default" then e.comment = isDisabled end
+  if e and e.key == "default" then e.comment = commented and true or false end
 end
 
 function config_parse.getEgsmEntries(lines)
   local out = {}
   for _, e in ipairs(lines) do
     if e.key and config_parse.isValidTitleId(e.key) then
-      local commented = not not e.comment
-      local displayVal = (commented and "disabled") or (e.value or "")
-      table.insert(out, { titleId = e.key, value = displayVal, commented = commented })
+      table.insert(out, { titleId = e.key, value = (e.value or ""), commented = (e.comment and true or false) })
     end
   end
   table.sort(out, function(a, b) return (a.titleId or "") < (b.titleId or "") end)
@@ -312,16 +316,15 @@ end
 
 function config_parse.setEgsmEntry(lines, titleId, value, commented)
   if not config_parse.isValidTitleId(titleId) then return false end
-  local isDisabled = (value == "disabled" or commented)
-  local storeVal = isDisabled and "" or (value or "")
+  local storeVal = value or ""
   for _, e in ipairs(lines) do
     if e.key == titleId then
       e.value = storeVal
-      e.comment = isDisabled
+      e.comment = commented and true or false
       return true
     end
   end
-  table.insert(lines, { key = titleId, value = storeVal, comment = isDisabled })
+  table.insert(lines, { key = titleId, value = storeVal, comment = commented and true or false })
   return true
 end
 
@@ -335,13 +338,13 @@ function config_parse.removeEgsmEntry(lines, titleId)
   return false
 end
 
--- Regenerate OSDGSM.CNF lines: default first, then per-title entries (sorted). Disabled = comment with empty value.
+-- Regenerate OSDGSM.CNF lines: default first, then per-title entries (sorted). Commented = disabled but value is preserved.
 function config_parse.regenerateLinesOsdgsm(lines)
-  local def = config_parse.getEgsmDefault(lines)
+  local defVal, defCommented = config_parse.getEgsmDefault(lines)
   local out = {}
-  table.insert(out, { key = "default", value = (def == "disabled") and "" or def, comment = (def == "disabled") })
+  table.insert(out, { key = "default", value = defVal or "", comment = defCommented })
   for _, ent in ipairs(config_parse.getEgsmEntries(lines)) do
-    table.insert(out, { key = ent.titleId, value = ent.commented and "" or ent.value, comment = ent.commented })
+    table.insert(out, { key = ent.titleId, value = ent.value or "", comment = ent.commented })
   end
   return out
 end
@@ -424,9 +427,9 @@ function config_parse.setMenuEntryDisabled(lines, idx, disabled)
   for _, entry in ipairs(lines) do
     if entry.key and (entry.key == nameKey or entry.key:match(pathPat) or entry.key == argKey) then
       if disabled then
-        entry.comment = entry.comment and 2 or true  -- already commented (per-item) -> ## (2)
+        entry.comment = entry.comment and 2 or true                                  -- already commented (per-item) -> ## (2)
       else
-        if entry.comment == 2 then entry.comment = true else entry.comment = nil end  -- ## -> keep commented; # -> uncomment
+        if entry.comment == 2 then entry.comment = true else entry.comment = nil end -- ## -> keep commented; # -> uncomment
       end
     end
   end
@@ -478,7 +481,9 @@ function config_parse.setMenuEntryPaths(lines, idx, paths)
   for pnum, item in ipairs(paths or {}) do
     local v = type(item) == "table" and item.value or item
     local disabled = type(item) == "table" and item.disabled
-    table.insert(lines, { key = "path" .. tostring(pnum) .. "_OSDSYS_ITEM_" .. idxStr, value = v, comment = disabled and (entryDisabled and 2 or true) or nil })
+    table.insert(lines,
+      { key = "path" .. tostring(pnum) .. "_OSDSYS_ITEM_" .. idxStr, value = v, comment = disabled and
+      (entryDisabled and 2 or true) or nil })
   end
 end
 

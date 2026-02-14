@@ -30,7 +30,8 @@ local function run(ctx)
     local y = startY + (i - ctx.entryScroll - 1) * _.LINE_H
     local col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.WHITE
     if label == _.common_str.empty then col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.DIM end
-    if ent.disabled then col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM) end
+    if ent.disabled then col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
+    (_.DIM_ENTRY or _.DIM) end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entrySel, label, col)
   end
   if (_.padEffective & _.PAD_UP) ~= 0 then

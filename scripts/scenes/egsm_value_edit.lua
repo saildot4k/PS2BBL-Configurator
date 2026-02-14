@@ -1,9 +1,9 @@
 --[[ eGSM value edit: video mode + compatibility (per loader README v:c format).
-  "Disabled" = don't force / no override (single option). Compatibility only applies when a video mode is set. ]]
+  Enable/Disable is toggled in the main list; here we only edit the value. Compatibility only applies when a video mode is set. ]]
 
-local VIDEO_LABELS = { "video_240p", "video_480p", "video_1080i_1x", "video_1080i_2x", "video_1080i_3x" }  -- EGSM_VIDEO indices 2..6
+local VIDEO_LABELS = { "video_240p", "video_480p", "video_1080i_1x", "video_1080i_2x", "video_1080i_3x" } -- EGSM_VIDEO indices 2..6
 local COMPAT_LABELS = { "compat_none", "compat_1", "compat_2", "compat_3" }
-local NUM_VIDEO_OPTS = 5   -- fp1, fp2, 1080ix1, 1080ix2, 1080ix3 (no "don't force" - same as Disabled)
+local NUM_VIDEO_OPTS = 5                                                                                  -- fp1, fp2, 1080ix1, 1080ix2, 1080ix3
 local NUM_COMPAT_OPTS = 4
 
 local function run(ctx)
@@ -17,22 +17,23 @@ local function run(ctx)
   if ctx.egsmVideoIdx == nil then
     local cur
     if ctx.egsmEditDefault then
-      cur = _.config_parse.getEgsmDefault(ctx.lines)
+      cur = select(1, _.config_parse.getEgsmDefault(ctx.lines))
     else
-      cur = "disabled"
+      cur = ""
       local entries = _.config_parse.getEgsmEntries(ctx.lines)
       for _, e in ipairs(entries) do
         if e.titleId == ctx.egsmEditTitleId then
-          cur = (e.commented and "disabled") or e.value
+          cur = e.value
           break
         end
       end
     end
     ctx.egsmVideoIdx, ctx.egsmCompatIdx = _.config_parse.parseEgsmValue(cur)
     ctx.egsmValueSel = 1
+    if ctx.egsmEditCommented == nil then ctx.egsmEditCommented = false end
   end
 
-  local total = 1 + NUM_VIDEO_OPTS + NUM_COMPAT_OPTS  -- Disabled + 5 video + 4 compat
+  local total = NUM_VIDEO_OPTS + NUM_COMPAT_OPTS -- 5 video + 4 compat
   if ctx.egsmValueSel < 1 then ctx.egsmValueSel = 1 end
   if ctx.egsmValueSel > total then ctx.egsmValueSel = total end
 
@@ -45,21 +46,14 @@ local function run(ctx)
     _.strings.egsm.value_edit_title .. " — " .. titleLabel, _.WHITE)
 
   local resultStr = _.config_parse.buildEgsmValue(ctx.egsmVideoIdx, ctx.egsmCompatIdx)
-  if resultStr == "" then resultStr = _.strings.egsm.disabled end
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(22), 0.85,
-    _.strings.egsm.result_prefix .. resultStr, _.GRAY)
+    _.strings.egsm.result_prefix .. (resultStr == "" and "—" or resultStr), _.GRAY)
 
   local startY = _.MARGIN_Y + _.scaleY(50)
   local row = 0
   local LINE_H = _.LINE_H
 
-  -- Row 0: Disabled (same as "don't force" — no video override)
-  local y = startY + row * LINE_H
-  _.drawListRow(_.MARGIN_X + 20, y, ctx.egsmValueSel == 1, _.strings.egsm.disabled,
-    (ctx.egsmValueSel == 1) and _.SELECTED_ENTRY or _.WHITE)
-  row = row + 1
-
-  -- Video section: 5 options only (indices 2..6 in EGSM_VIDEO; index 1 = don't force = Disabled)
+  -- Video section: 5 options (sel 1–5 -> EGSM_VIDEO indices 2–6)
   do
     local headerText = _.strings.egsm.video_header
     local tw = _.common.calcTextWidth(_.font, headerText, 0.85)
@@ -68,11 +62,11 @@ local function run(ctx)
   end
   row = row + 1
   for i = 1, NUM_VIDEO_OPTS do
-    local vi = i + 1  -- EGSM_VIDEO index 2..6
+    local vi = i + 1 -- EGSM_VIDEO index 2..6
     local key = VIDEO_LABELS[i] or ("video_" .. (i + 1))
     local label = _.strings.egsm[key] or videoOpts[vi] or ""
     local y = startY + row * LINE_H
-    local selForThisRow = row  -- sel 2..6 for video rows 2..6
+    local selForThisRow = row -- sel 1..5 for video
     local isCur = (ctx.egsmValueSel == selForThisRow)
     local isActive = (ctx.egsmVideoIdx == vi)
     _.drawListRow(_.MARGIN_X + 20, y, isCur, label, (isCur and _.SELECTED_ENTRY) or (isActive and _.WHITE) or _.GRAY)
@@ -96,7 +90,7 @@ local function run(ctx)
     local label = _.strings.egsm[key] or compatOpts[i] or ""
     if label == "" then label = _.strings.egsm.compat_none end
     local y = startY + row * LINE_H
-    local selForThisRow = row - 1  -- sel 7..10 for compat rows 8..11
+    local selForThisRow = row - 1 -- sel 6..9 for compat
     local isCur = (ctx.egsmValueSel == selForThisRow)
     local isActive = (ctx.egsmCompatIdx == i)
     local col = compatDim and _.DIM or ((isCur and _.SELECTED_ENTRY) or (isActive and _.WHITE) or _.GRAY)
@@ -120,38 +114,25 @@ local function run(ctx)
   end
 
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
-    if ctx.egsmValueSel == 1 then
-      -- Disabled (don't force) — same option
-      if ctx.egsmEditDefault then
-        _.config_parse.setEgsmDefault(ctx.lines, "disabled")
-      else
-        _.config_parse.setEgsmEntry(ctx.lines, ctx.egsmEditTitleId, "disabled", true)
-      end
-      ctx.configModified = true
-      ctx.egsmVideoIdx = nil
-      ctx.egsmCompatIdx = nil
-      ctx.egsmEditDefault = nil
-      ctx.egsmEditTitleId = nil
-      ctx.state = "egsm_editor"
-    elseif ctx.egsmValueSel >= 2 and ctx.egsmValueSel <= 1 + NUM_VIDEO_OPTS then
-      local vi = ctx.egsmValueSel  -- sel 2..6 -> EGSM_VIDEO index 2..6 (fp1..1080ix3)
+    local commented = ctx.egsmEditCommented and true or false
+    if ctx.egsmValueSel >= 1 and ctx.egsmValueSel <= NUM_VIDEO_OPTS then
+      local vi = ctx.egsmValueSel + 1 -- sel 1..5 -> EGSM_VIDEO index 2..6
       ctx.egsmVideoIdx = vi
       local val = _.config_parse.buildEgsmValue(ctx.egsmVideoIdx, ctx.egsmCompatIdx)
       if ctx.egsmEditDefault then
-        _.config_parse.setEgsmDefault(ctx.lines, val)
+        _.config_parse.setEgsmDefault(ctx.lines, val, commented)
       else
-        _.config_parse.setEgsmEntry(ctx.lines, ctx.egsmEditTitleId, val, false)
+        _.config_parse.setEgsmEntry(ctx.lines, ctx.egsmEditTitleId, val, commented)
       end
       ctx.configModified = true
-    elseif ctx.egsmValueSel > 1 + NUM_VIDEO_OPTS and ctx.egsmValueSel <= total and hasVideo then
-      -- Compatibility: only apply when a video mode is set
-      local ci = ctx.egsmValueSel - 1 - NUM_VIDEO_OPTS
+    elseif ctx.egsmValueSel > NUM_VIDEO_OPTS and ctx.egsmValueSel <= total and hasVideo then
+      local ci = ctx.egsmValueSel - NUM_VIDEO_OPTS -- sel 6..9 -> compat index 1..4
       ctx.egsmCompatIdx = ci
       local val = _.config_parse.buildEgsmValue(ctx.egsmVideoIdx, ctx.egsmCompatIdx)
       if ctx.egsmEditDefault then
-        _.config_parse.setEgsmDefault(ctx.lines, val)
+        _.config_parse.setEgsmDefault(ctx.lines, val, commented)
       else
-        _.config_parse.setEgsmEntry(ctx.lines, ctx.egsmEditTitleId, val, false)
+        _.config_parse.setEgsmEntry(ctx.lines, ctx.egsmEditTitleId, val, commented)
       end
       ctx.configModified = true
     end

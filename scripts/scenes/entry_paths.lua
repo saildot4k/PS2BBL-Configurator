@@ -29,8 +29,10 @@ local function run(ctx)
   if isBoot and (hasArgsPaths or hasSpecialArgsPath) then total = total + 1 end -- Arguments or Launch Disc options row
   if ctx.entryPathSel < 1 then ctx.entryPathSel = 1 end
   if ctx.entryPathSel > total then ctx.entryPathSel = (total > 0) and total or 1 end
-  if ctx.entryPathSel > ctx.entryPathScroll + _.MAX_VISIBLE_LIST then ctx.entryPathScroll = ctx.entryPathSel -
-    _.MAX_VISIBLE_LIST end
+  if ctx.entryPathSel > ctx.entryPathScroll + _.MAX_VISIBLE_LIST then
+    ctx.entryPathScroll = ctx.entryPathSel -
+    _.MAX_VISIBLE_LIST
+  end
   if ctx.entryPathSel < ctx.entryPathScroll + 1 then ctx.entryPathScroll = ctx.entryPathSel - 1 end
   local titleStr
   if isBoot then

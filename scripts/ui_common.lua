@@ -37,7 +37,7 @@ common.ROW_H                       = 24
 common.MARGIN_X, common.MARGIN_Y   = 40, 28
 common.DEFAULT_W, common.DEFAULT_H = 640, 448
 common.MAX_VISIBLE                 = 10
-common.MAX_VISIBLE_LIST            = 12  -- menu entries, path picker, entry paths, entry args, eGSM editor
+common.MAX_VISIBLE_LIST            = 12                    -- menu entries, path picker, entry paths, entry args, eGSM editor
 common.DIM_ENTRY                   = Color.new(56, 56, 56) -- darker than DIM for disabled list rows
 common.VALUE_X                     = 360
 common.VALUE_MAX_LEN               = 38
@@ -53,7 +53,7 @@ common.PAD_HINT_ROW_H              = 28
 common.PAD_HINT_ROW_GAP            = 6
 common.PAD_HINT_SIDE_MARGIN        = 16
 common.PAD_HINT_ITEM_GAP           = 20
-common.PAD_HINT_TOTAL_H            = common.PAD_HINT_ROW_H * 2 + common.PAD_HINT_ROW_GAP  -- height when 2 rows
+common.PAD_HINT_TOTAL_H            = common.PAD_HINT_ROW_H * 2 + common.PAD_HINT_ROW_GAP -- height when 2 rows
 common.DESC_TO_HINT_MARGIN         = 20
 common.DESC_Y_BOTTOM               = common.HINT_Y - common.PAD_HINT_TOTAL_H - common.DESC_TO_HINT_MARGIN
 common.PAD_HINT_DEFAULT_WIDTH      = 560
@@ -429,14 +429,29 @@ function common.centerX(c, textWidth)
   return math.max(mx, math.floor((w - textWidth) / 2))
 end
 
--- Draw "Saved." splash; decrement ctx.saveFlash. Returns true when flash finished and returnToSelectConfigAfterSaveFlash is set.
+-- Draw "Saved" splash with location; decrement ctx.saveFlash. Returns true when flash finished and returnToSelectConfigAfterSaveFlash is set.
 function common.drawSavedSplash(ctx)
   if not ctx.saveFlash or ctx.saveFlash <= 0 then return false end
   local _ = ctx._
+  local lineH = _.LINE_H or common.LINE_H
   local msg = _.editor_str.saved
-  local tw = common.calcTextWidth(_.font, msg, 1) or (#msg * 12)
-  common.drawText(_.font, _.drawMode, common.centerX(_, tw),
-    math.floor(((_.h or common.DEFAULT_H) / 2) - ((_.LINE_H or common.LINE_H) / 2)), 1, msg, _.HIGHLIGHT)
+  local tw = common.calcTextWidth(_.font, msg, 1) or (#msg * 14)
+  local pathStr = (ctx.currentPath and ctx.currentPath ~= "") and ctx.currentPath or ""
+  if pathStr ~= "" and #pathStr > 52 then pathStr = pathStr:sub(1, 49) .. "..." end
+  local pathW = (pathStr ~= "") and (common.calcTextWidth(_.font, pathStr, 0.8) or (#pathStr * 10)) or 0
+  local boxW = math.max(tw, pathW) + 48
+  local boxH = (pathStr ~= "" and (lineH * 2 + 24) or (lineH + 24))
+  local boxX = math.floor(((_.w or common.DEFAULT_W) - boxW) / 2)
+  local boxY = math.floor(((_.h or common.DEFAULT_H) - boxH) / 2)
+  local splashBg = Color.new(40, 40, 48, 128)
+  if _.Graphics and _.Graphics.drawRect then
+    _.Graphics.drawRect(boxX, boxY, boxW, boxH, splashBg)
+  end
+  local centerY = boxY + math.floor((boxH - (pathStr ~= "" and lineH * 2 or lineH)) / 2)
+  common.drawText(_.font, _.drawMode, common.centerX(_, tw), centerY, 1, msg, _.HIGHLIGHT)
+  if pathStr ~= "" then
+    common.drawText(_.font, _.drawMode, common.centerX(_, pathW), centerY + lineH, 1, pathStr, _.HIGHLIGHT)
+  end
   ctx.saveFlash = ctx.saveFlash - 1
   return (ctx.saveFlash == 0 and ctx.returnToSelectConfigAfterSaveFlash)
 end

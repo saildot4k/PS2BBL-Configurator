@@ -48,6 +48,7 @@ local function run(ctx)
   if ctx.textInputGridSel > #keyList then ctx.textInputGridSel = #keyList end
   local keyY = _.KEYBOARD_CENTER_Y - _.scaleY(50)
   local kw, kh = _.KEY_WIDTH - _.KEY_GAP, _.KEY_H - _.KEY_GAP
+  local keyScale = 0.7
   local function drawKey(kx, ky, w, h, label, sel)
     local bg = sel and _.KEY_BG_SEL or _.KEY_BG
     local border = sel and _.KEY_BORDER_SEL or _.KEY_BORDER
@@ -56,10 +57,10 @@ local function run(ctx)
     _.Graphics.drawRect(kx, ky + h - 1, w, 1, border)
     _.Graphics.drawRect(kx, ky, 1, h, border)
     _.Graphics.drawRect(kx + w - 1, ky, 1, h, border)
-    local textW = _.KEY_CHAR_W * #label
+    local textW = (_.common.calcTextWidth and _.common.calcTextWidth(_.font, label, keyScale)) or (_.KEY_CHAR_W * #label)
     local textX = math.max(kx, math.floor(kx + (w - textW) / 2))
     local textY = math.floor(ky + (_.KEY_H - _.KEY_LH) / 2) - 3.5
-    _.drawText(_.font, _.drawMode, textX, textY, 0.7, label, sel and _.HIGHLIGHT or _.WHITE)
+    _.drawText(_.font, _.drawMode, textX, textY, keyScale, label, sel and _.HIGHLIGHT or _.WHITE)
   end
   local rowStart = ctx.textInputTitleIdMode and { 1, 11, 21, 30 } or { 1, 13, 25, 36 }
   for r = 1, 4 do

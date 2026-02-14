@@ -165,12 +165,62 @@ local function run(ctx)
         valDisplay = _.common_str.not_set
       end
       if valDisplay then
-        local maxLen = (o.optType == "text" and (o.maxLen or 79) > 30) and _.VALUE_MAX_LEN_LONG or _.VALUE_MAX_LEN
-        if #valDisplay > maxLen then valDisplay = valDisplay:sub(1, maxLen - 3) .. "..." end
         if valDisplay ~= "" then
           local valCol = (valDisplay == _.common_str.off or valDisplay == _.common_str.not_set) and _.DIM or
               ((i == ctx.optSel) and _.WHITE or _.GRAY)
-          _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, valDisplay, valCol)
+          local valueAreaWidth = (_.w or 640) - 72 - _.VALUE_X
+          local textW = (_.common.calcTextWidth and _.common.calcTextWidth(_.font, valDisplay, _.FONT_SCALE)) or
+              (#valDisplay * 10)
+          local drawVal = valDisplay
+          if i == ctx.optSel and textW > valueAreaWidth then
+            -- Autoscroll long value (e.g. DKWDRV path): hold at start, scroll slowly, hold at end then repeat
+            ctx.editorValueScrollTicks = (ctx.editorValueScrollTicks or 0) + 1
+            local ticks = ctx.editorValueScrollTicks
+            local visibleChars = 1
+            if _.common.calcTextWidth then
+              for n = 1, #valDisplay do
+                if _.common.calcTextWidth(_.font, valDisplay:sub(1, n), _.FONT_SCALE) > valueAreaWidth then
+                  visibleChars = n - 1
+                  break
+                end
+                visibleChars = n
+              end
+            else
+              visibleChars = math.max(1, math.floor(valueAreaWidth / 10))
+            end
+            visibleChars = math.min(visibleChars, #valDisplay)
+            local totalSteps = math.max(0, #valDisplay - visibleChars)
+            local HOLD_START, FRAMES_PER_STEP, HOLD_END = 50, 18, 70
+            local cycleLen = HOLD_START + totalSteps * FRAMES_PER_STEP + HOLD_END
+            if ticks >= cycleLen then
+              ctx.editorValueScrollTicks = 0
+              ticks = 0
+            end
+            local scrollStart
+            if ticks < HOLD_START then
+              scrollStart = 1
+            elseif ticks < HOLD_START + totalSteps * FRAMES_PER_STEP then
+              scrollStart = 1 + math.floor((ticks - HOLD_START) / FRAMES_PER_STEP)
+            else
+              scrollStart = totalSteps + 1
+            end
+            drawVal = valDisplay:sub(scrollStart, scrollStart + visibleChars - 1)
+          elseif i ~= ctx.optSel then
+            -- Truncate to fit within value area (screen margin)
+            if textW > valueAreaWidth and _.common.calcTextWidth then
+              for n = 1, #valDisplay do
+                if _.common.calcTextWidth(_.font, valDisplay:sub(1, n) .. "...", _.FONT_SCALE) > valueAreaWidth then
+                  drawVal = (n > 1 and (valDisplay:sub(1, n - 1) .. "...") or "...")
+                  break
+                end
+                drawVal = valDisplay
+              end
+            elseif textW > valueAreaWidth then
+              local maxLen = math.max(1, math.floor(valueAreaWidth / 10) - 3)
+              drawVal = valDisplay:sub(1, maxLen) .. "..."
+            end
+          end
+          _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, drawVal, valCol)
         end
       elseif o.optType == "color" then
         local r, g, b, a = _.parseColor(_.config_parse.get(ctx.lines, o.key) or o.default)
@@ -197,9 +247,11 @@ local function run(ctx)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintItems, nil, _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
       if ctx.optSel > 1 then ctx.optSel = ctx.optSel - 1 else ctx.optSel = #ctx.optList end
+      ctx.editorValueScrollTicks = nil
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
       if ctx.optSel < #ctx.optList then ctx.optSel = ctx.optSel + 1 else ctx.optSel = 1 end
+      ctx.editorValueScrollTicks = nil
     end
     if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_L1 | _.PAD_R1 | _.PAD_L2 | _.PAD_R2)) ~= 0 then
       local o = ctx.optList[ctx.optSel]

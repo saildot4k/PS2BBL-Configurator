@@ -149,13 +149,13 @@ local function runMain(s, pad)
   end
   dt(s.font, s.drawMode, M, MY, 1.1, main_str.main_title or "", common.WHITE)
   local versionStr = (type(APP_VERSION) == "string" and APP_VERSION ~= "") and APP_VERSION or
-  (main_str.version_unknown or "unknown")
+      (main_str.version_unknown or "unknown")
   local vw = common.calcTextWidth(s.font, versionStr, 0.75) or (#versionStr * 9)
   local w = s.w or 640
   dt(s.font, s.drawMode, w - M - vw, MY, 0.75, versionStr, common.DIM)
   dt(s.font, s.drawMode, M, MY + sc(22), 0.75, main_str.main_sub or "", common.DIM)
   local hintItems = (not C.langCycleDisabled and C.langFiles and #C.langFiles > 1 and main_str.main_hint_items_with_lang) or
-  main_str.main_hint_items
+      main_str.main_hint_items
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, hintItems or {}, nil, common.DIM)
   for i, label in ipairs(s.main) do
     local y = MY + sc(50) + (i - 1) * L

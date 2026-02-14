@@ -63,7 +63,9 @@ local function applyManualPath(ctx, val)
     if ctx.pathPickerEditIdx then
       local item = paths[ctx.pathPickerEditIdx]
       if type(item) == "table" then item.value = val else paths[ctx.pathPickerEditIdx] = { value = val, disabled = false } end
-    else table.insert(paths, { value = val, disabled = false }) end
+    else
+      table.insert(paths, { value = val, disabled = false })
+    end
     _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
     ctx.entryIdx = ctx.pathPickerForEntryIdx
     ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -103,7 +105,9 @@ local function run(ctx)
         if ctx.pathPickerEditIdx then
           local item = paths[ctx.pathPickerEditIdx]
           if type(item) == "table" then item.value = chosenVal else paths[ctx.pathPickerEditIdx] = { value = chosenVal, disabled = false } end
-        else table.insert(paths, { value = chosenVal, disabled = false }) end
+        else
+          table.insert(paths, { value = chosenVal, disabled = false })
+        end
         _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
         ctx.entryIdx = ctx.pathPickerForEntryIdx
         ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -355,8 +359,11 @@ local function run(ctx)
                 local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
                 if ctx.pathPickerEditIdx then
                   local item = paths[ctx.pathPickerEditIdx]
-                  if type(item) == "table" then item.value = pathVal else paths[ctx.pathPickerEditIdx] = { value = pathVal, disabled = false } end
-                else table.insert(paths, { value = pathVal, disabled = false }) end
+                  if type(item) == "table" then item.value = pathVal else paths[ctx.pathPickerEditIdx] = { value =
+                    pathVal, disabled = false } end
+                else
+                  table.insert(paths, { value = pathVal, disabled = false })
+                end
                 _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
                 if e.noargs then _.config_parse.setMenuEntryArgs(ctx.lines, ctx.pathPickerForEntryIdx, {}) end
                 ctx.entryIdx = ctx.pathPickerForEntryIdx
@@ -528,7 +535,9 @@ local function run(ctx)
         if ctx.pathPickerEditIdx then
           local item = paths[ctx.pathPickerEditIdx]
           if type(item) == "table" then item.value = val else paths[ctx.pathPickerEditIdx] = { value = val, disabled = false } end
-        else table.insert(paths, { value = val, disabled = false }) end
+        else
+          table.insert(paths, { value = val, disabled = false })
+        end
         _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
         ctx.entryIdx = ctx.pathPickerForEntryIdx
         ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -672,7 +681,9 @@ local function run(ctx)
             if ctx.pathPickerEditIdx then
               local item = paths[ctx.pathPickerEditIdx]
               if type(item) == "table" then item.value = val else paths[ctx.pathPickerEditIdx] = { value = val, disabled = false } end
-            else table.insert(paths, { value = val, disabled = false }) end
+            else
+              table.insert(paths, { value = val, disabled = false })
+            end
             _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
             ctx.entryIdx = ctx.pathPickerForEntryIdx
             ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"

@@ -13,7 +13,9 @@ local function run(ctx)
   end
   local args = isBoot and (function()
     local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
-    local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+    local t = {}
+    for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
+    return t
   end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
   local opts = _.config_options.cdrom_options or {}
   if ctx.cdromOptSel < 1 then ctx.cdromOptSel = 1 end
@@ -57,7 +59,9 @@ local function run(ctx)
     local key = opts[ctx.cdromOptSel].key
     args = isBoot and (function()
       local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
-      local t = {} for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end return t
+      local t = {}
+      for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
+      return t
     end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
     if hasArg(key) then
       local newArgs = {}
@@ -66,7 +70,8 @@ local function run(ctx)
         if av ~= key then table.insert(newArgs, type(a) == "table" and a or { value = a, disabled = false }) end
       end
       if isBoot then
-        local v = {} for _, item in ipairs(newArgs) do table.insert(v, type(item) == "table" and item.value or item) end
+        local v = {}
+        for _, item in ipairs(newArgs) do table.insert(v, type(item) == "table" and item.value or item) end
         _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
       else
         _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, newArgs)
@@ -75,7 +80,8 @@ local function run(ctx)
     else
       table.insert(args, { value = key, disabled = false })
       if isBoot then
-        local v = {} for _, item in ipairs(args) do table.insert(v, type(item) == "table" and item.value or item) end
+        local v = {}
+        for _, item in ipairs(args) do table.insert(v, type(item) == "table" and item.value or item) end
         _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
       else
         _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, args)

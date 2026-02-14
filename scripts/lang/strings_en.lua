@@ -11,7 +11,7 @@ strings.main = {
   main_title = "OSDMenu Configurator",
   main_sub = "Pick one of the options below",
   version_unknown = "unknown",
-  main_hint_items = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "start", label = "Save", row = 2 } },
+  main_hint_items = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "start", label = "Exit", row = 2 } },
   main_hint_items_with_lang = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "L1", label = "Language", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Language", row = 2 } },
   main_osdmenu_mc = "OSDMenu",
   main_hosdmenu_hdd = "HOSDMenu",
@@ -38,7 +38,6 @@ strings.main = {
   select_config_osdmenu_cnf = "OSDMENU.CNF",
   select_config_osdmbr_cnf = "OSDMBR.CNF",
   select_config_osdgsm_cnf = "OSDGSM.CNF",
-  select_config_back = "Back",
 }
 
 -- Editor
@@ -84,13 +83,13 @@ strings.menu_entries = {
   cross_select_circle_back_items = { { pad = "cross", label = "Enter" }, { pad = "circle", label = "Back" } },
   edit_name = "Edit name",
   paths_label = "Paths",
-  launch_disc_options = "Launch Disc options",
+  launch_disc_options = "Launch disc options",
   arguments = "Arguments",
   back = "Back",
   entry_name_prompt = "Entry name",
   add_entry_label = "New entry",
-  launch_disc_options_title = "Launch Disc options",
-  launch_disc_options_sub = "Toggle options",
+  launch_disc_options_title = "Launch disc options",
+  launch_disc_options_sub = "These options override the default disc launch behavior",
   paths_for_entry_title = "Paths for %s (entry %s)",
   paths_hint_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
   paths_hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
@@ -99,7 +98,7 @@ strings.menu_entries = {
   args_hint_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
   args_hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
   args_hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
-  cdrom_hint = "Launch Disc entry: use Launch Disc options for flags",
+  cdrom_hint = "Launch disc entry: use Launch disc options for flags",
   cdrom_toggle_hint_items = { { pad = "cross", label = "Toggle" }, { pad = "circle", label = "Back" } },
   new_argument_prompt = "New argument",
   edit_argument_prompt = "Edit argument",
@@ -130,7 +129,7 @@ strings.path_picker = {
 strings.devices = {
   memory_card_1 = "Memory Card 1",
   memory_card_2 = "Memory Card 2",
-  launch_disc = "Launch Disc",
+  launch_disc = "Launch disc with override",
   dvd_player = "DVD Player",
   osd = "OSD",
   shutdown = "Shutdown",
@@ -221,10 +220,10 @@ strings.options_osdmbr = {
 -- eGSM editor (single screen: default + title overrides)
 strings.egsm = {
   default_label = "Default",
-  add_title_id = "Add title ID...",
   title_id_prompt = "Title ID (e.g. SCES12345)",
-  disabled = "Disabled",
-  hint_items = { { pad = "cross", label = "Add", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "cross", label = "Edit value", row = 2 }, { pad = "start", label = "Save", row = 2 } },
+  hint_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "start", label = "Save", row = 2 } },
+  hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "start", label = "Save", row = 2 } },
+  hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "start", label = "Save", row = 2 } },
   -- Value edit screen (per loader README: fp1/fp2/1080ix1..3, compat 1/2/3)
   value_edit_title = "eGSM value",
   result_prefix = "Value: ",
@@ -236,9 +235,9 @@ strings.egsm = {
   video_1080i_3x = "Force 1080i (3x scale)",
   compat_header = "Compatibility",
   compat_none = "None",
-  compat_1 = "Option 1 (OPL-like)",
-  compat_2 = "Option 2",
-  compat_3 = "Option 3",
+  compat_1 = "Field flipping type 1 (OPL-like)",
+  compat_2 = "Field flipping type 2",
+  compat_3 = "Field flipping type 3",
   value_edit_hint = { { pad = "cross", label = "Select", row = 1 }, { pad = "circle", label = "Back", row = 1 } },
 }
 
@@ -248,7 +247,7 @@ for k, v in pairs(strings.options_osdmenu or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdmbr or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdgsm or {}) do strings.options[k] = v end
 
--- CDROM option labels/descs (Launch Disc options sub-screen). Keys are symbolic (no raw args).
+-- CDROM option labels/descs (Launch disc options sub-screen). Keys are symbolic (no raw args).
 strings.cdrom_options = {
   nologo = { label = "Skip PS2LOGO", desc = "Skip PlayStation 2 logo at disc boot" },
   nogameid = { label = "Disable visual game ID", desc = "Disable visual game ID" },

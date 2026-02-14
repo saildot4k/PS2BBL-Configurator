@@ -147,6 +147,7 @@ config_options.EGSM_COMPAT = { "", "1", "2", "3" }
 function config_options.getEgsmVideoOptions()
   return config_options.EGSM_VIDEO
 end
+
 function config_options.getEgsmCompatOptions()
   return config_options.EGSM_COMPAT
 end

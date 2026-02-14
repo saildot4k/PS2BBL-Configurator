@@ -32,44 +32,54 @@ local function run(ctx)
   _.common.drawSaveError(ctx)
 
   local entries = _.config_parse.getEgsmEntries(ctx.lines)
-  local total = 2 + #entries
+  local total = 1 + #entries
   if ctx.egsmSel < 1 then ctx.egsmSel = 1 end
   if ctx.egsmSel > total then ctx.egsmSel = total end
-  ctx.egsmScroll = ctx.egsmScroll or 0
-  if ctx.egsmSel > ctx.egsmScroll + _.MAX_VISIBLE_LIST then ctx.egsmScroll = ctx.egsmSel - _.MAX_VISIBLE_LIST end
-  if ctx.egsmSel < ctx.egsmScroll + 1 then ctx.egsmScroll = ctx.egsmSel - 1 end
-  ctx.egsmScroll = math.max(0, math.min(ctx.egsmScroll, total - _.MAX_VISIBLE_LIST))
-
-  local function valueDisplay(val, commented)
-    if commented or val == "disabled" or val == "" then
-      return _.strings.egsm.disabled
-    end
-    return val
+  local maxVis = _.MAX_VISIBLE_LIST
+  if total > maxVis then
+    ctx.egsmScroll = ctx.egsmSel - math.floor(maxVis / 2)
+    ctx.egsmScroll = math.max(0, math.min(ctx.egsmScroll, total - maxVis))
+  else
+    ctx.egsmScroll = 0
   end
 
+  local defValue, defCommented = _.config_parse.getEgsmDefault(ctx.lines)
   local startY = _.MARGIN_Y + _.scaleY(50)
-  for i = (ctx.egsmScroll or 0) + 1, math.min((ctx.egsmScroll or 0) + _.MAX_VISIBLE_LIST, total) do
-    local y = startY + (i - (ctx.egsmScroll or 0) - 1) * _.LINE_H
+  local counterStr = ctx.egsmSel .. "/" .. total
+  local counterW = (_.common.calcTextWidth and _.common.calcTextWidth(_.font, counterStr, 0.7)) or (#counterStr * 8)
+  _.drawText(_.font, _.drawMode, math.max(_.MARGIN_X, (_.w or 640) - _.MARGIN_X - counterW), _.MARGIN_Y, 0.7, counterStr,
+  _.DIM)
+  for i = ctx.egsmScroll + 1, math.min(ctx.egsmScroll + maxVis, total) do
+    local y = startY + (i - ctx.egsmScroll - 1) * _.LINE_H
     local col = (i == ctx.egsmSel) and _.SELECTED_ENTRY or _.WHITE
     if i == 1 then
-      local def = _.config_parse.getEgsmDefault(ctx.lines)
-      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.egsmSel,
-        _.strings.egsm.default_label, col)
-      _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, valueDisplay(def, (def == "disabled")),
-        (def == "" or def == "disabled") and _.DIM or col)
-    elseif i <= 1 + #entries then
-      local ent = entries[i - 1]
-      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.egsmSel, ent.titleId, col)
-      _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, valueDisplay(ent.value, ent.commented),
-        (ent.commented or ent.value == "" or ent.value == "disabled") and _.DIM or col)
+      if defCommented then
+        col = (i == ctx.egsmSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
+            (_.DIM_ENTRY or _.DIM)
+      end
+      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.egsmSel, _.strings.egsm.default_label, col)
+      _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, (defValue == "" and "—") or defValue, col)
     else
-      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.egsmSel,
-        _.strings.egsm.add_title_id, col)
+      local ent = entries[i - 1]
+      if ent.commented then
+        col = (i == ctx.egsmSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
+            (_.DIM_ENTRY or _.DIM)
+      end
+      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.egsmSel, ent.titleId, col)
+      _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, (ent.value == "" and "—") or ent.value, col)
     end
   end
 
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7,
-    _.strings.egsm.hint_items, nil, _.DIM, _.w - 2 * _.MARGIN_X)
+  local hintItems = _.strings.egsm.hint_items
+  if ctx.egsmSel == 1 then
+    hintItems = defCommented and (_.strings.egsm.hint_items_with_enable or hintItems) or
+        (_.strings.egsm.hint_items_with_disable or hintItems)
+  elseif ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries then
+    local ent = entries[ctx.egsmSel - 1]
+    hintItems = ent.commented and (_.strings.egsm.hint_items_with_enable or hintItems) or
+        (_.strings.egsm.hint_items_with_disable or hintItems)
+  end
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintItems, nil, _.DIM, _.w - 2 * _.MARGIN_X)
 
   if (_.padEffective & _.PAD_UP) ~= 0 then
     ctx.egsmSel = ctx.egsmSel - 1; if ctx.egsmSel < 1 then ctx.egsmSel = total end
@@ -78,17 +88,32 @@ local function run(ctx)
     ctx.egsmSel = ctx.egsmSel + 1; if ctx.egsmSel > total then ctx.egsmSel = 1 end
   end
 
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and (ctx.egsmSel == 1 or (ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries)) then
+    if ctx.egsmSel == 1 then
+      _.config_parse.setEgsmDefault(ctx.lines, defValue, not defCommented)
+    else
+      local ent = entries[ctx.egsmSel - 1]
+      _.config_parse.setEgsmEntry(ctx.lines, ent.titleId, ent.value, not ent.commented)
+    end
+    ctx.configModified = true
+  end
+
   if (_.padEffective & _.PAD_CROSS) ~= 0 and (ctx.egsmSel == 1 or (ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries)) then
     ctx.egsmEditDefault = (ctx.egsmSel == 1)
     if not ctx.egsmEditDefault then
-      ctx.egsmEditTitleId = entries[ctx.egsmSel - 1].titleId
+      local ent = entries[ctx.egsmSel - 1]
+      ctx.egsmEditTitleId = ent.titleId
+      ctx.egsmEditCommented = ent.commented
     else
       ctx.egsmEditTitleId = nil
+      ctx.egsmEditCommented = defCommented
     end
     ctx.egsmVideoIdx = nil
     ctx.egsmCompatIdx = nil
     ctx.state = "egsm_value_edit"
-  elseif (_.padEffective & _.PAD_CROSS) ~= 0 and ctx.egsmSel == total then
+  end
+
+  if (_.padEffective & _.PAD_SELECT) ~= 0 then
     ctx.textInputPrompt = _.strings.egsm.title_id_prompt
     ctx.textInputValue = ""
     ctx.textInputMaxLen = 15
@@ -96,7 +121,14 @@ local function run(ctx)
     ctx.textInputCallback = function(val)
       local id = _.config_parse.parseTitleIdInput and _.config_parse.parseTitleIdInput(val or "")
       if id and _.config_parse.isValidTitleId(id) then
-        _.config_parse.setEgsmEntry(ctx.lines, id, "disabled", true)
+        _.config_parse.setEgsmEntry(ctx.lines, id, "", true)
+        local entriesAfter = _.config_parse.getEgsmEntries(ctx.lines)
+        for i, ent in ipairs(entriesAfter) do
+          if ent.titleId == id then
+            ctx.egsmSel = 1 + i
+            break
+          end
+        end
       end
       ctx.state = "egsm_editor"
     end
@@ -110,7 +142,8 @@ local function run(ctx)
   if (_.padEffective & _.PAD_SQUARE) ~= 0 and ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries then
     local ent = entries[ctx.egsmSel - 1]
     _.config_parse.removeEgsmEntry(ctx.lines, ent.titleId)
-    if ctx.egsmSel > #entries then ctx.egsmSel = math.max(1, #entries + 1) end
+    ctx.egsmSel = math.min(ctx.egsmSel, 1 + #entries - 1)
+    if ctx.egsmSel < 1 then ctx.egsmSel = 1 end
   end
 
   if (_.padEffective & _.PAD_START) ~= 0 then

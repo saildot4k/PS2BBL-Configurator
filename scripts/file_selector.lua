@@ -111,11 +111,17 @@ function file_selector.getDevices(context)
   for _, opt in ipairs(BDM_OPTIONS) do
     if not isMbr or opt.mbr then
       local desc = (opt.deviceId and opt.deviceId:sub(1, 3) == "ata") and dev.exfat_hdd_mass0 or
-      (dev[BDM_DESC[opt.deviceId]] or opt.deviceId)
+          (dev[BDM_DESC[opt.deviceId]] or opt.deviceId)
       local deviceType = (opt.bdmType == "ata" and "hdd") or opt.bdmType
       table.insert(out,
-        withFlags({ name = opt.deviceId, desc = desc, deviceType = deviceType, deviceId = opt.deviceId, bdmPathPrefix =
-        opt.bdmPathPrefix }))
+        withFlags({
+          name = opt.deviceId,
+          desc = desc,
+          deviceType = deviceType,
+          deviceId = opt.deviceId,
+          bdmPathPrefix =
+              opt.bdmPathPrefix
+        }))
     end
   end
   for _, s in ipairs(SPECIAL) do
