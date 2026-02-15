@@ -6,6 +6,53 @@ local function run(ctx)
     ctx.state = "select_config"; ctx.currentPath = nil; return
   end
 
+  -- Leave-save prompt when going back to config select with unsaved changes
+  if ctx.editorLeavePrompt then
+    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.editor_str.leave_save_prompt, _.WHITE)
+    _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.editor_str.leave_save_hint_items, nil, _.DIM,
+      _.w - 2 * _.MARGIN_X)
+    if (_.padEffective & _.PAD_CROSS) ~= 0 then
+      ctx.editorLeavePrompt = nil
+      ctx.saveError = nil
+      local locations = _.getLocations(ctx.context, "osdgsm_cnf", ctx.chosenMcSlot)
+      if #locations >= 2 then
+        ctx.returnToSelectConfigAfterSave = true
+        ctx.saveChoices = locations
+        ctx.saveSel = 1
+        ctx.state = "choose_save"
+      else
+        local path = ctx.currentPath or (locations and locations[1])
+        if path and path ~= "" then
+          ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
+          local parentDir = path:match("^(.+)/[^/]+$")
+          local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
+          if ok then
+            ctx.currentPath = path
+            ctx.saveFlash = 60
+            ctx.configModified = false
+            ctx.returnToSelectConfigAfterSaveFlash = true
+            ctx.saveError = nil
+          else
+            ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+          end
+        else
+          ctx.saveError = _.editor_str.no_save_location
+        end
+      end
+    elseif (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
+      ctx.editorLeavePrompt = nil
+      ctx.state = "select_config"
+      ctx.currentPath = nil
+      ctx.lines = nil
+      ctx.egsmSel = 1
+      ctx.egsmScroll = 0
+      ctx.saveError = nil
+    elseif (_.padEffective & _.PAD_CIRCLE) ~= 0 then
+      ctx.editorLeavePrompt = nil
+    end
+    return
+  end
+
   local pathStr = ctx.currentPath or ""
   if #pathStr > 56 then
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 0.8, pathStr:sub(1, 56), _.DIM)
@@ -15,6 +62,17 @@ local function run(ctx)
   end
 
   if ctx.returnToSelectConfigAfterSaveFlash then
+    if ctx.saveFlash and ctx.saveFlash > 0 then
+      if _.common.drawSavedSplash(ctx) then
+        ctx.returnToSelectConfigAfterSaveFlash = nil
+        ctx.state = "select_config"
+        ctx.currentPath = nil
+        ctx.lines = nil
+        ctx.egsmSel = 1
+        ctx.egsmScroll = 0
+        ctx.saveError = nil
+      end
+    end
     return
   end
   _.common.drawSaveError(ctx)
@@ -36,7 +94,7 @@ local function run(ctx)
   local counterStr = ctx.egsmSel .. "/" .. total
   local counterW = (_.common.calcTextWidth and _.common.calcTextWidth(_.font, counterStr, 0.7)) or (#counterStr * 8)
   _.drawText(_.font, _.drawMode, math.max(_.MARGIN_X, (_.w or 640) - _.MARGIN_X - counterW), _.MARGIN_Y, 0.7, counterStr,
-  _.DIM)
+    _.DIM)
   for i = ctx.egsmScroll + 1, math.min(ctx.egsmScroll + maxVis, total) do
     local y = startY + (i - ctx.egsmScroll - 1) * _.LINE_H
     local col = (i == ctx.egsmSel) and _.SELECTED_ENTRY or _.WHITE
@@ -150,6 +208,7 @@ local function run(ctx)
         if ok then
           ctx.currentPath = path
           ctx.saveFlash = 60
+          ctx.configModified = false
         else
           ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
         end
@@ -160,7 +219,11 @@ local function run(ctx)
   end
 
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
-    ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.egsmSel = 1; ctx.egsmScroll = 0; ctx.saveError = nil
+    if ctx.configModified then
+      ctx.editorLeavePrompt = true
+    else
+      ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.egsmSel = 1; ctx.egsmScroll = 0; ctx.saveError = nil
+    end
   end
 
   if ctx.saveFlash and ctx.saveFlash > 0 then
