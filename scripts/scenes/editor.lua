@@ -58,6 +58,17 @@ local function run(ctx)
   end
 
   if ctx.returnToSelectConfigAfterSaveFlash then
+    if ctx.saveFlash and ctx.saveFlash > 0 then
+      if _.common.drawSavedSplash(ctx) then
+        ctx.returnToSelectConfigAfterSaveFlash = nil
+        ctx.state = "select_config"
+        ctx.currentPath = nil
+        ctx.lines = nil
+        ctx.optList = nil
+        ctx.editorCategoryIdx = 0
+        ctx.saveError = nil
+      end
+    end
     return
   end
   _.common.drawSaveError(ctx)
