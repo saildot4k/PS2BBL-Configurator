@@ -51,7 +51,16 @@ local function run(ctx)
         " - " .. _.menu_str.arguments
   else
     local name = _.config_parse.getMenuEntryName(ctx.lines, ctx.entryIdx) or ""
-    titleStr = string.format(_.menu_str.args_for_entry_title, name ~= "" and name or _.common_str.empty, ctx.entryIdx)
+    name = name ~= "" and name or _.common_str.empty
+    local prefix = "Arguments for "
+    local suffix = " (entry " .. tostring(ctx.entryIdx) .. ")"
+    local prefixW = _.common.calcTextWidth(_.font, prefix, 1) or 0
+    local suffixW = _.common.calcTextWidth(_.font, suffix, 1) or 0
+    local availableW = (_.w or 640) - 2 * _.MARGIN_X - prefixW - suffixW
+    if availableW > 0 then
+      name = _.common.truncateTextToWidth(_.font, name, availableW, 1)
+    end
+    titleStr = string.format(_.menu_str.args_for_entry_title, name, ctx.entryIdx)
   end
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleStr, _.WHITE)
   if not isBoot and hasCdrom then

@@ -31,7 +31,7 @@ local function run(ctx)
   if ctx.entryPathSel > total then ctx.entryPathSel = (total > 0) and total or 1 end
   if ctx.entryPathSel > ctx.entryPathScroll + _.MAX_VISIBLE_LIST then
     ctx.entryPathScroll = ctx.entryPathSel -
-    _.MAX_VISIBLE_LIST
+        _.MAX_VISIBLE_LIST
   end
   if ctx.entryPathSel < ctx.entryPathScroll + 1 then ctx.entryPathScroll = ctx.entryPathSel - 1 end
   local titleStr
@@ -40,7 +40,16 @@ local function run(ctx)
         ctx.bootKey
   else
     local name = _.config_parse.getMenuEntryName(ctx.lines, ctx.entryIdx) or ""
-    titleStr = string.format(_.menu_str.paths_for_entry_title, name ~= "" and name or _.common_str.empty, ctx.entryIdx)
+    name = name ~= "" and name or _.common_str.empty
+    local prefix = "Paths for "
+    local suffix = " (entry " .. tostring(ctx.entryIdx) .. ")"
+    local prefixW = _.common.calcTextWidth(_.font, prefix, 1) or 0
+    local suffixW = _.common.calcTextWidth(_.font, suffix, 1) or 0
+    local availableW = (_.w or 640) - 2 * _.MARGIN_X - prefixW - suffixW
+    if availableW > 0 then
+      name = _.common.truncateTextToWidth(_.font, name, availableW, 1)
+    end
+    titleStr = string.format(_.menu_str.paths_for_entry_title, name, ctx.entryIdx)
   end
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleStr, _.WHITE)
   local argsRow = pathRows + 1

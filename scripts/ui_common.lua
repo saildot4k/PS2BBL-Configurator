@@ -376,6 +376,24 @@ function common.calcTextWidth(font, text, scale)
   return math.floor(approxCharW * #text)
 end
 
+-- Truncate text to fit within maxPixels at scale, appending "..." when shortened.
+function common.truncateTextToWidth(font, text, maxPixels, scale)
+  if not text or maxPixels <= 0 then return text or "" end
+  local s = scale or 1
+  local ellipsis = "..."
+  if (common.calcTextWidth(font, text, s) or 0) <= maxPixels then return text end
+  local ellipsisW = common.calcTextWidth(font, ellipsis, s) or (3 * math.floor(8 * s))
+  local maxForName = maxPixels - ellipsisW
+  if maxForName <= 0 then return ellipsis end
+  local n = #text
+  while n > 0 do
+    local part = text:sub(1, n) .. ellipsis
+    if (common.calcTextWidth(font, part, s) or 0) <= maxPixels then return part end
+    n = n - 1
+  end
+  return ellipsis
+end
+
 function common.drawText(font, mode, x, y, scale, text, color, drawHeight)
   local c = color or common.WHITE
   local ix, iy = math.floor(tonumber(x) or 0), math.floor(tonumber(y) or 0)
