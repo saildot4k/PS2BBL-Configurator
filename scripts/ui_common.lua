@@ -443,7 +443,7 @@ function common.drawSavedSplash(ctx)
   local boxH = (pathStr ~= "" and (lineH * 2 + 24) or (lineH + 24))
   local boxX = math.floor(((_.w or common.DEFAULT_W) - boxW) / 2)
   local boxY = math.floor(((_.h or common.DEFAULT_H) - boxH) / 2)
-  local splashBg = Color.new(40, 40, 48, 128)
+  local splashBg = Color.new(40, 40, 48, 110)
   if _.Graphics and _.Graphics.drawRect then
     _.Graphics.drawRect(boxX, boxY, boxW, boxH, splashBg)
   end

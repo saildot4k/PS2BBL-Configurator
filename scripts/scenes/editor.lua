@@ -57,18 +57,6 @@ local function run(ctx)
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 0.8, pathStr, _.DIM)
   end
 
-  if ctx.saveFlash and ctx.saveFlash > 0 then
-    if _.common.drawSavedSplash(ctx) then
-      ctx.returnToSelectConfigAfterSaveFlash = nil
-      ctx.state = "select_config"
-      ctx.currentPath = nil
-      ctx.lines = nil
-      ctx.optList = nil
-      ctx.editorCategoryIdx = 0
-      ctx.saveError = nil
-      return
-    end
-  end
   if ctx.returnToSelectConfigAfterSaveFlash then
     return
   end
@@ -413,6 +401,18 @@ local function run(ctx)
       else
         ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0; ctx.saveError = nil
       end
+    end
+  end
+
+  if ctx.saveFlash and ctx.saveFlash > 0 then
+    if _.common.drawSavedSplash(ctx) then
+      ctx.returnToSelectConfigAfterSaveFlash = nil
+      ctx.state = "select_config"
+      ctx.currentPath = nil
+      ctx.lines = nil
+      ctx.optList = nil
+      ctx.editorCategoryIdx = 0
+      ctx.saveError = nil
     end
   end
 end

@@ -14,18 +14,6 @@ local function run(ctx)
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 0.8, pathStr, _.DIM)
   end
 
-  if ctx.saveFlash and ctx.saveFlash > 0 then
-    if _.common.drawSavedSplash(ctx) then
-      ctx.returnToSelectConfigAfterSaveFlash = nil
-      ctx.state = "select_config"
-      ctx.currentPath = nil
-      ctx.lines = nil
-      ctx.egsmSel = 1
-      ctx.egsmScroll = 0
-      ctx.saveError = nil
-      return
-    end
-  end
   if ctx.returnToSelectConfigAfterSaveFlash then
     return
   end
@@ -173,6 +161,18 @@ local function run(ctx)
 
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.egsmSel = 1; ctx.egsmScroll = 0; ctx.saveError = nil
+  end
+
+  if ctx.saveFlash and ctx.saveFlash > 0 then
+    if _.common.drawSavedSplash(ctx) then
+      ctx.returnToSelectConfigAfterSaveFlash = nil
+      ctx.state = "select_config"
+      ctx.currentPath = nil
+      ctx.lines = nil
+      ctx.egsmSel = 1
+      ctx.egsmScroll = 0
+      ctx.saveError = nil
+    end
   end
 end
 
