@@ -104,6 +104,8 @@ local function run(ctx)
       local colInRow = ctx.textInputGridSel - rowStart[r] + 1
       local prevSize = rowSize[r - 1]
       ctx.textInputGridSel = rowStart[r - 1] + math.min(colInRow, prevSize) - 1
+    elseif r == 1 and not ctx.textInputTitleIdMode then
+      ctx.textInputGridSel = 46
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
@@ -112,6 +114,9 @@ local function run(ctx)
       local colInRow = ctx.textInputGridSel - rowStart[r] + 1
       local nextSize = rowSize[r + 1]
       ctx.textInputGridSel = rowStart[r + 1] + math.min(colInRow, nextSize) - 1
+    elseif r == maxRow and not ctx.textInputTitleIdMode then
+      local colInRow = ctx.textInputGridSel - rowStart[r] + 1
+      ctx.textInputGridSel = rowStart[1] + math.min(colInRow, rowSize[1]) - 1
     end
   end
   if (_.padEffective & _.PAD_L1) ~= 0 then ctx.textInputCursor = math.max(1, ctx.textInputCursor - 1) end

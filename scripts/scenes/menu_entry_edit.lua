@@ -25,7 +25,6 @@ local function run(ctx)
   end
   if hasCdrom then table.insert(subOpts, _.menu_str.launch_disc_options) end
   if not (hasOsdOrShutdown or hasCdrom) then table.insert(subOpts, _.menu_str.arguments) end
-  table.insert(subOpts, _.menu_str.back)
   local pathsStr = _.menu_str.paths .. (#paths == 0 and _.menu_str.none or #paths .. _.menu_str.path_s)
   local argsStr = _.menu_str.args ..
       ((hasOsdOrShutdown or hasCdrom) and _.menu_str.none or (#args == 0 and _.menu_str.none or #args .. _.menu_str.arg_s))
@@ -78,9 +77,6 @@ local function run(ctx)
       ctx.state = "entry_args"
       ctx.entryArgSel = 1
       ctx.entryArgScroll = 0
-    else
-      ctx.state = "menu_entries"
-      ctx.entryIdx = nil
     end
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then

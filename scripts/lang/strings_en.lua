@@ -85,7 +85,6 @@ strings.menu_entries = {
   paths_label = "Paths",
   launch_disc_options = "Launch disc options",
   arguments = "Arguments",
-  back = "Back",
   entry_name_prompt = "Entry name",
   add_entry_label = "New entry",
   launch_disc_options_title = "Launch disc options",
