@@ -40,12 +40,19 @@ local function run(ctx)
   local total = #args
   if ctx.entryArgSel < 1 then ctx.entryArgSel = 1 end
   if ctx.entryArgSel > total then ctx.entryArgSel = (total > 0) and total or 1 end
-  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE_LIST then ctx.entryArgScroll = ctx.entryArgSel -
-    _.MAX_VISIBLE_LIST end
+  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE_LIST then
+    ctx.entryArgScroll = ctx.entryArgSel -
+        _.MAX_VISIBLE_LIST
+  end
   if ctx.entryArgSel < ctx.entryArgScroll + 1 then ctx.entryArgScroll = ctx.entryArgSel - 1 end
-  local titleStr = isBoot and
-      ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..
-      " - " .. _.menu_str.arguments or (_.menu_str.args_for_entry .. ctx.entryIdx)
+  local titleStr
+  if isBoot then
+    titleStr = ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..
+        " - " .. _.menu_str.arguments
+  else
+    local name = _.config_parse.getMenuEntryName(ctx.lines, ctx.entryIdx) or ""
+    titleStr = string.format(_.menu_str.args_for_entry_title, name ~= "" and name or _.common_str.empty, ctx.entryIdx)
+  end
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleStr, _.WHITE)
   if not isBoot and hasCdrom then
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.75,
@@ -105,7 +112,7 @@ local function run(ctx)
       ctx.textInputTitleIdMode = nil
       ctx.textInputPrompt = _.menu_str.edit_argument_prompt
       ctx.textInputValue = type(args[ctx.entryArgSel]) == "table" and args[ctx.entryArgSel].value or
-      args[ctx.entryArgSel]
+          args[ctx.entryArgSel]
       ctx.textInputMaxLen = 79
       ctx.textInputCallback = function(val)
         local args2 = getArgs()
