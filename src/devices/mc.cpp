@@ -8,6 +8,14 @@ int mc_init(void) {
     printf("devices_mc: failed to initialize memcard server.\n");
     return ret;
   }
+
+  // Ping both memory cards.
+  // Otherwise browsing directories might return nothing.
+  int mc_type, mc_free, mc_format;
+  for (int i = 0; i < 2; i++) {
+    mcGetInfo(i, 0, &mc_type, &mc_free, &mc_format);
+    mcSync(MC_WAIT, NULL, &ret);
+  }
   return 0;
 }
 
