@@ -25,7 +25,7 @@ local function run(ctx)
         if path and path ~= "" then
           ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
           local parentDir = path:match("^(.+)/[^/]+$")
-          local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
+          local ok, err = _.common.saveConfig(ctx, path, ctx.lines, parentDir)
           if ok then
             ctx.currentPath = path
             ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
@@ -192,7 +192,7 @@ local function run(ctx)
       if path and path ~= "" then
         ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
         local parentDir = path:match("^(.+)/[^/]+$")
-        local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
+        local ok, err = _.common.saveConfig(ctx, path, ctx.lines, parentDir)
         if ok then
           ctx.currentPath = path
           ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }

@@ -11,7 +11,7 @@ local function initContext()
     chosenMcSlot = nil,
     state = "main",
     mcSel = 1,
-    pfsMounted = false,
+    hddReady = false,
     prevPad = 0,
     optList = nil,
     optSel = 1,

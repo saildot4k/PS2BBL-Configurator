@@ -180,7 +180,7 @@ local function runMain(s, pad)
       s.context = "hosdmenu"
       s.chosenMcSlot = nil
       clearPathPickerState(s)
-      if s.pfsMounted then
+      if s.hddReady then
         s.state = "select_config"; s.mainSel = 1
       else
         s.state = "initHdd"; s.initHddPhase = "load"
@@ -188,7 +188,7 @@ local function runMain(s, pad)
     elseif s.mainSel == 3 then
       s.context = "mbr"
       s.chosenMcSlot = nil
-      if s.pfsMounted then
+      if s.hddReady then
         s.state = "select_config"; s.mainSel = 1
       else
         s.state = "initHdd"; s.initHddPhase = "load"
@@ -332,8 +332,7 @@ local function runInitHdd(s, pad)
     local mp = nil
     if s.initHddFrames > 0 and s.initHddFrames % INIT_HDD_PROBE_FRAMES == 0 then
       if common.isHddPresent() then
-        if System.fileXioMount then System.fileXioMount("pfs0:", "hdd0:__sysconf") end
-        s.pfsMounted = true
+        s.hddReady = true
         s.hddNotFound = nil
         s.state = "select_config"
         s.mainSel = 1
@@ -384,10 +383,14 @@ end
 
 local function runOpen(s, pad)
   local main_str = (C.strings and C.strings.main) or {}
-  if (s.context == "hosdmenu" or s.context == "mbr") and not s.pfsMounted then
+  if (s.context == "hosdmenu" or s.context == "mbr") and not s.hddReady then
     s.state = "initHdd"
     s.initHddPhase = "load"
     return
+  end
+  -- Mount __sysconf when reading config (hosdmenu/mbr); unmount after load below
+  if (s.context == "hosdmenu" or s.context == "mbr") and System and System.fileXioMount then
+    System.fileXioMount("pfs0:", "hdd0:__sysconf")
   end
   local dt = common.drawText
   local M = common.MARGIN_X
@@ -408,6 +411,9 @@ local function runOpen(s, pad)
         for k, v in pairs(C.config_options.getOsdmenuDefaults()) do config_parse.set(s.lines, k, v) end
       end
       setStateAfterLoad(s)
+      if s.currentPath and s.currentPath:match("^pfs0:/") and System and System.fileXioUmount then
+        System.fileXioUmount("pfs0:")
+      end
     end
   elseif #existing == 1 then
     s.currentPath = existing[1]
@@ -419,6 +425,9 @@ local function runOpen(s, pad)
       if (pad & PAD_CROSS) ~= 0 then s.state = "select_config" end
     else
       setStateAfterLoad(s)
+      if s.currentPath and s.currentPath:match("^pfs0:/") and System and System.fileXioUmount then
+        System.fileXioUmount("pfs0:")
+      end
     end
   else
     s.loadChoices = existing
@@ -462,6 +471,9 @@ local function runChooseLoad(s, pad)
     if ok and s.lines then
       setStateAfterLoad(s)
       s.loadChoices = nil
+      if s.currentPath and s.currentPath:match("^pfs0:/") and System and System.fileXioUmount then
+        System.fileXioUmount("pfs0:")
+      end
     end
   end
   if (pad & PAD_CIRCLE) ~= 0 then

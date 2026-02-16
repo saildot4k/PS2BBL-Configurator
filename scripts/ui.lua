@@ -98,7 +98,7 @@ local function mainLoop()
   local chosenMcSlot = nil
   local state = "main"
   local mcSel = 1
-  local pfsMounted = false
+  local hddReady = false
   local prevPad = 0
   local optList, optSel, optScroll, saveSplash = nil, 1, 0, nil
   local editKey = nil
@@ -129,7 +129,7 @@ local function mainLoop()
 
   local function syncToS(c)
     c.state, c.lines, c.currentPath, c.fileType, c.context = state, lines, currentPath, fileType, context
-    c.chosenMcSlot, c.mainSel, c.mcSel, c.pfsMounted = chosenMcSlot, mainSel, mcSel, pfsMounted
+    c.chosenMcSlot, c.mainSel, c.mcSel, c.hddReady = chosenMcSlot, mainSel, mcSel, hddReady
     c.optList, c.optSel, c.optScroll, c.saveSplash = optList, optSel, optScroll, saveSplash
     c.editKey, c.pathPickerSub, c.pathPickerSel, c.pathPickerScroll = editKey, pathPickerSub, pathPickerSel,
         pathPickerScroll
@@ -156,7 +156,7 @@ local function mainLoop()
   end
   local function syncFromS(c)
     state, lines, currentPath, fileType, context = c.state, c.lines, c.currentPath, c.fileType, c.context
-    chosenMcSlot, mainSel, mcSel, pfsMounted = c.chosenMcSlot, c.mainSel, c.mcSel, c.pfsMounted
+    chosenMcSlot, mainSel, mcSel, hddReady = c.chosenMcSlot, c.mainSel, c.mcSel, c.hddReady
     optList, optSel, optScroll, saveSplash = c.optList, c.optSel, c.optScroll, c.saveSplash
     editKey, pathPickerSub, pathPickerSel, pathPickerScroll = c.editKey, c.pathPickerSub, c.pathPickerSel,
         c.pathPickerScroll

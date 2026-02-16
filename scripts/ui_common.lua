@@ -274,6 +274,19 @@ function common.findExistingPaths(locations)
   return out
 end
 
+-- Save config; for pfs0 (__sysconf) paths we mount, save, then unmount so ELF browsing does not break saving.
+function common.saveConfig(ctx, path, lines, createDir)
+  local toPfs0 = path and path:match("^pfs0:/")
+  if toPfs0 and System and System.fileXioMount then
+    System.fileXioMount("pfs0:", "hdd0:__sysconf")
+  end
+  local ok, err = ctx._.config_parse.save(path, lines, createDir)
+  if toPfs0 and System and System.fileXioUmount then
+    System.fileXioUmount("pfs0:")
+  end
+  return ok, err
+end
+
 function common.listDirectoryElfOnly(path, file_selector)
   local raw = file_selector.listDirectory(path) or {}
   local out = {}
