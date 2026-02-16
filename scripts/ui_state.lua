@@ -16,7 +16,7 @@ local function initContext()
     optList = nil,
     optSel = 1,
     optScroll = 0,
-    saveFlash = 0,
+    saveSplash = nil,
     editKey = nil,
     pathPickerSub = nil,
     pathPickerSel = 1,

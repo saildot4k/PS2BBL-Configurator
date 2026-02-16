@@ -59,7 +59,6 @@ end
 
 local function setStateAfterLoad(s)
   s.configModified = false
-  s.saveFlash = 0
   if s.fileType == "osdgsm_cnf" then
     s.state = "egsm_editor"
     s.egsmSel, s.egsmScroll = 1, 0

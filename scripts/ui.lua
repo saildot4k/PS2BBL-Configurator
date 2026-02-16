@@ -100,7 +100,7 @@ local function mainLoop()
   local mcSel = 1
   local pfsMounted = false
   local prevPad = 0
-  local optList, optSel, optScroll, saveFlash = nil, 1, 0, 0
+  local optList, optSel, optScroll, saveSplash = nil, 1, 0, nil
   local editKey = nil
   local pathPickerSub = nil
   local pathPickerSel, pathPickerScroll = 1, 0
@@ -130,7 +130,7 @@ local function mainLoop()
   local function syncToS(c)
     c.state, c.lines, c.currentPath, c.fileType, c.context = state, lines, currentPath, fileType, context
     c.chosenMcSlot, c.mainSel, c.mcSel, c.pfsMounted = chosenMcSlot, mainSel, mcSel, pfsMounted
-    c.optList, c.optSel, c.optScroll, c.saveFlash = optList, optSel, optScroll, saveFlash
+    c.optList, c.optSel, c.optScroll, c.saveSplash = optList, optSel, optScroll, saveSplash
     c.editKey, c.pathPickerSub, c.pathPickerSel, c.pathPickerScroll = editKey, pathPickerSub, pathPickerSel,
         pathPickerScroll
     c.pathBrowsePath, c.pathList, c.isAddPath, c.addPathKey = pathBrowsePath, pathList, isAddPath, addPathKey
@@ -157,7 +157,7 @@ local function mainLoop()
   local function syncFromS(c)
     state, lines, currentPath, fileType, context = c.state, c.lines, c.currentPath, c.fileType, c.context
     chosenMcSlot, mainSel, mcSel, pfsMounted = c.chosenMcSlot, c.mainSel, c.mcSel, c.pfsMounted
-    optList, optSel, optScroll, saveFlash = c.optList, c.optSel, c.optScroll, c.saveFlash
+    optList, optSel, optScroll, saveSplash = c.optList, c.optSel, c.optScroll, c.saveSplash
     editKey, pathPickerSub, pathPickerSel, pathPickerScroll = c.editKey, c.pathPickerSub, c.pathPickerSel,
         c.pathPickerScroll
     pathBrowsePath, pathList, isAddPath, addPathKey = c.pathBrowsePath, c.pathList, c.isAddPath, c.addPathKey
@@ -384,6 +384,9 @@ local function mainLoop()
       scene_path_picker.run(c)
       syncFromS(c)
     end
+
+    common.drawSaveSplash(c)
+    syncFromS(c)
 
     prevPad = pad
     syncToS(c)

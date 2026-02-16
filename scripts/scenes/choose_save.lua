@@ -26,13 +26,12 @@ local function run(ctx)
     local path = choices[ctx.saveSel]
     local parentDir = path and path:match("^(.+)/[^/]+$")
     ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
-    ctx.saveError = nil
+    ctx.saveSplash = nil
     local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
     if ok then
       ctx.currentPath = path
-      ctx.saveFlash = 60
+      ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
       ctx.configModified = false
-      ctx.saveError = nil
       if ctx.returnToSelectConfigAfterSave then
         ctx.returnToSelectConfigAfterSave = nil
         ctx.returnToSelectConfigAfterSaveFlash = true
@@ -44,7 +43,8 @@ local function run(ctx)
         ctx.state = (ctx.fileType == "osdgsm_cnf") and "egsm_editor" or "editor"
       end
     else
-      ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+      ctx.saveSplash = { kind = "failed", detail = _.common.localizeParseError(err, _.editor_str) or
+      _.editor_str.save_failed, framesLeft = 60 }
       if ctx.returnToMenuEntriesAfterSave then
         ctx.returnToMenuEntriesAfterSave = nil
         ctx.state = "menu_entries"

@@ -12,7 +12,6 @@ local function run(ctx)
   local counterStr = (numEntries == 0 and "0 / 0") or (tostring(ctx.entrySel) .. " / " .. tostring(numEntries))
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.edit_menu_entries, _.WHITE)
   _.drawText(_.font, _.drawMode, 540, _.MARGIN_Y, 0.9, counterStr, _.DIM)
-  _.common.drawSaveError(ctx)
   if ctx.entrySel < 1 then ctx.entrySel = 1 end
   if total > 0 and ctx.entrySel > total then ctx.entrySel = total end
   local maxVis = _.MAX_VISIBLE_LIST
@@ -30,8 +29,10 @@ local function run(ctx)
     local y = startY + (i - ctx.entryScroll - 1) * _.LINE_H
     local col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.WHITE
     if label == _.common_str.empty then col = (i == ctx.entrySel) and _.SELECTED_ENTRY or _.DIM end
-    if ent.disabled then col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
-    (_.DIM_ENTRY or _.DIM) end
+    if ent.disabled then
+      col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
+          (_.DIM_ENTRY or _.DIM)
+    end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entrySel, label, col)
   end
   if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -121,11 +122,8 @@ local function run(ctx)
   end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintsAdjusted, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
-  if ctx.saveFlash and ctx.saveFlash > 0 then
-    _.common.drawSavedSplash(ctx)
-  end
   if (_.padEffective & _.PAD_START) ~= 0 then
-    ctx.saveError = nil
+    ctx.saveSplash = nil
     local locations = _.getLocations(ctx.context, ctx.fileType, ctx.chosenMcSlot)
     if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
       ctx.saveChoices = locations
@@ -140,13 +138,14 @@ local function run(ctx)
         local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
         if ok then
           ctx.currentPath = path
-          ctx.saveFlash = 60
+          ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
           ctx.configModified = false
         else
-          ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+          ctx.saveSplash = { kind = "failed", detail = _.common.localizeParseError(err, _.editor_str) or
+          _.editor_str.save_failed, framesLeft = 60 }
         end
       else
-        ctx.saveError = _.editor_str.no_save_location
+        ctx.saveSplash = { kind = "failed", detail = _.editor_str.no_save_location, framesLeft = 60 }
       end
     end
   end

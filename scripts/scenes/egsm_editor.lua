@@ -13,7 +13,7 @@ local function run(ctx)
       _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_CROSS) ~= 0 then
       ctx.editorLeavePrompt = nil
-      ctx.saveError = nil
+      ctx.saveSplash = nil
       local locations = _.getLocations(ctx.context, "osdgsm_cnf", ctx.chosenMcSlot)
       if #locations >= 2 then
         ctx.returnToSelectConfigAfterSave = true
@@ -28,15 +28,15 @@ local function run(ctx)
           local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
           if ok then
             ctx.currentPath = path
-            ctx.saveFlash = 60
+            ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
             ctx.configModified = false
             ctx.returnToSelectConfigAfterSaveFlash = true
-            ctx.saveError = nil
           else
-            ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+            ctx.saveSplash = { kind = "failed", detail = _.common.localizeParseError(err, _.editor_str) or
+            _.editor_str.save_failed, framesLeft = 60 }
           end
         else
-          ctx.saveError = _.editor_str.no_save_location
+          ctx.saveSplash = { kind = "failed", detail = _.editor_str.no_save_location, framesLeft = 60 }
         end
       end
     elseif (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
@@ -46,7 +46,7 @@ local function run(ctx)
       ctx.lines = nil
       ctx.egsmSel = 1
       ctx.egsmScroll = 0
-      ctx.saveError = nil
+      ctx.saveSplash = nil
     elseif (_.padEffective & _.PAD_CIRCLE) ~= 0 then
       ctx.editorLeavePrompt = nil
     end
@@ -61,21 +61,9 @@ local function run(ctx)
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 0.8, pathStr, _.DIM)
   end
 
-  if ctx.returnToSelectConfigAfterSaveFlash then
-    if ctx.saveFlash and ctx.saveFlash > 0 then
-      if _.common.drawSavedSplash(ctx) then
-        ctx.returnToSelectConfigAfterSaveFlash = nil
-        ctx.state = "select_config"
-        ctx.currentPath = nil
-        ctx.lines = nil
-        ctx.egsmSel = 1
-        ctx.egsmScroll = 0
-        ctx.saveError = nil
-      end
-    end
+  if ctx.saveSplash and ctx.saveSplash.framesLeft > 0 and ctx.saveSplash.kind == "saved" and ctx.returnToSelectConfigAfterSaveFlash then
     return
   end
-  _.common.drawSaveError(ctx)
 
   local entries = _.config_parse.getEgsmEntries(ctx.lines)
   local total = 1 + #entries
@@ -193,7 +181,7 @@ local function run(ctx)
   end
 
   if (_.padEffective & _.PAD_START) ~= 0 then
-    ctx.saveError = nil
+    ctx.saveSplash = nil
     local locations = _.getLocations(ctx.context, "osdgsm_cnf", ctx.chosenMcSlot)
     if #locations >= 2 then
       ctx.saveChoices = locations
@@ -207,13 +195,14 @@ local function run(ctx)
         local ok, err = _.config_parse.save(path, ctx.lines, parentDir)
         if ok then
           ctx.currentPath = path
-          ctx.saveFlash = 60
+          ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
           ctx.configModified = false
         else
-          ctx.saveError = _.common.localizeParseError(err, _.editor_str) or _.editor_str.save_failed
+          ctx.saveSplash = { kind = "failed", detail = _.common.localizeParseError(err, _.editor_str) or
+          _.editor_str.save_failed, framesLeft = 60 }
         end
       else
-        ctx.saveError = _.editor_str.no_save_location
+        ctx.saveSplash = { kind = "failed", detail = _.editor_str.no_save_location, framesLeft = 60 }
       end
     end
   end
@@ -222,19 +211,7 @@ local function run(ctx)
     if ctx.configModified then
       ctx.editorLeavePrompt = true
     else
-      ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.egsmSel = 1; ctx.egsmScroll = 0; ctx.saveError = nil
-    end
-  end
-
-  if ctx.saveFlash and ctx.saveFlash > 0 then
-    if _.common.drawSavedSplash(ctx) then
-      ctx.returnToSelectConfigAfterSaveFlash = nil
-      ctx.state = "select_config"
-      ctx.currentPath = nil
-      ctx.lines = nil
-      ctx.egsmSel = 1
-      ctx.egsmScroll = 0
-      ctx.saveError = nil
+      ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.egsmSel = 1; ctx.egsmScroll = 0; ctx.saveSplash = nil
     end
   end
 end

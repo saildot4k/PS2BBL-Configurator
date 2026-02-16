@@ -447,42 +447,45 @@ function common.centerX(c, textWidth)
   return math.max(mx, math.floor((w - textWidth) / 2))
 end
 
--- Draw "Saved" splash with location; decrement ctx.saveFlash. Returns true when flash finished and returnToSelectConfigAfterSaveFlash is set.
-function common.drawSavedSplash(ctx)
-  if not ctx.saveFlash or ctx.saveFlash <= 0 then return false end
+-- Unified save splash: "Saved" or "Save failed", drawn on top. ctx.saveSplash = { kind = "saved"|"failed", detail = string, framesLeft = N }.
+-- Decrements framesLeft; when 0, clears saveSplash and (if kind=="saved" and returnToSelectConfigAfterSaveFlash) performs transition.
+function common.drawSaveSplash(ctx)
+  local sp = ctx.saveSplash
+  if not sp or not sp.framesLeft or sp.framesLeft <= 0 then return end
   local _ = ctx._
   local lineH = _.LINE_H or common.LINE_H
-  local msg = _.editor_str.saved
-  local tw = common.calcTextWidth(_.font, msg, 1) or (#msg * 14)
-  local pathStr = (ctx.currentPath and ctx.currentPath ~= "") and ctx.currentPath or ""
-  if pathStr ~= "" and #pathStr > 52 then pathStr = pathStr:sub(1, 49) .. "..." end
-  local pathW = (pathStr ~= "") and (common.calcTextWidth(_.font, pathStr, 0.8) or (#pathStr * 10)) or 0
-  local boxW = math.max(tw, pathW) + 48
-  local boxH = (pathStr ~= "" and (lineH * 2 + 24) or (lineH + 24))
+  local title = (sp.kind == "failed") and (_.editor_str.save_failed or "Save failed") or (_.editor_str.saved or "Saved")
+  local tw = common.calcTextWidth(_.font, title, 1) or (#title * 14)
+  local detailStr = (sp.detail and sp.detail ~= "") and tostring(sp.detail) or ""
+  if #detailStr > 52 then detailStr = detailStr:sub(1, 49) .. "..." end
+  local detailW = (detailStr ~= "" and (common.calcTextWidth(_.font, detailStr, 0.8) or (#detailStr * 10))) or 0
+  local boxW = math.max(tw, detailW) + 48
+  local boxH = (detailStr ~= "" and (lineH * 2 + 24) or (lineH + 24))
   local boxX = math.floor(((_.w or common.DEFAULT_W) - boxW) / 2)
   local boxY = math.floor(((_.h or common.DEFAULT_H) - boxH) / 2)
   local splashBg = Color.new(40, 40, 48, 110)
   if _.Graphics and _.Graphics.drawRect then
     _.Graphics.drawRect(boxX, boxY, boxW, boxH, splashBg)
   end
-  local centerY = boxY + math.floor((boxH - (pathStr ~= "" and lineH * 2 or lineH)) / 2)
-  common.drawText(_.font, _.drawMode, common.centerX(_, tw), centerY, 1, msg, _.HIGHLIGHT)
-  if pathStr ~= "" then
-    common.drawText(_.font, _.drawMode, common.centerX(_, pathW), centerY + lineH, 1, pathStr, _.HIGHLIGHT)
+  local centerY = boxY + math.floor((boxH - (detailStr ~= "" and lineH * 2 or lineH)) / 2)
+  common.drawText(_.font, _.drawMode, common.centerX(_, tw), centerY, 1, title, _.HIGHLIGHT)
+  if detailStr ~= "" then
+    common.drawText(_.font, _.drawMode, common.centerX(_, detailW), centerY + lineH, 1, detailStr, _.HIGHLIGHT)
   end
-  ctx.saveFlash = ctx.saveFlash - 1
-  return (ctx.saveFlash == 0 and ctx.returnToSelectConfigAfterSaveFlash)
-end
-
--- Draw save error line and detail (ctx.saveError).
-function common.drawSaveError(ctx)
-  if not ctx.saveError or ctx.saveError == "" then return end
-  local _ = ctx._
-  local msg = _.editor_str.save_failed
-  local tw = common.calcTextWidth(_.font, msg, 0.9) or (#msg * 11)
-  common.drawText(_.font, _.drawMode, common.centerX(_, tw), _.MARGIN_Y + _.scaleY(50), 0.9, msg, _.HIGHLIGHT)
-  common.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(72), 0.75, tostring(ctx.saveError):sub(1, 50),
-    _.GRAY)
+  sp.framesLeft = sp.framesLeft - 1
+  if sp.framesLeft <= 0 then
+    ctx.saveSplash = nil
+    if sp.kind == "saved" and ctx.returnToSelectConfigAfterSaveFlash then
+      ctx.returnToSelectConfigAfterSaveFlash = nil
+      ctx.state = "select_config"
+      ctx.currentPath = nil
+      ctx.lines = nil
+      ctx.optList = nil
+      ctx.editorCategoryIdx = 0
+      ctx.egsmSel = 1
+      ctx.egsmScroll = 0
+    end
+  end
 end
 
 return common
