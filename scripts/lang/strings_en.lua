@@ -165,6 +165,7 @@ strings.categories = {
 -- OSDMENU.CNF option labels and descriptions (by option key)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Force video mode", desc = "Force OSD video mode" },
+  OSDSYS_region = { label = "Force region", desc = "Force OSD region" },
   OSDSYS_Skip_Disc = { label = "Skip disc", desc = "Skip automatic disc launch" },
   OSDSYS_Skip_Logo = { label = "Skip intro", desc = "Skip SCE intro animation" },
   OSDSYS_Inner_Browser = { label = "Inner browser", desc = "Boot into memory card browser" },

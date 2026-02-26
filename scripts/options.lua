@@ -40,6 +40,7 @@ config_options.osdmenu_cnf_categories = {
   {
     options = {
       { key = "OSDSYS_video_mode",    optType = "enum", default = "AUTO", enumVals = { "AUTO", "PAL", "NTSC", "480p", "1080i" } },
+      { key = "OSDSYS_region",        optType = "enum", default = "AUTO", enumVals = { "AUTO", "jap", "usa", "eur" } },
       { key = "OSDSYS_Skip_Disc",     optType = "bool", default = "1" },
       { key = "OSDSYS_Skip_Logo",     optType = "bool", default = "1" },
       { key = "OSDSYS_Inner_Browser", optType = "bool", default = "0" },
