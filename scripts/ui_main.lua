@@ -2,12 +2,18 @@
   Main flow: main, choose_mc, select_config, initHdd, open, choose_load.
   run*(s, pad) where s has .common, .font, .drawMode, .drawListRow and state vars.
   Strings: try strings.lua (cwd override) then scripts/lang/strings_XX.lua. If CWD override, L1/R1 lang cycle is disabled.
+  (Use loadfile for the optional CWD file: with VFS, pcall(dofile, path) can fail for paths not in VFS; loadfile returns nil if missing.)
 ]]
 
-local strings
-local ok
-ok, strings = pcall(dofile, "strings.lua")
-local cwdOverride = (ok and strings and type(strings) == "table")
+local function tryLoadStrings(path)
+  local chunk = loadfile(path)
+  if not chunk then return nil end
+  local ok, t = pcall(chunk)
+  return (ok and type(t) == "table") and t or nil
+end
+
+local strings = tryLoadStrings("strings.lua")
+local cwdOverride = (strings ~= nil)
 if not cwdOverride then
   strings = dofile("scripts/lang/strings_en.lua")
 end
