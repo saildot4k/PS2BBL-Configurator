@@ -76,3 +76,8 @@ cmake --build build
 ## License
 
 Distributed under the GNU GPL-3.0 License. See `LICENSE` for details.
+
+## Translation contributors
+
+- Spanish
+  - VizoR
