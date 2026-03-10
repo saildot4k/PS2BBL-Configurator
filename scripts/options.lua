@@ -70,8 +70,6 @@ local function buildPsxBblIniLocations()
   appendUnique(out, "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI")
   appendUnique(out, "massX:/PS2BBL/CONFIG.INI")
   appendUnique(out, "mass:/PS2BBL/CONFIG.INI")
-  appendUnique(out, "mc1:/SYS-CONF/PS2BBL.INI")
-  appendUnique(out, "mc0:/SYS-CONF/PS2BBL.INI")
   return out
 end
 

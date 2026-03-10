@@ -64,6 +64,12 @@ local function clearPathPickerState(s)
   s.pathPickerFileExts = nil
 end
 
+local function clearLoadChoiceState(s)
+  s.loadChoices = nil
+  s.loadAllowCreate = nil
+  s.loadPathExists = nil
+end
+
 local function getSelectConfigSelTable(s)
   if type(s.selectConfigSelByContext) ~= "table" then
     s.selectConfigSelByContext = {}
@@ -351,13 +357,12 @@ local function appendUniquePath(paths, path)
 end
 
 local function buildBblSourceOptions(iniFileType)
-  local main_str = (C.strings and C.strings.main) or {}
   local dev_str = (C.strings and C.strings.devices) or {}
   local visibility = (C.config_options and C.config_options.getBblPathDeviceVisibility and
       C.config_options.getBblPathDeviceVisibility()) or nil
-  local psxMode = (iniFileType == "psxbbl_ini")
+  local iniName = (iniFileType == "psxbbl_ini") and "PSXBBL.INI" or "PS2BBL.INI"
   local out = {}
-  local function addDevice(visKey, label, paths)
+  local function addDevice(visKey, label, paths, browseDeviceName, browseDeviceId)
     if not isVisible(visibility, visKey) then return end
     local rows = {}
     if type(paths) == "table" then
@@ -368,27 +373,21 @@ local function buildBblSourceOptions(iniFileType)
       appendUniquePath(rows, paths)
     end
     if #rows == 0 then return end
-    out[#out + 1] = { label = label, action = "known_paths", paths = rows }
+    out[#out + 1] = {
+      label = label,
+      action = "known_paths",
+      paths = rows,
+      browseDeviceName = browseDeviceName,
+      browseDeviceId = browseDeviceId,
+    }
   end
-  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" })
-  addDevice("mmce", dev_str.mmce_0 or "MMCE in slot 1", { "mmce0:/PS2BBL/PS2BBL.INI" })
-  addDevice("hdd", dev_str.hdd or "APA-formatted HDD", { "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI" })
-  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" })
-  addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" })
-  local mc1Paths, mc0Paths = {}, {}
-  if psxMode then
-    appendUniquePath(mc1Paths, "mc1:/SYS-CONF/PSXBBL.INI")
-    appendUniquePath(mc0Paths, "mc0:/SYS-CONF/PSXBBL.INI")
-  end
-  appendUniquePath(mc1Paths, "mc1:/SYS-CONF/PS2BBL.INI")
-  appendUniquePath(mc0Paths, "mc0:/SYS-CONF/PS2BBL.INI")
-  addDevice("mc", dev_str.memory_card_2 or "Memory Card 2", mc1Paths)
-  addDevice("mc", dev_str.memory_card_1 or "Memory Card 1", mc0Paths)
-  out[#out + 1] = {
-    label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
-    action = "browse_ini",
-    fileType = iniFileType,
-  }
+  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" }, "mmce1:")
+  addDevice("mmce", dev_str.mmce_0 or "MMCE in slot 1", { "mmce0:/PS2BBL/PS2BBL.INI" }, "mmce0:")
+  addDevice("hdd", dev_str.hdd or "APA-formatted HDD", { "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI" }, "hdd0:")
+  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" }, nil, "mx4sio")
+  addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" }, nil, "usb0")
+  addDevice("mc", dev_str.memory_card_2 or "Memory Card 2", { "mc1:/SYS-CONF/" .. iniName }, "mc1:")
+  addDevice("mc", dev_str.memory_card_1 or "Memory Card 1", { "mc0:/SYS-CONF/" .. iniName }, "mc0:")
   return out
 end
 
@@ -437,18 +436,7 @@ local function runSelectConfig(s, pad)
     local pick = options[sel]
     s.fileType = iniFileType
     clearPathPickerState(s)
-    if pick and pick.action == "browse_ini" then
-      s.pathPickerContext = "config_ini"
-      s.pathPickerTarget = "config_open"
-      s.pathPickerFileExts = { ".ini" }
-      s.pathPickerSub = "device"
-      s.pathList = (C.file_selector and C.file_selector.getDevices and C.file_selector.getDevices("config_ini")) or {}
-      s.pathPickerSel = 1
-      s.pathPickerScroll = 0
-      s.pathBrowsePath = nil
-      s.pathPickerReturnState = "select_config"
-      s.state = "path_picker"
-    elseif pick and pick.action == "known_paths" then
+    if pick and pick.action == "known_paths" then
       s.loadChoices = {}
       s.loadPathExists = {}
       local paths = pick.paths or {}
@@ -457,6 +445,13 @@ local function runSelectConfig(s, pad)
         s.loadChoices[#s.loadChoices + 1] = p
         s.loadPathExists[#s.loadPathExists + 1] = pathExists(p)
       end
+      s.loadChoices[#s.loadChoices + 1] = {
+        kind = "browse_ini",
+        label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
+        browseDeviceName = pick.browseDeviceName,
+        browseDeviceId = pick.browseDeviceId,
+      }
+      s.loadPathExists[#s.loadPathExists + 1] = false
       s.loadAllowCreate = true
       s.loadSel = 1
       s.state = "choose_load"
@@ -569,6 +564,7 @@ local function runOpen(s, pad)
     if not pathExists(s.currentPath) then
       initEmptyLinesForFileType(s)
       s.openExplicitPath = nil
+      clearLoadChoiceState(s)
       setStateAfterLoad(s)
       return
     end
@@ -576,6 +572,7 @@ local function runOpen(s, pad)
     if loaded then
       s.lines = loaded
       s.openExplicitPath = nil
+      clearLoadChoiceState(s)
       setStateAfterLoad(s)
       return
     end
@@ -584,6 +581,7 @@ local function runOpen(s, pad)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_back_items, nil, common.DIM)
     if (pad & PAD_CROSS) ~= 0 then
       s.openExplicitPath = nil
+      clearLoadChoiceState(s)
       s.state = "select_config"
     end
     return
@@ -663,9 +661,13 @@ local function runChooseLoad(s, pad)
   end
   for i = scroll + 1, math.min(scroll + maxVis, total) do
     local idx = i
-    local p = choices[idx] or ""
+    local choice = choices[idx]
+    local isBrowseIni = (type(choice) == "table" and choice.kind == "browse_ini")
+    local p = (type(choice) == "string") and choice or ""
     local label = nil
-    if allowCreate then
+    if isBrowseIni then
+      label = choice.label or (main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)")
+    elseif allowCreate then
       local exists = (type(s.loadPathExists) == "table") and s.loadPathExists[idx] or false
       local status = exists and " [FOUND]" or " [NEW]"
       local raw = p .. status
@@ -696,30 +698,57 @@ local function runChooseLoad(s, pad)
     s.loadSel = s.loadSel + 1; if s.loadSel > #choices then s.loadSel = 1 end
   end
   if (pad & PAD_CROSS) ~= 0 and #choices > 0 then
-    s.currentPath = choices[s.loadSel]
+    local chosen = choices[s.loadSel]
+    if type(chosen) == "table" and chosen.kind == "browse_ini" then
+      local allDevices = (C.file_selector and C.file_selector.getDevices and C.file_selector.getDevices("config_ini")) or {}
+      local targetDevice = nil
+      for i = 1, #allDevices do
+        local d = allDevices[i]
+        if chosen.browseDeviceId and d and d.deviceId == chosen.browseDeviceId then
+          targetDevice = d
+          break
+        end
+        if chosen.browseDeviceName and d and d.name == chosen.browseDeviceName then
+          targetDevice = d
+          break
+        end
+      end
+      s.pathPickerContext = "config_ini"
+      s.pathPickerTarget = "config_open"
+      s.pathPickerFileExts = { ".ini" }
+      s.pathPickerSub = "device"
+      if targetDevice then
+        s.pathList = { targetDevice }
+        s.pathPickerSel = 2
+      else
+        s.pathList = allDevices
+        s.pathPickerSel = 1
+      end
+      s.pathPickerScroll = 0
+      s.pathBrowsePath = nil
+      s.pathPickerReturnState = "choose_load"
+      s.state = "path_picker"
+      return
+    end
+
+    s.currentPath = chosen
     local exists = allowCreate and ((type(s.loadPathExists) == "table" and s.loadPathExists[s.loadSel]) or pathExists(s.currentPath))
     if allowCreate and not exists then
       initEmptyLinesForFileType(s)
       setStateAfterLoad(s)
-      s.loadChoices = nil
-      s.loadAllowCreate = nil
-      s.loadPathExists = nil
+      clearLoadChoiceState(s)
     else
       local loaded = loadLinesWithDeviceAccess(s.currentPath)
       if loaded then
         s.lines = loaded
         setStateAfterLoad(s)
-        s.loadChoices = nil
-        s.loadAllowCreate = nil
-        s.loadPathExists = nil
+        clearLoadChoiceState(s)
       end
     end
   end
   if (pad & PAD_CIRCLE) ~= 0 then
     s.state = "select_config"
-    s.loadChoices = nil
-    s.loadAllowCreate = nil
-    s.loadPathExists = nil
+    clearLoadChoiceState(s)
   end
 end
 
