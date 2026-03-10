@@ -165,7 +165,7 @@ local function buildBblIniGlobalOptions()
 end
 
 local function buildBblIniAutoOptions()
-  return {
+  local out = {
     {
       key = "KEY_READ_WAIT_TIME",
       optType = "int",
@@ -185,19 +185,18 @@ local function buildBblIniAutoOptions()
       desc = "Display name for AUTO.",
       maxLen = 64,
     },
-    {
-      key = "_auto_path",
-      optType = "action",
-      label = "PATH",
-      desc = "Edit LK_AUTO_E1..E10 entries.",
-    },
-    {
-      key = "_auto_args",
-      optType = "action",
-      label = "ARGS",
-      desc = "Edit ARG_AUTO_E# entries.",
-    },
   }
+  for i = 1, 10 do
+    table.insert(out, {
+      key = "_auto_e" .. tostring(i),
+      optType = "bbl_slot",
+      bblKeyId = "AUTO",
+      bblEntrySlot = i,
+      label = "E" .. tostring(i),
+      desc = "Edit LK_AUTO_E" .. tostring(i) .. " and ARG_AUTO_E" .. tostring(i) .. ".",
+    })
+  end
+  return out
 end
 
 config_options.ps2bbl_ini = buildBblIniGlobalOptions()

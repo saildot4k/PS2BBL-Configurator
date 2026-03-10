@@ -11,6 +11,12 @@ local function formatTimerSeconds(msText)
   return string.format("%.1f", sec10 / 10)
 end
 
+local function formatArgCount(n)
+  local count = tonumber(n) or 0
+  if count == 1 then return "(1 arg)" end
+  return "(" .. tostring(count) .. " args)"
+end
+
 local function getCategoryOptSel(ctx, categoryIdx)
   if not categoryIdx or categoryIdx < 1 then return 1 end
   local byFile = ctx.editorCategoryOptSelByFile
@@ -209,6 +215,17 @@ local function run(ctx)
           valDisplay = ""
         else
           valDisplay = #paths .. _.menu_str.path_s
+        end
+      elseif o.optType == "bbl_slot" then
+        local keyId = o.bblKeyId or "AUTO"
+        local slotIdx = tonumber(o.bblEntrySlot)
+        local slot = (slotIdx and _.config_parse.getBblHotkeySlot) and _.config_parse.getBblHotkeySlot(ctx.lines, keyId, slotIdx) or
+            nil
+        if slot and slot.used then
+          local p = (slot.path ~= "" and slot.path) or _.common_str.not_set
+          valDisplay = p .. " " .. formatArgCount(slot.argCount)
+        else
+          valDisplay = _.common_str.not_set
         end
       elseif o.optType == "enum" then
         local raw = _.config_parse.get(ctx.lines, o.key) or o.default or ""
@@ -433,36 +450,12 @@ local function run(ctx)
         ctx.bblEntryReturnState = nil
         ctx.bblHotkeySel = ctx.bblHotkeySel or 1
         ctx.state = "bbl_hotkeys"
-      elseif o.key == "_auto_path" then
-        ctx.bblEntryReturnState = "editor"
-        ctx.bblHotkeyKey = "AUTO"
-        ctx.bblEntrySel = ctx.bblEntrySel or 1
-        ctx.bblEntryScroll = ctx.bblEntryScroll or 0
-        ctx.bblEntryFocusSlot = nil
-        ctx.state = "bbl_hotkey_entries"
-      elseif o.key == "_auto_args" then
-        ctx.bblEntryReturnState = "editor"
-        local maxEntries = (_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10
-        local firstUsedSlot = nil
-        for si = 1, maxEntries do
-          local slotData = _.config_parse.getBblHotkeySlot(ctx.lines, "AUTO", si)
-          if slotData and slotData.used then
-            firstUsedSlot = si
-            break
-          end
-        end
-        if firstUsedSlot then
-          ctx.bblHotkeyKey = "AUTO"
-          ctx.bblEntrySlot = firstUsedSlot
-          ctx.bblEntryDetailSel = 2
-          ctx.state = "bbl_hotkey_entry"
-        else
-          ctx.bblHotkeyKey = "AUTO"
-          ctx.bblEntrySel = ctx.bblEntrySel or 1
-          ctx.bblEntryScroll = ctx.bblEntryScroll or 0
-          ctx.bblEntryFocusSlot = nil
-          ctx.state = "bbl_hotkey_entries"
-        end
+      elseif o.optType == "bbl_slot" and o.bblEntrySlot then
+        ctx.bblHotkeyKey = o.bblKeyId or "AUTO"
+        ctx.bblEntrySlot = tonumber(o.bblEntrySlot)
+        ctx.bblEntryDetailSel = ctx.bblEntryDetailSel or 1
+        ctx.bblEntryDetailReturnState = "editor"
+        ctx.state = "bbl_hotkey_entry"
       elseif o.optType == "boot_paths" then
         ctx.bootKey = o.key
         ctx.entryIdx = nil

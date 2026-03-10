@@ -8,8 +8,10 @@ local function run(ctx)
   end
   local keyId = ctx.bblHotkeyKey
   local slot = tonumber(ctx.bblEntrySlot)
+  local returnState = ctx.bblEntryDetailReturnState or "bbl_hotkey_entries"
   if not keyId or not slot then
-    ctx.state = "bbl_hotkey_entries"
+    ctx.bblEntryDetailReturnState = nil
+    ctx.state = returnState
     return
   end
 
@@ -105,11 +107,13 @@ local function run(ctx)
   if rows[ctx.bblEntryDetailSel] == "path" and (_.padEffective & _.PAD_SQUARE) ~= 0 then
     _.config_parse.removeBblHotkeySlot(ctx.lines, keyId, slot)
     ctx.configModified = true
-    ctx.state = "bbl_hotkey_entries"
+    ctx.bblEntryDetailReturnState = nil
+    ctx.state = returnState
   end
 
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
-    ctx.state = "bbl_hotkey_entries"
+    ctx.bblEntryDetailReturnState = nil
+    ctx.state = returnState
   end
 end
 

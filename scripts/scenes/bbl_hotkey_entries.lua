@@ -163,12 +163,14 @@ local function run(ctx)
     elseif sel.kind == "entry" then
       ctx.bblEntrySlot = sel.slot
       ctx.bblEntryDetailSel = ctx.bblEntryDetailSel or 1
+      ctx.bblEntryDetailReturnState = "bbl_hotkey_entries"
       ctx.state = "bbl_hotkey_entry"
     elseif sel.kind == "add" then
       local freeSlot = findFirstFreeSlot(_, ctx, keyId, maxEntries)
       if freeSlot then
         ctx.bblEntrySlot = freeSlot
         ctx.bblEntryDetailSel = ctx.bblEntryDetailSel or 1
+        ctx.bblEntryDetailReturnState = "bbl_hotkey_entries"
         ctx.state = "bbl_hotkey_entry"
       end
     end
@@ -202,6 +204,7 @@ local function run(ctx)
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
     ctx.bblEntryReturnState = nil
+    ctx.bblEntryDetailReturnState = nil
   end
 end
 

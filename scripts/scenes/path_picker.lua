@@ -137,6 +137,15 @@ local function centeredScroll(sel, total, maxVis)
   return math.max(0, math.min(s, total - maxVis))
 end
 
+local function getSelectedBblName(ctx)
+  local ft = ctx and ctx.fileType or nil
+  if ft == "psxbbl_ini" then return "PSXBBL" end
+  if ft == "ps2bbl_ini" then return "PS2BBL" end
+  local c = ctx and ctx.context or nil
+  if c == "psxbbl" then return "PSXBBL" end
+  return "PS2BBL"
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Wildcard confirm: path is mc0/mc1/mmce0/mmce1; Cross = Yes (use wildcard), Circle = No (use as-is)
@@ -292,6 +301,7 @@ local function run(ctx)
         ctx.isAddPath and _.path_str.add_path_choose_device or _.path_str.choose_device, _.WHITE)
       if ctx.pathPickerContext == "path_only" and _.path_str.bbl_build_device_hint then
         local hint = _.path_str.bbl_build_device_hint
+        hint = hint:gsub("PS%?BBL", getSelectedBblName(ctx))
         if _.common.truncateTextToWidth then
           hint = _.common.truncateTextToWidth(_.font, hint, _.w - (_.MARGIN_X * 2), 0.55)
         end
