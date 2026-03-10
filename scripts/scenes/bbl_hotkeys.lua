@@ -33,18 +33,33 @@ local function run(ctx)
     ctx.bblHotkeyScroll = 0
   end
 
-  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
+  local rowX = _.MARGIN_X + 20
+  local maxLabelW = (_.w or 640) - (rowX + 4) - _.MARGIN_X
+  local baseIconW = _.common.PAD_ICON_W or 26
+  local baseIconH = _.common.PAD_ICON_H or 26
+  local textH = (_.common and _.common.FT_PIXEL_H) or 18
+  local iconH = math.min(baseIconH, textH)
+  local iconW = math.max(1, math.floor((baseIconW * iconH) / baseIconH + 0.5))
+  local iconGap = 8
   for i = ctx.bblHotkeyScroll + 1, math.min(ctx.bblHotkeyScroll + _.MAX_VISIBLE_LIST, #hotkeys) do
     local keyId = hotkeys[i]
+    local keyIcon = _.common.getPadIcon(keyId)
     local nameVal = _.config_parse.getBblHotkeyName(ctx.lines, keyId) or ""
     local disp = (nameVal ~= "" and nameVal) or _.common_str.empty
-    local line = keyId .. ": " .. disp
+    local line = disp
+    local lineMaxW = maxLabelW - iconW - iconGap
     if _.common.truncateTextToWidth then
-      line = _.common.truncateTextToWidth(_.font, line, maxLabelW, _.FONT_SCALE)
+      line = _.common.truncateTextToWidth(_.font, line, lineMaxW, _.FONT_SCALE)
     end
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.bblHotkeyScroll - 1) * _.LINE_H
     local col = (i == ctx.bblHotkeySel) and _.SELECTED_ENTRY or _.WHITE
-    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.bblHotkeySel, line, col)
+    local iconY = y + math.floor(((_.LINE_H or iconH) - iconH) / 2)
+    if _.Graphics.drawScaleImage then
+      _.Graphics.drawScaleImage(keyIcon, rowX, iconY, iconW, iconH)
+    else
+      _.Graphics.drawImage(keyIcon, rowX, iconY)
+    end
+    _.drawText(_.font, _.drawMode, rowX + iconW + iconGap, y, _.FONT_SCALE, line, col)
   end
 
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7,

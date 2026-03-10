@@ -1,7 +1,7 @@
 #include "graphics/graphics.h"
 
-extern unsigned char title_png[];
-extern unsigned int size_title_png;
+extern unsigned char logo_ps2bble_png[];
+extern unsigned int size_logo_ps2bble_png;
 extern unsigned char loading_png[];
 extern unsigned int size_loading_png;
 
@@ -16,7 +16,7 @@ void showSplashScreen(void) {
   const int w = getGSGLOBAL()->Width;
   const int h = getGSGLOBAL()->Height;
 
-  GSTEXTURE *tex_title = load_png_from_memory(title_png, size_title_png, true);
+  GSTEXTURE *tex_title = load_png_from_memory(logo_ps2bble_png, size_logo_ps2bble_png, true);
   GSTEXTURE *tex_loading = load_png_from_memory(loading_png, size_loading_png, true);
 
   if (tex_title) {
