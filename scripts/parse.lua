@@ -317,7 +317,15 @@ function config_parse.setBblHotkeyArgs(lines, keyId, entryIdx, args)
   for _, item in ipairs(args or {}) do
     if count >= maxArgs then break end
     local value = type(item) == "table" and item.value or item
-    local disabled = type(item) == "table" and (item.comment and true or item.disabled) or false
+    local disabled = false
+    if type(item) == "table" then
+      -- Prefer explicit disabled flag; fallback to comment for legacy call sites.
+      if item.disabled ~= nil then
+        disabled = item.disabled and true or false
+      else
+        disabled = item.comment and true or false
+      end
+    end
     table.insert(lines, { key = key, value = value or "", comment = disabled and true or nil })
     count = count + 1
   end
@@ -329,6 +337,7 @@ function config_parse.setBblHotkeyArgDisabled(lines, keyId, entryIdx, argIdx, di
   local args = config_parse.getBblHotkeyArgs(lines, keyId, entryIdx)
   if argIdx > #args then return false end
   args[argIdx].disabled = disabled and true or false
+  args[argIdx].comment = args[argIdx].disabled and true or nil
   return config_parse.setBblHotkeyArgs(lines, keyId, entryIdx, args)
 end
 

@@ -45,14 +45,106 @@ local function run(ctx)
 
   local args = getArgs()
   local total = #args
+  local entryPath = _.config_parse.getBblHotkeyPath(ctx.lines, keyId, slot)
+  local entryPathLower = (type(entryPath) == "string") and entryPath:lower():gsub("^%s+", ""):gsub("%s+$", "") or ""
+  local isNhddlElfPath = (entryPathLower:match("nhddl%.elf$") ~= nil)
+
   local presetRows = {
-    { label = "Enter manually", kind = "manual" },
-    { label = "-appid", value = "-appid" },
-    { label = "-patinfo", value = "-patinfo" },
-    { label = "-dev9=NICHDD", value = "-dev9=NICHDD" },
-    { label = "-dev9=NIC", value = "-dev9=NIC" },
-    { label = "-titleid=<11 chars>", kind = "titleid" },
+    {
+      label = "Enter manually",
+      kind = "manual",
+      desc = "Enter any custom argument manually.",
+    },
+    {
+      label = "-appid",
+      value = "-appid",
+      desc = "Forces app visual game ID even if APP_GAMEID = 0.",
+    },
+    {
+      label = "-titleid=<11 chars>",
+      kind = "titleid",
+      desc = "Overrides app title ID (up to 11 characters).",
+    },
   }
+
+  if isNhddlElfPath then
+    table.insert(presetRows, {
+      label = "-video=ntsc",
+      value = "-video=ntsc",
+      desc = "NHDDL: force NTSC video mode.",
+    })
+    table.insert(presetRows, {
+      label = "-video=pal",
+      value = "-video=pal",
+      desc = "NHDDL: force PAL video mode.",
+    })
+    table.insert(presetRows, {
+      label = "-video=480p",
+      value = "-video=480p",
+      desc = "NHDDL/Neutrino: request 480p (build-dependent).",
+    })
+    table.insert(presetRows, {
+      label = "-mode=usb",
+      value = "-mode=usb",
+      desc = "NHDDL: initialize USB mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-mode=mx4sio",
+      value = "-mode=mx4sio",
+      desc = "NHDDL: initialize MX4SIO mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-mode=mmce",
+      value = "-mode=mmce",
+      desc = "NHDDL: initialize MMCE mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-mode=ilink",
+      value = "-mode=ilink",
+      desc = "NHDDL: initialize iLink mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-mode=ata",
+      value = "-mode=ata",
+      desc = "NHDDL: initialize ATA mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-mode=hdl",
+      value = "-mode=hdl",
+      desc = "NHDDL: initialize HDL mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-mode=udpbd",
+      value = "-mode=udpbd",
+      desc = "NHDDL: initialize UDPBD mode only.",
+    })
+    table.insert(presetRows, {
+      label = "-udpbd_ip=<ip>",
+      kind = "udpbd_ip",
+      desc = "NHDDL: set UDPBD IP (for example 192.168.1.6).",
+    })
+    table.insert(presetRows, {
+      label = "-noinit",
+      value = "-noinit",
+      desc = "NHDDL: skip IOP initialization (advanced).",
+    })
+  end
+
+  table.insert(presetRows, {
+    label = "-dev9=NICHDD",
+    value = "-dev9=NICHDD",
+    desc = "Keep both DEV9 (network) and HDD powered/on.",
+  })
+  table.insert(presetRows, {
+    label = "-dev9=NIC",
+    value = "-dev9=NIC",
+    desc = "Keep DEV9 on; unmount pfs0: and idle hdd0:/hdd1:.",
+  })
+  table.insert(presetRows, {
+    label = "-patinfo",
+    value = "-patinfo",
+    desc = "Enable PATINFO launch handling for :PATINFO paths.",
+  })
 
   if ctx.bblArgAddMenu and total >= maxArgs then
     ctx.bblArgAddMenu = nil
@@ -77,7 +169,14 @@ local function run(ctx)
     end
 
     local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ")"
+    if isNhddlElfPath then titleAdd = titleAdd .. " [NHDDL]" end
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleAdd, _.WHITE)
+    local selected = rows[ctx.bblArgAddSel]
+    local desc = selected and selected.desc or "Enter any custom argument manually."
+    if _.common.truncateTextToWidth then
+      desc = _.common.truncateTextToWidth(_.font, desc, (_.w or 640) - (_.MARGIN_X * 2), 0.6)
+    end
+    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(22), 0.6, desc, _.DIM)
     local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
     for i = ctx.bblArgAddScroll + 1, math.min(ctx.bblArgAddScroll + _.MAX_VISIBLE_LIST, #rows) do
       local row = rows[i]
@@ -119,6 +218,14 @@ local function run(ctx)
             local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
             if titleId ~= "" then
               addArgValue("-titleid=" .. titleId)
+            end
+            ctx.state = "bbl_hotkey_args"
+          end)
+        elseif row.kind == "udpbd_ip" then
+          openNewArgumentInput("UDPBD IP (x.x.x.x)", 15, function(val)
+            local ip = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if ip ~= "" then
+              addArgValue("-udpbd_ip=" .. ip)
             end
             ctx.state = "bbl_hotkey_args"
           end)

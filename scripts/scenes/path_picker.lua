@@ -108,6 +108,29 @@ local function applyManualPath(ctx, val)
   ctx.pathPickerBdmMountpoint = nil
 end
 
+local function ensureBblCommandRows(ctx)
+  if not ctx or ctx.pathPickerContext ~= "path_only" or not ctx.pathPickerBblHotkeyKey then return end
+  if not ctx.pathList then return end
+  for _, row in ipairs(ctx.pathList) do
+    if row and row.special == "bbl_cmd" then
+      return
+    end
+  end
+  local _ = ctx._
+  local p = _.path_str or {}
+  local cmdRows = {
+    { name = "$CDVD", desc = p.bbl_cmd_cdvd or "$CDVD", special = "bbl_cmd" },
+    { name = "$CDVD_NO_PS2LOGO", desc = p.bbl_cmd_cdvd_no_logo or "$CDVD_NO_PS2LOGO", special = "bbl_cmd" },
+    { name = "$OSDSYS", desc = p.bbl_cmd_osdsys or "$OSDSYS", special = "bbl_cmd" },
+    { name = "$CREDITS", desc = p.bbl_cmd_credits or "$CREDITS", special = "bbl_cmd" },
+    { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker or "$HDDCHECKER (HDD build)", special = "bbl_cmd" },
+    { name = "$RUNKELF:", desc = p.bbl_cmd_runkelf or "$RUNKELF:<path>", special = "bbl_cmd", bblTokenPrompt = true },
+  }
+  for i = #cmdRows, 1, -1 do
+    table.insert(ctx.pathList, 1, cmdRows[i])
+  end
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Wildcard confirm: path is mc0/mc1/mmce0/mmce1; Cross = Yes (use wildcard), Circle = No (use as-is)
@@ -185,6 +208,7 @@ local function run(ctx)
     return
   end
   if ctx.pathPickerSub == "device" then
+    ensureBblCommandRows(ctx)
     -- Loading state: probe every ~200ms, 3s timeout; show splash only when waiting
     if ctx.pathPickerLoading then
       local load = ctx.pathPickerLoading
@@ -377,6 +401,26 @@ local function run(ctx)
               -- exclusive and other paths exist; ignore
             elseif e.special then
               local pathVal = e.name or ""
+              if e.bblTokenPrompt then
+                ctx.textInputTitleIdMode = nil
+                ctx.textInputPrompt = _.path_str.bbl_cmd_runkelf_prompt or "Enter KELF path"
+                ctx.textInputValue = ""
+                ctx.textInputMaxLen = 79
+                ctx.textInputCallback = function(val)
+                  local v = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                  if v == "" then
+                    ctx.state = "path_picker"
+                    return
+                  end
+                  applyManualPath(ctx, "$RUNKELF:" .. v)
+                end
+                ctx.textInputReturnState = "path_picker"
+                ctx.textInputGridSel = 1
+                ctx.textInputCursor = 1
+                ctx.textInputScroll = 1
+                ctx.state = "text_input"
+                return
+              end
               if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
               if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
               ctx.pathList = nil
