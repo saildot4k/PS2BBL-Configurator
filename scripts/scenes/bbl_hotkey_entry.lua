@@ -28,15 +28,17 @@ local function run(ctx)
   local pathLine = "Path: " .. pathDisp
   local argsLine = "Arguments: " .. tostring(data.argCount) .. "/" .. tostring(maxArgs)
   local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
-  if _.common.truncateTextToWidth then
-    pathLine = _.common.truncateTextToWidth(_.font, pathLine, maxLabelW, _.FONT_SCALE)
-    argsLine = _.common.truncateTextToWidth(_.font, argsLine, maxLabelW, _.FONT_SCALE)
-  end
 
   for i = 1, #rows do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
     local col = (i == ctx.bblEntryDetailSel) and _.SELECTED_ENTRY or _.WHITE
     local line = (i == 1) and pathLine or argsLine
+    if _.common.fitListRowText then
+      local key = (i == 1) and "bbl_hotkey_entry_path" or "bbl_hotkey_entry_args"
+      line = _.common.fitListRowText(ctx, key, _.font, line, maxLabelW, _.FONT_SCALE, i == ctx.bblEntryDetailSel)
+    elseif _.common.truncateTextToWidth then
+      line = _.common.truncateTextToWidth(_.font, line, maxLabelW, _.FONT_SCALE)
+    end
     if i == 1 and data.disabled then
       col = (i == ctx.bblEntryDetailSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)
     end

@@ -63,8 +63,9 @@ local function run(ctx)
     if (p or ""):upper() == "$PSBBN" then return _.dev_str.psbbn end
     if p == "OSDSYS" or p == "osdsys" then return _.dev_str.osd end
     if p == "POWEROFF" or p == "poweroff" then return _.dev_str.shutdown end
-    return p:sub(1, 50) .. (#p > 50 and "..." or "")
+    return p
   end
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
   for i = ctx.entryPathScroll + 1, math.min(ctx.entryPathScroll + _.MAX_VISIBLE_LIST, total) do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.entryPathScroll - 1) * _.LINE_H
     local label
@@ -79,6 +80,12 @@ local function run(ctx)
     else
       local pathStr = type(paths[i]) == "table" and paths[i].value or paths[i]
       label = pathLabel(pathStr or "")
+    end
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "entry_paths_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.entryPathSel)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
     end
     local col = (i == ctx.entryPathSel) and _.SELECTED_ENTRY or _.WHITE
     if not isBoot and i <= pathRows and type(paths[i]) == "table" and paths[i].disabled then

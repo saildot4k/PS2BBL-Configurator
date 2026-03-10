@@ -68,11 +68,18 @@ local function run(ctx)
     _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.75,
       _.menu_str.cdrom_hint, _.DIM)
   end
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
   for i = ctx.entryArgScroll + 1, math.min(ctx.entryArgScroll + _.MAX_VISIBLE_LIST, total) do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.entryArgScroll - 1) * _.LINE_H
     local a = args[i]
     local av = type(a) == "table" and a.value or a
-    local label = (av and (av:sub(1, 52) .. (#av > 52 and "..." or ""))) or ""
+    local label = (av and av ~= "" and av) or _.common_str.empty
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "entry_args_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.entryArgSel)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+    end
     local col = (i == ctx.entryArgSel) and _.SELECTED_ENTRY or _.WHITE
     if not isBoot and type(a) == "table" and a.disabled then
       col = (i == ctx.entryArgSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)

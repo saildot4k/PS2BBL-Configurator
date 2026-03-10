@@ -404,7 +404,10 @@ local function run(ctx)
       local a = args[i]
       local text = (a and a.value) or ""
       if text == "" then text = _.common_str.empty end
-      if _.common.truncateTextToWidth then
+      if _.common.fitListRowText then
+        text = _.common.fitListRowText(ctx, "bbl_hotkey_args_row_" .. tostring(i), _.font, text, maxLabelW,
+          _.FONT_SCALE, i == ctx.bblArgSel)
+      elseif _.common.truncateTextToWidth then
         text = _.common.truncateTextToWidth(_.font, text, maxLabelW, _.FONT_SCALE)
       end
       local col = (i == ctx.bblArgSel) and _.SELECTED_ENTRY or _.WHITE

@@ -409,6 +409,89 @@ function common.truncateTextToWidth(font, text, maxPixels, scale)
   return ellipsis
 end
 
+-- Return row text fitted to maxPixels. Selected rows use delayed horizontal marquee
+-- (hold at start, scroll right, hold at end, then repeat). Unselected rows are truncated.
+function common.fitListRowText(ctx, stateKey, font, text, maxPixels, scale, selected, opts)
+  local raw = tostring(text or "")
+  if maxPixels <= 0 or raw == "" then return raw end
+  local s = scale or 1
+  if not selected then
+    if ctx and ctx._rowMarqueeStates and stateKey then
+      ctx._rowMarqueeStates[stateKey] = nil
+    end
+    return common.truncateTextToWidth(font, raw, maxPixels, s)
+  end
+  local textW = common.calcTextWidth(font, raw, s) or 0
+  if textW <= maxPixels then
+    if ctx and ctx._rowMarqueeStates and stateKey then
+      ctx._rowMarqueeStates[stateKey] = nil
+    end
+    return raw
+  end
+
+  -- Fail-safe fallback if scene did not pass context or key.
+  if not ctx or not stateKey then
+    return common.truncateTextToWidth(font, raw, maxPixels, s)
+  end
+
+  local store = ctx._rowMarqueeStates
+  if not store then
+    store = {}
+    ctx._rowMarqueeStates = store
+  end
+  local st = store[stateKey]
+  if not st or st.text ~= raw or st.maxPixels ~= maxPixels or st.scale ~= s then
+    st = {
+      text = raw,
+      maxPixels = maxPixels,
+      scale = s,
+      ticks = 0,
+      visibleChars = nil,
+    }
+    store[stateKey] = st
+  end
+
+  if not st.visibleChars then
+    local vis = #raw
+    for n = 1, #raw do
+      if (common.calcTextWidth(font, raw:sub(1, n), s) or 0) > maxPixels then
+        vis = n - 1
+        break
+      end
+    end
+    st.visibleChars = math.max(1, vis)
+  end
+
+  local totalSteps = math.max(0, #raw - st.visibleChars)
+  if totalSteps <= 0 then return raw end
+
+  local holdStart = (opts and tonumber(opts.holdStart)) or 45
+  local stepFrames = (opts and tonumber(opts.stepFrames)) or 8
+  local holdEnd = (opts and tonumber(opts.holdEnd)) or 45
+  if holdStart < 0 then holdStart = 0 end
+  if holdEnd < 0 then holdEnd = 0 end
+  if stepFrames < 1 then stepFrames = 1 end
+
+  st.ticks = (st.ticks or 0) + 1
+  local cycleLen = holdStart + totalSteps * stepFrames + holdEnd
+  local ticks = st.ticks
+  if ticks >= cycleLen then
+    st.ticks = 0
+    ticks = 0
+  end
+
+  local startIdx
+  if ticks < holdStart then
+    startIdx = 1
+  elseif ticks < holdStart + totalSteps * stepFrames then
+    startIdx = 1 + math.floor((ticks - holdStart) / stepFrames)
+  else
+    startIdx = totalSteps + 1
+  end
+
+  return raw:sub(startIdx, startIdx + st.visibleChars - 1)
+end
+
 function common.drawText(font, mode, x, y, scale, text, color, drawHeight)
   local c = color or common.WHITE
   local ix, iy = math.floor(tonumber(x) or 0), math.floor(tonumber(y) or 0)

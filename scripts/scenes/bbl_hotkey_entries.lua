@@ -91,7 +91,10 @@ local function run(ctx)
     else
       text = (_.menu_str.add_entry_label or "Add") .. " path"
     end
-    if _.common.truncateTextToWidth then
+    if _.common.fitListRowText then
+      text = _.common.fitListRowText(ctx, "bbl_hotkey_entries_row_" .. tostring(i), _.font, text, maxLabelW,
+        _.FONT_SCALE, i == ctx.bblEntrySel)
+    elseif _.common.truncateTextToWidth then
       text = _.common.truncateTextToWidth(_.font, text, maxLabelW, _.FONT_SCALE)
     end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.bblEntrySel, text, col)
