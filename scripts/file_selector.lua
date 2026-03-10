@@ -88,7 +88,13 @@ local function inContext(contexts, context)
   return false
 end
 
--- Build device list for UI. context = "osdmenu", "mbr", or "mc_only". Every device gets withFlags(entry).
+-- Build device list for UI.
+-- context:
+--   "osdmenu"  = full device list + osdmenu special entries
+--   "mbr"      = MBR-compatible devices + mbr specials
+--   "mc_only"  = memory cards only
+--   "path_only"= filesystem devices only (no special command entries)
+-- Every device gets withFlags(entry).
 function file_selector.getDevices(context)
   local dev = (_G.CONFIG_UI and _G.CONFIG_UI.strings and _G.CONFIG_UI.strings.devices) or dev
   if context == "mc_only" then
@@ -97,6 +103,27 @@ function file_selector.getDevices(context)
       local s = STATIC[i]
       local desc = (s.descKey and dev[s.descKey]) or s.name
       table.insert(out, withFlags({ name = s.name, desc = desc, deviceType = s.deviceType }))
+    end
+    return out
+  end
+  if context == "path_only" then
+    local out = {}
+    for _, s in ipairs(STATIC) do
+      local desc = (s.descKey and dev[s.descKey]) or s.name
+      table.insert(out, withFlags({ name = s.name, desc = desc, deviceType = s.deviceType }))
+    end
+    for _, opt in ipairs(BDM_OPTIONS) do
+      local desc = (opt.deviceId and opt.deviceId:sub(1, 3) == "ata") and dev.exfat_hdd_mass0 or
+          (dev[BDM_DESC[opt.deviceId]] or opt.deviceId)
+      local deviceType = (opt.bdmType == "ata" and "hdd") or opt.bdmType
+      table.insert(out,
+        withFlags({
+          name = opt.deviceId,
+          desc = desc,
+          deviceType = deviceType,
+          deviceId = opt.deviceId,
+          bdmPathPrefix = opt.bdmPathPrefix
+        }))
     end
     return out
   end

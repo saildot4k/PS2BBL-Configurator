@@ -71,13 +71,14 @@ end
 
 local function setStateAfterLoad(s)
   s.configModified = false
+  local isCategorized = (s.fileType == "osdmenu_cnf" or s.fileType == "ps2bbl_ini" or s.fileType == "psxbbl_ini")
   if s.fileType == "osdgsm_cnf" then
     s.state = "egsm_editor"
     s.egsmSel, s.egsmScroll = 1, 0
   else
     s.state = "editor"
-    s.editorCategoryIdx = (s.fileType == "osdmenu_cnf") and 0 or nil
-    s.optList = (s.fileType == "osdmenu_cnf") and nil or C.config_options[s.fileType]
+    s.editorCategoryIdx = isCategorized and 0 or nil
+    s.optList = isCategorized and nil or C.config_options[s.fileType]
     s.optSel, s.optScroll = 1, 0
     if not s.optList then s.optList = {} end
   end

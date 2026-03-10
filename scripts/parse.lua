@@ -201,6 +201,200 @@ function config_parse.setBootArgs(lines, key, args)
   end
 end
 
+-- PS2BBL/PSXBBL hotkey keys and limits.
+local BBL_HOTKEYS = {
+  "AUTO", "SELECT", "L3", "R3", "START", "UP", "RIGHT", "DOWN", "LEFT",
+  "L2", "R2", "L1", "R1", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE"
+}
+local BBL_MAX_ENTRIES = 10
+local BBL_MAX_ARGS_PER_ENTRY = 8
+
+function config_parse.getBblHotkeys()
+  return BBL_HOTKEYS
+end
+
+function config_parse.getBblMaxEntries()
+  return BBL_MAX_ENTRIES
+end
+
+function config_parse.getBblMaxArgsPerEntry()
+  return BBL_MAX_ARGS_PER_ENTRY
+end
+
+local function isBblHotkeyId(keyId)
+  if type(keyId) ~= "string" then return false end
+  for _, k in ipairs(BBL_HOTKEYS) do
+    if k == keyId then return true end
+  end
+  return false
+end
+
+local function bblNameKey(keyId)
+  return "NAME_" .. tostring(keyId or "")
+end
+
+local function bblPathKey(keyId, entryIdx)
+  return "LK_" .. tostring(keyId or "") .. "_E" .. tostring(entryIdx or "")
+end
+
+local function bblArgKey(keyId, entryIdx)
+  return "ARG_" .. tostring(keyId or "") .. "_E" .. tostring(entryIdx or "")
+end
+
+local function removeAllKey(lines, key)
+  local i = 1
+  while i <= #lines do
+    if lines[i].key == key then
+      table.remove(lines, i)
+    else
+      i = i + 1
+    end
+  end
+end
+
+local function isValidBblEntryIdx(entryIdx)
+  return type(entryIdx) == "number" and entryIdx >= 1 and entryIdx <= BBL_MAX_ENTRIES
+end
+
+-- BBL hotkey name (NAME_<HOTKEY>). Returns "" when not set.
+function config_parse.getBblHotkeyName(lines, keyId)
+  if not isBblHotkeyId(keyId) then return "" end
+  local val = config_parse.getWithComment(lines, bblNameKey(keyId))
+  return val or ""
+end
+
+function config_parse.setBblHotkeyName(lines, keyId, value)
+  if not isBblHotkeyId(keyId) then return false end
+  config_parse.set(lines, bblNameKey(keyId), value or "")
+  return true
+end
+
+-- BBL path entry (LK_<HOTKEY>_E#). Returns path (or nil) and disabled state.
+function config_parse.getBblHotkeyPath(lines, keyId, entryIdx)
+  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return nil, false end
+  local value, commented = config_parse.getWithComment(lines, bblPathKey(keyId, entryIdx))
+  return value, (commented and true or false)
+end
+
+function config_parse.setBblHotkeyPath(lines, keyId, entryIdx, value, disabled)
+  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return false end
+  local key = bblPathKey(keyId, entryIdx)
+  removeAllKey(lines, key)
+  if value == nil then return true end
+  table.insert(lines, { key = key, value = value or "", comment = disabled and true or nil })
+  return true
+end
+
+function config_parse.setBblHotkeyPathDisabled(lines, keyId, entryIdx, disabled)
+  local value = config_parse.getBblHotkeyPath(lines, keyId, entryIdx)
+  if value == nil then return false end
+  return config_parse.setBblHotkeyPath(lines, keyId, entryIdx, value, disabled)
+end
+
+-- BBL args for one entry (ARG_<HOTKEY>_E#). Each item = { value, disabled }.
+function config_parse.getBblHotkeyArgs(lines, keyId, entryIdx)
+  local out = {}
+  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return out end
+  local key = bblArgKey(keyId, entryIdx)
+  for _, entry in ipairs(lines) do
+    if entry.key and entry.key == key then
+      table.insert(out, { value = entry.value or "", disabled = not not entry.comment, comment = entry.comment })
+    end
+  end
+  return out
+end
+
+function config_parse.setBblHotkeyArgs(lines, keyId, entryIdx, args)
+  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return false end
+  local key = bblArgKey(keyId, entryIdx)
+  removeAllKey(lines, key)
+  local maxArgs = BBL_MAX_ARGS_PER_ENTRY
+  local count = 0
+  for _, item in ipairs(args or {}) do
+    if count >= maxArgs then break end
+    local value = type(item) == "table" and item.value or item
+    local disabled = type(item) == "table" and (item.comment and true or item.disabled) or false
+    table.insert(lines, { key = key, value = value or "", comment = disabled and true or nil })
+    count = count + 1
+  end
+  return true
+end
+
+function config_parse.setBblHotkeyArgDisabled(lines, keyId, entryIdx, argIdx, disabled)
+  if type(argIdx) ~= "number" or argIdx < 1 then return false end
+  local args = config_parse.getBblHotkeyArgs(lines, keyId, entryIdx)
+  if argIdx > #args then return false end
+  args[argIdx].disabled = disabled and true or false
+  return config_parse.setBblHotkeyArgs(lines, keyId, entryIdx, args)
+end
+
+function config_parse.removeBblHotkeySlot(lines, keyId, entryIdx)
+  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return false end
+  removeAllKey(lines, bblPathKey(keyId, entryIdx))
+  removeAllKey(lines, bblArgKey(keyId, entryIdx))
+  return true
+end
+
+function config_parse.getBblHotkeySlot(lines, keyId, entryIdx)
+  local path, disabled = config_parse.getBblHotkeyPath(lines, keyId, entryIdx)
+  local args = config_parse.getBblHotkeyArgs(lines, keyId, entryIdx)
+  local used = ((path ~= nil and path ~= "") or #args > 0)
+  return {
+    slot = entryIdx,
+    used = used,
+    path = path or "",
+    pathExists = (path ~= nil),
+    disabled = disabled and true or false,
+    args = args,
+    argCount = #args,
+  }
+end
+
+function config_parse.getBblHotkeyUsedSlots(lines, keyId)
+  local out = {}
+  if not isBblHotkeyId(keyId) then return out end
+  for i = 1, BBL_MAX_ENTRIES do
+    local slot = config_parse.getBblHotkeySlot(lines, keyId, i)
+    if slot.used then table.insert(out, slot) end
+  end
+  return out
+end
+
+function config_parse.swapBblHotkeySlots(lines, keyId, slotA, slotB)
+  if not isBblHotkeyId(keyId) then return false end
+  if not isValidBblEntryIdx(slotA) or not isValidBblEntryIdx(slotB) then return false end
+  if slotA == slotB then return true end
+
+  local keyPathA = bblPathKey(keyId, slotA)
+  local keyPathB = bblPathKey(keyId, slotB)
+  local keyArgA = bblArgKey(keyId, slotA)
+  local keyArgB = bblArgKey(keyId, slotB)
+
+  local pathA, commentA = config_parse.getWithComment(lines, keyPathA)
+  local pathB, commentB = config_parse.getWithComment(lines, keyPathB)
+  local argsA = config_parse.getBblHotkeyArgs(lines, keyId, slotA)
+  local argsB = config_parse.getBblHotkeyArgs(lines, keyId, slotB)
+
+  removeAllKey(lines, keyPathA)
+  removeAllKey(lines, keyPathB)
+  removeAllKey(lines, keyArgA)
+  removeAllKey(lines, keyArgB)
+
+  if pathB ~= nil then
+    table.insert(lines, { key = keyPathA, value = pathB or "", comment = commentB and true or nil })
+  end
+  if pathA ~= nil then
+    table.insert(lines, { key = keyPathB, value = pathA or "", comment = commentA and true or nil })
+  end
+  for _, arg in ipairs(argsB or {}) do
+    table.insert(lines, { key = keyArgA, value = arg.value or "", comment = arg.comment and true or arg.disabled and true or nil })
+  end
+  for _, arg in ipairs(argsA or {}) do
+    table.insert(lines, { key = keyArgB, value = arg.value or "", comment = arg.comment and true or arg.disabled and true or nil })
+  end
+  return true
+end
+
 -- OSDGSM: validate title ID format AAAA_000.00 (4 uppercase letters, _, 3 digits, ., 2 digits; 11 chars).
 function config_parse.isValidTitleId(s)
   if type(s) ~= "string" or #s ~= 11 then return false end

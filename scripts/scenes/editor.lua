@@ -65,16 +65,30 @@ local function run(ctx)
     return
   end
 
-  if ctx.fileType == "osdmenu_cnf" and ctx.editorCategoryIdx == 0 then
-    local cats = _.config_options.osdmenu_cnf_categories or {}
+  local isCategorizedFile = (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini")
+  local categories = {}
+  if ctx.fileType == "osdmenu_cnf" then
+    categories = _.config_options.osdmenu_cnf_categories or {}
+  elseif ctx.fileType == "ps2bbl_ini" then
+    categories = _.config_options.ps2bbl_ini_categories or {}
+  elseif ctx.fileType == "psxbbl_ini" then
+    categories = _.config_options.psxbbl_ini_categories or {}
+  end
+
+  if isCategorizedFile and ctx.editorCategoryIdx == 0 then
+    local cats = categories
     if ctx.optSel < 1 then ctx.optSel = 1 end
     if ctx.optSel > #cats then ctx.optSel = #cats end
     for i = 1, math.min(_.MAX_VISIBLE, #cats) do
       local cat = cats[i]
       local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.ROW_H
       local col = (i == ctx.optSel) and _.SELECTED_ENTRY or _.WHITE
+      local catLabel = cat.name or _.common_str.empty
+      if ctx.fileType == "osdmenu_cnf" then
+        catLabel = (_.strings.categories and _.strings.categories[i]) or catLabel
+      end
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel,
-        (_.strings.categories and _.strings.categories[i]) or cat.name or _.common_str.empty, col)
+        catLabel, col)
     end
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.editor_str.cross_open_circle_back_items, nil,
       _.DIM, _.w - 2 * _.MARGIN_X)
@@ -86,16 +100,20 @@ local function run(ctx)
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 and #cats > 0 then
       local cat = cats[ctx.optSel]
-      if cat and #(cat.options or {}) == 1 and (cat.options[1].key == "_menu_entries") then
+      local actionKey = cat and #(cat.options or {}) == 1 and cat.options[1].key or nil
+      if actionKey == "_menu_entries" then
         ctx.state = "menu_entries"
         ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
         ctx.entrySel = 1
         ctx.entryScroll = 0
+      elseif actionKey == "_bbl_hotkeys" then
+        ctx.bblHotkeySel = 1
+        ctx.state = "bbl_hotkeys"
       else
         ctx.editorCategoryIdx = ctx.optSel
         local rawOpts = cat.options or {}
         -- DKWDRV custom path not applicable for HOSDMenu (no MC path)
-        if ctx.context == "hosdmenu" then
+        if ctx.context == "hosdmenu" and ctx.fileType == "osdmenu_cnf" then
           ctx.optList = {}
           for _, o in ipairs(rawOpts) do
             if o.key ~= "path_DKWDRV_ELF" then ctx.optList[#ctx.optList + 1] = o end
@@ -130,7 +148,7 @@ local function run(ctx)
       local lab = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or o.label
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
       local valDisplay
-      if o.optType == "header" or o.key == "_menu_entries" then
+      if o.optType == "header" or o.key == "_menu_entries" or o.key == "_bbl_hotkeys" then
         valDisplay = ""
       elseif o.optType == "color" then
         valDisplay = nil
@@ -275,13 +293,18 @@ local function run(ctx)
         local cur = _.config_parse.get(ctx.lines, o.key) or o.default or "0"
         local num = tonumber(cur)
         if num then
-          local minV, maxV = 0, 9999
-          if o.key and o.key:match("menu_x") then
-            maxV = 639
-          elseif o.key and o.key:match("menu_y") then
-            maxV = 447
-          elseif o.key and o.key:match("num_displayed") then
-            minV, maxV = 1, 30
+          local minV = tonumber(o.min)
+          local maxV = tonumber(o.max)
+          if minV == nil then minV = 0 end
+          if maxV == nil then maxV = 9999 end
+          if o.min == nil and o.max == nil then
+            if o.key and o.key:match("menu_x") then
+              maxV = 639
+            elseif o.key and o.key:match("menu_y") then
+              maxV = 447
+            elseif o.key and o.key:match("num_displayed") then
+              minV, maxV = 1, 30
+            end
           end
           local delta = 0
           if (_.padEffective & _.PAD_RIGHT) ~= 0 then delta = 1 end
@@ -333,6 +356,9 @@ local function run(ctx)
         ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
         ctx.entrySel = 1
         ctx.entryScroll = 0
+      elseif o.key == "_bbl_hotkeys" then
+        ctx.bblHotkeySel = 1
+        ctx.state = "bbl_hotkeys"
       elseif o.optType == "boot_paths" then
         ctx.bootKey = o.key
         ctx.entryIdx = nil
@@ -343,8 +369,10 @@ local function run(ctx)
         ctx.editKey = o.key
         ctx.isAddPath = false
         ctx.addPathKey = nil
-        ctx.pathPickerContext = (o.key == "path_DKWDRV_ELF") and "mc_only" or
-            ((ctx.context == "mbr") and "mbr" or "osdmenu")
+        local isBblLoadIrx = (ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini") and o.key and
+            o.key:match("^LOAD_IRX_E%d+$")
+        ctx.pathPickerContext = isBblLoadIrx and "path_only" or
+            ((o.key == "path_DKWDRV_ELF") and "mc_only" or ((ctx.context == "mbr") and "mbr" or "osdmenu"))
         ctx.pathPickerSub = "device"
         ctx.pathList = _.file_selector.getDevices(ctx.pathPickerContext) or {}
         ctx.pathPickerSel = 1
@@ -399,7 +427,7 @@ local function run(ctx)
     end
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
-    if ctx.fileType == "osdmenu_cnf" and ctx.editorCategoryIdx and ctx.editorCategoryIdx > 0 then
+    if isCategorizedFile and ctx.editorCategoryIdx and ctx.editorCategoryIdx > 0 then
       ctx.editorCategoryIdx = 0
       ctx.optList = nil
       ctx.saveSplash = nil

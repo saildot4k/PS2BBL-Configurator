@@ -73,6 +73,15 @@ cmake --build build
 - `-DPOWERPC_UART=ON` for enabling stdout redirection on Deckard consoles
 - `-DEMBED_VFS=ON` for embedding the contents of `scripts/` into the ELF so the app can run without external script files (e.g. from a single ELF on memory card)
 
+## Lua syntax checks
+
+The repository includes a VS Code task named `Lua: Syntax Check`:
+
+- Windows: runs `tools/lua_syntax_check.ps1` (expects `luac.exe` in `PATH`, or `LUAC` env var set).
+- Linux/WSL/macOS: runs `tools/lua_syntax_check.sh` (expects `luac` in `PATH`, or `LUAC` env var set).
+
+Run it from VS Code with `Terminal -> Run Task... -> Lua: Syntax Check`.
+
 ## License
 
 Distributed under the GNU GPL-3.0 License. See `LICENSE` for details.

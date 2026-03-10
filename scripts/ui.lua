@@ -23,6 +23,10 @@ local scene_menu_entry_edit = dofile("scripts/scenes/menu_entry_edit.lua")
 local scene_entry_cdrom_options = dofile("scripts/scenes/entry_cdrom_options.lua")
 local scene_entry_paths = dofile("scripts/scenes/entry_paths.lua")
 local scene_entry_args = dofile("scripts/scenes/entry_args.lua")
+local scene_bbl_hotkeys = dofile("scripts/scenes/bbl_hotkeys.lua")
+local scene_bbl_hotkey_entries = dofile("scripts/scenes/bbl_hotkey_entries.lua")
+local scene_bbl_hotkey_entry = dofile("scripts/scenes/bbl_hotkey_entry.lua")
+local scene_bbl_hotkey_args = dofile("scripts/scenes/bbl_hotkey_args.lua")
 local scene_text_input = dofile("scripts/scenes/text_input.lua")
 local scene_path_picker = dofile("scripts/scenes/path_picker.lua")
 local scene_egsm_editor = dofile("scripts/scenes/egsm_editor.lua")
@@ -370,6 +374,22 @@ local function mainLoop()
       syncToS(c)
       scene_entry_args.run(c)
       syncFromS(c)
+    elseif state == "bbl_hotkeys" then
+      syncToS(c)
+      scene_bbl_hotkeys.run(c)
+      syncFromS(c)
+    elseif state == "bbl_hotkey_entries" then
+      syncToS(c)
+      scene_bbl_hotkey_entries.run(c)
+      syncFromS(c)
+    elseif state == "bbl_hotkey_entry" then
+      syncToS(c)
+      scene_bbl_hotkey_entry.run(c)
+      syncFromS(c)
+    elseif state == "bbl_hotkey_args" then
+      syncToS(c)
+      scene_bbl_hotkey_args.run(c)
+      syncFromS(c)
     elseif state == "egsm_editor" then
       syncToS(c)
       scene_egsm_editor.run(c)
@@ -398,8 +418,9 @@ local function mainLoop()
     return c.state, c
   end
   local sceneNames = { "main", "choose_mc", "select_config", "initHdd", "open", "choose_load", "editor", "choose_save",
-    "color_edit", "menu_entries", "menu_entry_edit", "entry_cdrom_options", "entry_paths", "entry_args", "egsm_editor",
-    "egsm_value_edit", "text_input", "path_picker" }
+    "color_edit", "menu_entries", "menu_entry_edit", "entry_cdrom_options", "entry_paths", "entry_args", "bbl_hotkeys",
+    "bbl_hotkey_entries", "bbl_hotkey_entry", "bbl_hotkey_args", "egsm_editor", "egsm_value_edit", "text_input",
+    "path_picker" }
   local scenes = {}
   for _, name in ipairs(sceneNames) do scenes[name] = { run = runOneFrame } end
   -- Main-flow scenes use runSceneLoop (clear, layout, handler, flip until state change).

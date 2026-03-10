@@ -50,6 +50,112 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
   return {}
 end
 
+config_options.BBL_HOTKEYS = {
+  "AUTO", "SELECT", "L3", "R3", "START", "UP", "RIGHT", "DOWN", "LEFT",
+  "L2", "R2", "L1", "R1", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE"
+}
+config_options.BBL_MAX_ENTRIES = 10
+config_options.BBL_MAX_ARGS_PER_ENTRY = 8
+
+function config_options.getBblHotkeys()
+  return config_options.BBL_HOTKEYS
+end
+
+-- PS2BBL/PSXBBL global options and IRX load entries.
+local function buildBblIniGlobalOptions()
+  local out = {
+    {
+      key = "VIDEO_MODE",
+      optType = "enum",
+      default = "AUTO",
+      enumVals = { "AUTO", "NTSC", "PAL", "480P" },
+      label = "VIDEO_MODE",
+      desc = "Loader UI mode: AUTO, NTSC, PAL, 480P.",
+    },
+    {
+      key = "LOGO_DISPLAY",
+      optType = "enum",
+      default = "3",
+      enumVals = { "0", "1", "2", "3", "4", "5" },
+      label = "LOGO_DISPLAY",
+      desc = "0=off, 1=info, 2=logo+info, 3=name, 4=filename, 5=path.",
+    },
+    {
+      key = "KEY_READ_WAIT_TIME",
+      optType = "int",
+      default = "6000",
+      min = 0,
+      max = 600000,
+      label = "KEY_READ_WAIT_TIME",
+      desc = "Milliseconds to wait for key input.",
+    },
+    {
+      key = "OSDHISTORY_READ",
+      optType = "bool",
+      default = "1",
+      label = "OSDHISTORY_READ",
+      desc = "Read previous OSD history state.",
+    },
+    {
+      key = "EJECT_TRAY",
+      optType = "bool",
+      default = "0",
+      label = "EJECT_TRAY",
+      desc = "Eject tray before launch.",
+    },
+    {
+      key = "PS1DRV_ENABLE_FAST",
+      optType = "bool",
+      default = "0",
+      label = "PS1DRV_ENABLE_FAST",
+      desc = "Enable PS1 fast loading.",
+    },
+    {
+      key = "PS1DRV_ENABLE_SMOOTH",
+      optType = "bool",
+      default = "0",
+      label = "PS1DRV_ENABLE_SMOOTH",
+      desc = "Enable PS1 smoothing.",
+    },
+    {
+      key = "PS1DRV_USE_PS1VN",
+      optType = "bool",
+      default = "0",
+      label = "PS1DRV_USE_PS1VN",
+      desc = "Enable PS1 video negator.",
+    },
+    {
+      key = "_load_irx_header",
+      optType = "header",
+      label = "LOAD_IRX_E#",
+      desc = "Additional IRX modules. Order matters.",
+    },
+  }
+
+  for i = 1, 10 do
+    local k = "LOAD_IRX_E" .. tostring(i)
+    table.insert(out, {
+      key = k,
+      optType = "path",
+      default = "",
+      label = k,
+      desc = "IRX module path (" .. tostring(i) .. ").",
+    })
+  end
+  return out
+end
+
+config_options.ps2bbl_ini = buildBblIniGlobalOptions()
+config_options.psxbbl_ini = buildBblIniGlobalOptions()
+config_options.ps2bbl_ini_categories = {
+  { name = "GLOBAL", options = config_options.ps2bbl_ini },
+  { name = "AUTO/HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO/HOTKEYS" } } },
+}
+config_options.psxbbl_ini_categories = {
+  { name = "GLOBAL", options = config_options.psxbbl_ini },
+  { name = "AUTO/HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO/HOTKEYS" } } },
+}
+
 -- optType: "path", "bool", "enum", "string", "int", "text", "color", "action", "header"
 -- int: numeric value; +/- hints and L1/R1/L2/R2 apply. bool/path/text/color do not show numeric hints.
 config_options.osdmenu_cnf_categories = {
