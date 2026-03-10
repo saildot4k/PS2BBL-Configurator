@@ -201,9 +201,13 @@ function config_parse.setBootArgs(lines, key, args)
   end
 end
 
--- PS2BBL/PSXBBL hotkey keys and limits.
-local BBL_HOTKEYS = {
+-- PS2BBL/PSXBBL key IDs and limits.
+local BBL_KEYS_ALL = {
   "AUTO", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE", "UP", "DOWN", "LEFT", "RIGHT",
+  "L1", "L2", "L3", "R1", "R2", "R3", "SELECT", "START"
+}
+local BBL_HOTKEYS = {
+  "TRIANGLE", "CIRCLE", "CROSS", "SQUARE", "UP", "DOWN", "LEFT", "RIGHT",
   "L1", "L2", "L3", "R1", "R2", "R3", "SELECT", "START"
 }
 local BBL_MAX_ENTRIES = 10
@@ -223,7 +227,7 @@ end
 
 local function isBblHotkeyId(keyId)
   if type(keyId) ~= "string" then return false end
-  for _, k in ipairs(BBL_HOTKEYS) do
+  for _, k in ipairs(BBL_KEYS_ALL) do
     if k == keyId then return true end
   end
   return false

@@ -10,8 +10,25 @@ config_options.FEATURES = {
   egsm_ui = false,
 }
 
+-- Device visibility for PS2BBL/PSXBBL path picker (path_only context).
+-- Set any key to false to hide it from device selection:
+-- mc, usb, hdd (APA/PFS), mmce, mx4sio, ata (exFAT via BDM ata0), xfrom
+config_options.BBL_PATH_DEVICE_VISIBILITY = {
+  mc = true,
+  usb = true,
+  hdd = true,
+  mmce = true,
+  mx4sio = true,
+  ata = false,
+  xfrom = false,
+}
+
 function config_options.isEgsmUiEnabled()
   return config_options.FEATURES.egsm_ui == true
+end
+
+function config_options.getBblPathDeviceVisibility()
+  return config_options.BBL_PATH_DEVICE_VISIBILITY
 end
 
 -- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
@@ -60,7 +77,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
 end
 
 config_options.BBL_HOTKEYS = {
-  "AUTO", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE", "UP", "DOWN", "LEFT", "RIGHT",
+  "TRIANGLE", "CIRCLE", "CROSS", "SQUARE", "UP", "DOWN", "LEFT", "RIGHT",
   "L1", "L2", "L3", "R1", "R2", "R3", "SELECT", "START"
 }
 config_options.BBL_MAX_ENTRIES = 10
@@ -96,15 +113,6 @@ local function buildBblIniGlobalOptions()
       },
       label = "LOGO_DISPLAY",
       desc = "Display speed: FAST (0-3), SLOWER (4-5).",
-    },
-    {
-      key = "KEY_READ_WAIT_TIME",
-      optType = "int",
-      default = "6000",
-      min = 0,
-      max = 600000,
-      label = "KEY_READ_WAIT_TIME",
-      desc = "Milliseconds to wait for key input.",
     },
     {
       key = "OSDHISTORY_READ",
@@ -156,15 +164,53 @@ local function buildBblIniGlobalOptions()
   return out
 end
 
+local function buildBblIniAutoOptions()
+  return {
+    {
+      key = "KEY_READ_WAIT_TIME",
+      optType = "int",
+      default = "6000",
+      min = 0,
+      max = 600000,
+      label = "TIMER",
+      desc = "Milliseconds to wait for key input before AUTO launch.",
+    },
+    {
+      key = "NAME_AUTO",
+      optType = "text",
+      default = "",
+      label = "NAME",
+      desc = "Display name for AUTO.",
+      maxLen = 64,
+    },
+    {
+      key = "_auto_path",
+      optType = "action",
+      label = "PATH",
+      desc = "Edit LK_AUTO_E1..E10 entries.",
+    },
+    {
+      key = "_auto_args",
+      optType = "action",
+      label = "ARGS",
+      desc = "Edit ARG_AUTO_E# entries.",
+    },
+  }
+end
+
 config_options.ps2bbl_ini = buildBblIniGlobalOptions()
 config_options.psxbbl_ini = buildBblIniGlobalOptions()
+config_options.ps2bbl_ini_auto = buildBblIniAutoOptions()
+config_options.psxbbl_ini_auto = buildBblIniAutoOptions()
 config_options.ps2bbl_ini_categories = {
   { name = "GLOBAL", options = config_options.ps2bbl_ini },
-  { name = "AUTO / HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO / HOTKEYS" } } },
+  { name = "AUTO", options = config_options.ps2bbl_ini_auto },
+  { name = "HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "HOTKEYS" } } },
 }
 config_options.psxbbl_ini_categories = {
   { name = "GLOBAL", options = config_options.psxbbl_ini },
-  { name = "AUTO / HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO / HOTKEYS" } } },
+  { name = "AUTO", options = config_options.psxbbl_ini_auto },
+  { name = "HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "HOTKEYS" } } },
 }
 
 -- optType: "path", "bool", "enum", "string", "int", "text", "color", "action", "header"

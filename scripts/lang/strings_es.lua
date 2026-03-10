@@ -108,6 +108,7 @@ strings.menu_entries = {
 strings.path_picker = {
   choose_device = "Elegir dispositivo",
   add_path_choose_device = "Añadir ruta: elegir dispositivo",
+  bbl_build_device_hint = "Elige solo dispositivos que soporte tu build de PS?BBL.",
   enter_path_manually = "Introducir ruta manualmente",
   enter_path_prompt = "Introducir ruta",
   cross_select_circle_back_items = { { pad = "cross", label = "Entrar" }, { pad = "circle", label = "Atrás" } },

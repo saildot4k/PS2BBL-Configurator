@@ -260,6 +260,13 @@ local function run(ctx)
     if not ctx.pathPickerLoadingTimeoutMsg and not ctx.pathPickerLoading then
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1,
         ctx.isAddPath and _.path_str.add_path_choose_device or _.path_str.choose_device, _.WHITE)
+      if ctx.pathPickerContext == "path_only" and _.path_str.bbl_build_device_hint then
+        local hint = _.path_str.bbl_build_device_hint
+        if _.common.truncateTextToWidth then
+          hint = _.common.truncateTextToWidth(_.font, hint, _.w - (_.MARGIN_X * 2), 0.55)
+        end
+        _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(20), 0.55, hint, _.DIM)
+      end
       if ctx.pathList and #ctx.pathList > 0 and not ctx.pathPickerLoading then
         local totalCount = #ctx.pathList + 1
         _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. totalCount,

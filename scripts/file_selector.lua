@@ -28,9 +28,9 @@ local STATIC = {
 local BDM_DESC = { usb0 = "usb_storage_0", usb1 = "usb_storage_1", mx4sio = "mx4sio_sd" }
 local BDM_OPTIONS = {
   { deviceId = "ata0",   bdmType = "ata",    bdmPathPrefix = "ata",   mbr = true },
-  { deviceId = "usb0",   bdmType = "usb",    bdmPathPrefix = "usb" },
-  { deviceId = "usb1",   bdmType = "usb",    bdmPathPrefix = "usb" },
-  { deviceId = "mx4sio", bdmType = "mx4sio", bdmPathPrefix = "mx4sio" },
+  { deviceId = "usb0",   bdmType = "usb",    bdmPathPrefix = "mass" },
+  { deviceId = "usb1",   bdmType = "usb",    bdmPathPrefix = "mass" },
+  { deviceId = "mx4sio", bdmType = "mx4sio", bdmPathPrefix = "massX" },
 }
 
 -- Special devices (instant-select, no browse). descKey = key in strings.devices. contexts = "osdmenu" | "mbr" | {"osdmenu","mbr"}.
@@ -88,6 +88,43 @@ local function inContext(contexts, context)
   return false
 end
 
+local function getBblPathDeviceVisibility()
+  local cfg = _G.CONFIG_UI and _G.CONFIG_UI.config_options
+  if cfg and cfg.getBblPathDeviceVisibility then
+    return cfg.getBblPathDeviceVisibility()
+  end
+  return nil
+end
+
+local function isVisible(visibility, key)
+  if not visibility or not key then return true end
+  local v = visibility[key]
+  if v == nil then return true end
+  return v == true
+end
+
+local function staticPathOnlyVisible(visibility, s)
+  if not s then return false end
+  if s.name == "mc0:" or s.name == "mc1:" then
+    return isVisible(visibility, "mc")
+  end
+  if s.deviceType == "mmce" then
+    return isVisible(visibility, "mmce")
+  end
+  if s.deviceType == "hdd" then
+    return isVisible(visibility, "hdd")
+  end
+  return true
+end
+
+local function bdmPathOnlyVisible(visibility, opt)
+  if not opt or not opt.bdmType then return false end
+  if opt.bdmType == "ata" then
+    return isVisible(visibility, "ata")
+  end
+  return isVisible(visibility, opt.bdmType)
+end
+
 -- Build device list for UI.
 -- context:
 --   "osdmenu"  = full device list + osdmenu special entries
@@ -107,23 +144,28 @@ function file_selector.getDevices(context)
     return out
   end
   if context == "path_only" then
+    local visibility = getBblPathDeviceVisibility()
     local out = {}
     for _, s in ipairs(STATIC) do
-      local desc = (s.descKey and dev[s.descKey]) or s.name
-      table.insert(out, withFlags({ name = s.name, desc = desc, deviceType = s.deviceType }))
+      if staticPathOnlyVisible(visibility, s) then
+        local desc = (s.descKey and dev[s.descKey]) or s.name
+        table.insert(out, withFlags({ name = s.name, desc = desc, deviceType = s.deviceType }))
+      end
     end
     for _, opt in ipairs(BDM_OPTIONS) do
-      local desc = (opt.deviceId and opt.deviceId:sub(1, 3) == "ata") and dev.exfat_hdd_mass0 or
-          (dev[BDM_DESC[opt.deviceId]] or opt.deviceId)
-      local deviceType = (opt.bdmType == "ata" and "hdd") or opt.bdmType
-      table.insert(out,
-        withFlags({
-          name = opt.deviceId,
-          desc = desc,
-          deviceType = deviceType,
-          deviceId = opt.deviceId,
-          bdmPathPrefix = opt.bdmPathPrefix
-        }))
+      if bdmPathOnlyVisible(visibility, opt) then
+        local desc = (opt.deviceId and opt.deviceId:sub(1, 3) == "ata") and dev.exfat_hdd_mass0 or
+            (dev[BDM_DESC[opt.deviceId]] or opt.deviceId)
+        local deviceType = (opt.bdmType == "ata" and "hdd") or opt.bdmType
+        table.insert(out,
+          withFlags({
+            name = opt.deviceId,
+            desc = desc,
+            deviceType = deviceType,
+            deviceId = opt.deviceId,
+            bdmPathPrefix = opt.bdmPathPrefix
+          }))
+      end
     end
     return out
   end

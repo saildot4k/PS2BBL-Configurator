@@ -21,9 +21,120 @@ local function run(ctx)
     _.config_parse.setBblHotkeyArgs(ctx.lines, keyId, slot, args)
     ctx.configModified = true
   end
+  local function addArgValue(v)
+    local value = tostring(v or "")
+    if value == "" then return end
+    local args2 = getArgs()
+    if #args2 >= maxArgs then return end
+    table.insert(args2, { value = value, disabled = false })
+    setArgs(args2)
+    ctx.bblArgSel = #args2
+  end
+  local function openNewArgumentInput(prompt, maxLen, callback)
+    ctx.textInputTitleIdMode = nil
+    ctx.textInputPrompt = prompt
+    ctx.textInputValue = ""
+    ctx.textInputMaxLen = maxLen
+    ctx.textInputCallback = callback
+    ctx.textInputReturnState = "bbl_hotkey_args"
+    ctx.textInputGridSel = 1
+    ctx.textInputCursor = 1
+    ctx.textInputScroll = 1
+    ctx.state = "text_input"
+  end
 
   local args = getArgs()
   local total = #args
+  local presetRows = {
+    { label = "Enter manually", kind = "manual" },
+    { label = "-appid", value = "-appid" },
+    { label = "-patinfo", value = "-patinfo" },
+    { label = "-dev9=NICHDD", value = "-dev9=NICHDD" },
+    { label = "-dev9=NIC", value = "-dev9=NIC" },
+    { label = "-titleid=<11 chars>", kind = "titleid" },
+  }
+
+  if ctx.bblArgAddMenu and total >= maxArgs then
+    ctx.bblArgAddMenu = nil
+    ctx.bblArgAddSel = nil
+    ctx.bblArgAddScroll = nil
+  end
+  if ctx.bblArgAddMenu then
+    local rows = presetRows
+    ctx.bblArgAddSel = ctx.bblArgAddSel or 1
+    if ctx.bblArgAddSel < 1 then ctx.bblArgAddSel = 1 end
+    if ctx.bblArgAddSel > #rows then ctx.bblArgAddSel = #rows end
+    ctx.bblArgAddScroll = ctx.bblArgAddScroll or 0
+    if #rows > _.MAX_VISIBLE_LIST then
+      if ctx.bblArgAddSel > ctx.bblArgAddScroll + _.MAX_VISIBLE_LIST then
+        ctx.bblArgAddScroll = ctx.bblArgAddSel - _.MAX_VISIBLE_LIST
+      end
+      if ctx.bblArgAddSel < ctx.bblArgAddScroll + 1 then
+        ctx.bblArgAddScroll = ctx.bblArgAddSel - 1
+      end
+    else
+      ctx.bblArgAddScroll = 0
+    end
+
+    local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ")"
+    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleAdd, _.WHITE)
+    local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
+    for i = ctx.bblArgAddScroll + 1, math.min(ctx.bblArgAddScroll + _.MAX_VISIBLE_LIST, #rows) do
+      local row = rows[i]
+      local text = row.label or ""
+      if _.common.truncateTextToWidth then
+        text = _.common.truncateTextToWidth(_.font, text, maxLabelW, _.FONT_SCALE)
+      end
+      local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.bblArgAddScroll - 1) * _.LINE_H
+      local col = (i == ctx.bblArgAddSel) and _.SELECTED_ENTRY or _.WHITE
+      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.bblArgAddSel, text, col)
+    end
+    _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, {
+      { pad = "cross", label = "Select", row = 1 },
+      { pad = "circle", label = "Back", row = 1 },
+    }, nil, _.DIM, _.w - 2 * _.MARGIN_X)
+
+    if (_.padEffective & _.PAD_UP) ~= 0 then
+      ctx.bblArgAddSel = ctx.bblArgAddSel - 1
+      if ctx.bblArgAddSel < 1 then ctx.bblArgAddSel = #rows end
+    end
+    if (_.padEffective & _.PAD_DOWN) ~= 0 then
+      ctx.bblArgAddSel = ctx.bblArgAddSel + 1
+      if ctx.bblArgAddSel > #rows then ctx.bblArgAddSel = 1 end
+    end
+    if (_.padEffective & _.PAD_CROSS) ~= 0 then
+      local row = rows[ctx.bblArgAddSel]
+      if row then
+        ctx.bblArgAddMenu = nil
+        ctx.bblArgAddSel = nil
+        ctx.bblArgAddScroll = nil
+        if row.kind == "manual" then
+          openNewArgumentInput(_.menu_str.new_argument_prompt or "New argument", 255, function(val)
+            local v = val or ""
+            if v ~= "" then addArgValue(v) end
+            ctx.state = "bbl_hotkey_args"
+          end)
+        elseif row.kind == "titleid" then
+          openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
+            local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if titleId ~= "" then
+              addArgValue("-titleid=" .. titleId)
+            end
+            ctx.state = "bbl_hotkey_args"
+          end)
+        else
+          addArgValue(row.value or "")
+        end
+      end
+    end
+    if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
+      ctx.bblArgAddMenu = nil
+      ctx.bblArgAddSel = nil
+      ctx.bblArgAddScroll = nil
+    end
+    return
+  end
+
   ctx.bblArgSel = ctx.bblArgSel or 1
   if total <= 0 then
     ctx.bblArgSel = 1
@@ -110,26 +221,9 @@ local function run(ctx)
   end
 
   if (_.padEffective & _.PAD_SELECT) ~= 0 and total < maxArgs then
-    ctx.textInputTitleIdMode = nil
-    ctx.textInputPrompt = _.menu_str.new_argument_prompt or "New argument"
-    ctx.textInputValue = ""
-    ctx.textInputMaxLen = 255
-    ctx.textInputCallback = function(val)
-      local v = val or ""
-      if v ~= "" then
-        local args2 = getArgs()
-        if #args2 < maxArgs then
-          table.insert(args2, { value = v, disabled = false })
-          setArgs(args2)
-        end
-      end
-      ctx.state = "bbl_hotkey_args"
-    end
-    ctx.textInputReturnState = "bbl_hotkey_args"
-    ctx.textInputGridSel = 1
-    ctx.textInputCursor = 1
-    ctx.textInputScroll = 1
-    ctx.state = "text_input"
+    ctx.bblArgAddMenu = true
+    ctx.bblArgAddSel = 1
+    ctx.bblArgAddScroll = 0
   end
 
   if total > 0 and (_.padEffective & _.PAD_TRIANGLE) ~= 0 then

@@ -148,7 +148,7 @@ local function run(ctx)
       local lab = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or o.label
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
       local valDisplay
-      if o.optType == "header" or o.key == "_menu_entries" or o.key == "_bbl_hotkeys" then
+      if o.optType == "header" or o.optType == "action" then
         valDisplay = ""
       elseif o.optType == "color" then
         valDisplay = nil
@@ -350,7 +350,7 @@ local function run(ctx)
       elseif o.optType == "text" or o.optType == "string" then
         ctx.textInputTitleIdMode = nil
         ctx.textInputPrompt = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or
-            _.common_str.enter_text
+            o.label or _.common_str.enter_text
         ctx.textInputValue = _.config_parse.get(ctx.lines, o.key) or o.default or ""
         ctx.textInputMaxLen = (o.maxLen and o.maxLen > 0) and o.maxLen or 79
         ctx.textInputCallback = function(val)
@@ -371,6 +371,34 @@ local function run(ctx)
       elseif o.key == "_bbl_hotkeys" then
         ctx.bblHotkeySel = 1
         ctx.state = "bbl_hotkeys"
+      elseif o.key == "_auto_path" then
+        ctx.bblHotkeyKey = "AUTO"
+        ctx.bblEntrySel = 1
+        ctx.bblEntryScroll = 0
+        ctx.bblEntryFocusSlot = nil
+        ctx.state = "bbl_hotkey_entries"
+      elseif o.key == "_auto_args" then
+        local maxEntries = (_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10
+        local firstUsedSlot = nil
+        for si = 1, maxEntries do
+          local slotData = _.config_parse.getBblHotkeySlot(ctx.lines, "AUTO", si)
+          if slotData and slotData.used then
+            firstUsedSlot = si
+            break
+          end
+        end
+        if firstUsedSlot then
+          ctx.bblHotkeyKey = "AUTO"
+          ctx.bblEntrySlot = firstUsedSlot
+          ctx.bblEntryDetailSel = 2
+          ctx.state = "bbl_hotkey_entry"
+        else
+          ctx.bblHotkeyKey = "AUTO"
+          ctx.bblEntrySel = 1
+          ctx.bblEntryScroll = 0
+          ctx.bblEntryFocusSlot = nil
+          ctx.state = "bbl_hotkey_entries"
+        end
       elseif o.optType == "boot_paths" then
         ctx.bootKey = o.key
         ctx.entryIdx = nil

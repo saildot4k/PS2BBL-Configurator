@@ -71,7 +71,7 @@ local function run(ctx)
     ctx.bblEntryScroll = 0
   end
 
-  local title = keyId .. " - AUTO / HOTKEYS"
+  local title = (keyId == "AUTO") and "AUTO" or (keyId .. " - HOTKEYS")
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
   local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
 

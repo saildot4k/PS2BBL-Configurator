@@ -1,4 +1,4 @@
---[[ PS2BBL/PSXBBL hotkey list (AUTO + 16 buttons). ]]
+--[[ PS2BBL/PSXBBL hotkey list (16 buttons, AUTO handled separately). ]]
 
 local function run(ctx)
   local _ = ctx._
@@ -14,7 +14,7 @@ local function run(ctx)
     return
   end
 
-  local title = "AUTO / HOTKEYS"
+  local title = "HOTKEYS"
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
 
   ctx.bblHotkeySel = ctx.bblHotkeySel or 1
