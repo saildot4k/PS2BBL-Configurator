@@ -89,6 +89,15 @@ local function resolveContextFileType(s)
   return nil
 end
 
+local function resolveIniFileType(s)
+  local ft = resolveContextFileType(s)
+  if ft then return ft end
+  if s.fileType == "ps2bbl_ini" or s.fileType == "psxbbl_ini" then
+    return s.fileType
+  end
+  return nil
+end
+
 local function setStateAfterLoad(s)
   s.configModified = false
   local isCategorized = (s.fileType == "osdmenu_cnf" or s.fileType == "ps2bbl_ini" or s.fileType == "psxbbl_ini")
@@ -213,7 +222,6 @@ local function runChooseMc(s, pad)
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   elseif #slots == 1 then
     s.chosenMcSlot = slots[1]
-    s.fileType = nil
     s.state = "select_config"
   else
     dt(s.font, s.drawMode, M, MY, 1.1, main_str.select_memory_card, common.WHITE)
@@ -235,7 +243,6 @@ local function runChooseMc(s, pad)
     end
     if (pad & PAD_CROSS) ~= 0 then
       s.chosenMcSlot = slots[s.mcSel]
-      s.fileType = nil
       s.state = "select_config"
     end
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
@@ -251,11 +258,11 @@ local function runSelectConfig(s, pad)
   local MY = s.MARGIN_Y or common.MARGIN_Y
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
-  local iniFileType = resolveContextFileType(s)
+  local iniFileType = resolveIniFileType(s)
   local iniLabel = nil
-  if s.context == "ps2bbl" then
+  if iniFileType == "ps2bbl_ini" then
     iniLabel = main_str.select_config_ps2bbl_ini or "PS2BBL.INI"
-  elseif s.context == "psxbbl" then
+  elseif iniFileType == "psxbbl_ini" then
     iniLabel = main_str.select_config_psxbbl_ini or "PSXBBL.INI"
   end
   if not iniFileType or not iniLabel then

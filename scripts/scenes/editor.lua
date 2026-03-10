@@ -200,7 +200,6 @@ local function run(ctx)
       local y = startY + (i - ctx.optScroll - 1) * _.ROW_H
       local col = (i == ctx.optSel) and _.SELECTED_ENTRY or _.WHITE
       local lab = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or o.label
-      _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
       local valDisplay
       if o.optType == "header" or o.optType == "action" then
         valDisplay = ""
@@ -245,7 +244,33 @@ local function run(ctx)
       if o.key == "KEY_READ_WAIT_TIME" and valDisplay and valDisplay ~= "" then
         valDisplay = formatTimerSeconds(valDisplay)
       end
-      if valDisplay == "" and (o.optType == "path" or o.optType == "boot_paths" or o.optType == "text" or o.optType == "enum") then
+      local inlineAutoRow = false
+      if o.key == "NAME_AUTO" then
+        inlineAutoRow = true
+        local nameVal = _.config_parse.get(ctx.lines, o.key) or o.default or ""
+        local nameDisp = (nameVal ~= "" and nameVal) or _.common_str.empty
+        lab = (_.menu_str.name or "Name: ") .. nameDisp
+        valDisplay = ""
+      elseif o.optType == "bbl_slot" and (o.bblKeyId == "AUTO" or (o.key and o.key:match("^_auto_e%d+$"))) then
+        inlineAutoRow = true
+        local slotIdx = tonumber(o.bblEntrySlot) or 0
+        local slot = _.config_parse.getBblHotkeySlot and _.config_parse.getBblHotkeySlot(ctx.lines, "AUTO", slotIdx) or nil
+        local pathDisp = (slot and slot.path and slot.path ~= "") and slot.path or _.common_str.not_set
+        local argCount = (slot and slot.argCount) or 0
+        lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp .. " " .. formatArgCount(argCount)
+        valDisplay = ""
+      end
+      if inlineAutoRow then
+        local maxInlineW = (_.w or 640) - (_.MARGIN_X + 16) - (_.MARGIN_X + 8)
+        if _.common.fitListRowText then
+          lab = _.common.fitListRowText(ctx, "editor_autoboot_row_" .. tostring(i), _.font, lab, maxInlineW, _.FONT_SCALE,
+            i == ctx.optSel)
+        elseif _.common.truncateTextToWidth then
+          lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
+        end
+      end
+      _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
+      if (not inlineAutoRow) and valDisplay == "" and (o.optType == "path" or o.optType == "boot_paths" or o.optType == "text" or o.optType == "enum") then
         valDisplay = _.common_str.not_set
       end
       if valDisplay then
