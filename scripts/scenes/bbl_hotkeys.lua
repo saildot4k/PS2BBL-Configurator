@@ -62,8 +62,8 @@ local function run(ctx)
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     ctx.bblEntryReturnState = nil
     ctx.bblHotkeyKey = hotkeys[ctx.bblHotkeySel]
-    ctx.bblEntrySel = 1
-    ctx.bblEntryScroll = 0
+    ctx.bblEntrySel = ctx.bblEntrySel or 1
+    ctx.bblEntryScroll = ctx.bblEntryScroll or 0
     ctx.bblEntryFocusSlot = nil
     ctx.state = "bbl_hotkey_entries"
   end

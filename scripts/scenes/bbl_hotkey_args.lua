@@ -223,8 +223,8 @@ local function run(ctx)
 
   if (_.padEffective & _.PAD_SELECT) ~= 0 and total < maxArgs then
     ctx.bblArgAddMenu = true
-    ctx.bblArgAddSel = 1
-    ctx.bblArgAddScroll = 0
+    ctx.bblArgAddSel = ctx.bblArgAddSel or 1
+    ctx.bblArgAddScroll = ctx.bblArgAddScroll or 0
   end
 
   if total > 0 and (_.padEffective & _.PAD_TRIANGLE) ~= 0 then

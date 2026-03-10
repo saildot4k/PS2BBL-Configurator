@@ -13,7 +13,6 @@
 #define DEG2RAD(x) ((x) * 0.01745329251)
 
 static const uint64_t BLACK_RGBAQ = GS_SETREG_RGBAQ(0x00, 0x00, 0x00, 0x80, 0x00);
-static const uint64_t TEXTURE_RGBAQ = GS_SETREG_RGBAQ(0x80, 0x80, 0x80, 0x80, 0x00);
 
 GSGLOBAL *gsGlobal = NULL;
 GSFONTM *gsFontM = NULL;

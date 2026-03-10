@@ -104,8 +104,8 @@ local function run(ctx)
     ctx.pathPickerEditIdx = editIdx
     ctx.pathPickerSub = "device"
     ctx.pathList = _.file_selector.getDevices(isBoot and "mbr" or "osdmenu") or {}
-    ctx.pathPickerSel = 1
-    ctx.pathPickerScroll = 0
+    ctx.pathPickerSel = ctx.pathPickerSel or 1
+    ctx.pathPickerScroll = ctx.pathPickerScroll or 0
     ctx.pathPickerContext = isBoot and "mbr" or "osdmenu"
     ctx.pathPickerReturnState = "entry_paths"
     ctx.state = "path_picker"
@@ -117,11 +117,11 @@ local function run(ctx)
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if isBoot and (hasArgsPaths or hasSpecialArgsPath) and ctx.entryPathSel == argsRow then
       if argsRowIsSpecial then
-        ctx.cdromOptSel = 1
+        ctx.cdromOptSel = ctx.cdromOptSel or 1
         ctx.state = "entry_cdrom_options"
       else
-        ctx.entryArgSel = 1
-        ctx.entryArgScroll = 0
+        ctx.entryArgSel = ctx.entryArgSel or 1
+        ctx.entryArgScroll = ctx.entryArgScroll or 0
         ctx.state = "entry_args"
       end
     elseif ctx.entryPathSel >= 1 and ctx.entryPathSel <= #paths then

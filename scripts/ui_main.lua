@@ -51,7 +51,6 @@ end
 local C = _G.CONFIG_UI
 local common = C.common
 local config_parse = C.config_parse
-local file_selector = C.file_selector
 
 local PAD_UP, PAD_DOWN, PAD_CROSS, PAD_CIRCLE, PAD_START = common.PAD_UP, common.PAD_DOWN, common.PAD_CROSS,
     common.PAD_CIRCLE, common.PAD_START
@@ -61,6 +60,27 @@ local function clearPathPickerState(s)
   s.bootKey = nil
   s.pathPickerBootKey = nil
   s.pathPickerReturnState = nil
+end
+
+local function getSelectConfigSelTable(s)
+  if type(s.selectConfigSelByContext) ~= "table" then
+    s.selectConfigSelByContext = {}
+  end
+  return s.selectConfigSelByContext
+end
+
+local function getSelectConfigSel(s)
+  local t = getSelectConfigSelTable(s)
+  local key = s.context or "__none__"
+  local sel = t[key]
+  if type(sel) ~= "number" then return 1 end
+  return math.floor(sel)
+end
+
+local function setSelectConfigSel(s, sel)
+  local t = getSelectConfigSelTable(s)
+  local key = s.context or "__none__"
+  t[key] = sel
 end
 
 local function resolveContextFileType(s)
@@ -166,14 +186,12 @@ local function runMain(s, pad)
       s.chosenMcSlot = nil
       clearPathPickerState(s)
       s.state = "choose_mc"
-      s.mcSel = 1
     elseif s.mainSel == 2 then
       s.context = "psxbbl"
       s.fileType = "psxbbl_ini"
       s.chosenMcSlot = nil
       clearPathPickerState(s)
       s.state = "choose_mc"
-      s.mcSel = 1
     end
   end
 end
@@ -197,7 +215,6 @@ local function runChooseMc(s, pad)
     s.chosenMcSlot = slots[1]
     s.fileType = nil
     s.state = "select_config"
-    s.mainSel = 1
   else
     dt(s.font, s.drawMode, M, MY, 1.1, main_str.select_memory_card, common.WHITE)
     dt(s.font, s.drawMode, M, MY + sc(24), 0.8, main_str.config_card_hint, common.DIM)
@@ -220,7 +237,6 @@ local function runChooseMc(s, pad)
       s.chosenMcSlot = slots[s.mcSel]
       s.fileType = nil
       s.state = "select_config"
-      s.mainSel = 1
     end
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   end
@@ -244,7 +260,6 @@ local function runSelectConfig(s, pad)
   end
   if not iniFileType or not iniLabel then
     s.state = "main"
-    s.mainSel = 1
     s.chosenMcSlot = nil
     return
   end
@@ -253,32 +268,32 @@ local function runSelectConfig(s, pad)
   if showEgsm then
     options[#options + 1] = { label = main_str.select_config_osdgsm_cnf or "OSDGSM.CNF", fileType = "osdgsm_cnf" }
   end
-  if s.mainSel < 1 then s.mainSel = 1 end
-  if s.mainSel > #options then s.mainSel = #options end
+  local sel = getSelectConfigSel(s)
+  if sel < 1 then sel = 1 end
+  if sel > #options then sel = #options end
+  setSelectConfigSel(s, sel)
   dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM)
   for i, opt in ipairs(options) do
     local y = MY + sc(50) + (i - 1) * L
-    local col = (i == s.mainSel) and SE or common.GRAY
-    dlr(M + 20, y, i == s.mainSel, opt.label, col)
+    local col = (i == sel) and SE or common.GRAY
+    dlr(M + 20, y, i == sel, opt.label, col)
   end
-  if (pad & PAD_UP) ~= 0 and s.mainSel > 1 then s.mainSel = s.mainSel - 1 end
-  if (pad & PAD_DOWN) ~= 0 and s.mainSel < #options then s.mainSel = s.mainSel + 1 end
+  if (pad & PAD_UP) ~= 0 and sel > 1 then sel = sel - 1 end
+  if (pad & PAD_DOWN) ~= 0 and sel < #options then sel = sel + 1 end
+  setSelectConfigSel(s, sel)
   if (pad & PAD_CROSS) ~= 0 then
-    s.fileType = options[s.mainSel].fileType
+    s.fileType = options[sel].fileType
     clearPathPickerState(s)
     s.state = "open"
-    s.mainSel = 1
   end
   if (pad & PAD_CIRCLE) ~= 0 then
     local slots = common.getPresentMcSlots()
     if #slots <= 1 then
       s.state = "main"
-      s.mainSel = 1
       s.chosenMcSlot = nil
     else
       s.state = "choose_mc"
-      s.mainSel = 1
     end
   end
 end
@@ -319,13 +334,11 @@ local function runInitHdd(s, pad)
 
   if phase == "wait" then
     s.initHddFrames = (s.initHddFrames or 0) + 1
-    local mp = nil
     if s.initHddFrames > 0 and s.initHddFrames % INIT_HDD_PROBE_FRAMES == 0 then
       if common.isHddPresent() then
         s.hddReady = true
         s.hddNotFound = nil
         s.state = "select_config"
-        s.mainSel = 1
         s.initHddPhase = nil
         s.initHddFrames = nil
         return
@@ -365,7 +378,6 @@ local function runInitHdd(s, pad)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.circle_back_items, nil, common.DIM)
     if (pad & PAD_CIRCLE) ~= 0 then
       s.state = "main"
-      s.mainSel = 1
       s.initHddPhase = nil
     end
   end
@@ -414,7 +426,7 @@ local function runOpen(s, pad)
     if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   elseif #existing == 1 then
     s.currentPath = existing[1]
-    local ok, err = pcall(function() s.lines = config_parse.load(s.currentPath) end)
+    local ok = pcall(function() s.lines = config_parse.load(s.currentPath) end)
     if not ok or not s.lines then
       dt(s.font, s.drawMode, M, MY + sc(60), common.FONT_SCALE, main_str.failed_to_load .. tostring(s.currentPath),
         common.GRAY)
@@ -425,8 +437,23 @@ local function runOpen(s, pad)
     end
     if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   else
+    local prevPath = nil
+    if s.loadChoices and s.loadSel and s.loadChoices[s.loadSel] then
+      prevPath = s.loadChoices[s.loadSel]
+    end
     s.loadChoices = existing
-    s.loadSel = 1
+    if prevPath then
+      local foundIdx = nil
+      for i, p in ipairs(existing) do
+        if p == prevPath then
+          foundIdx = i
+          break
+        end
+      end
+      s.loadSel = foundIdx or s.loadSel or 1
+    else
+      s.loadSel = s.loadSel or 1
+    end
     s.state = "choose_load"
     if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   end

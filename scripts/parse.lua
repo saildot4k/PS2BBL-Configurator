@@ -780,7 +780,6 @@ end
 -- Preserves disabled (commented) state.
 function config_parse.changeMenuEntryIndex(lines, oldIdx, newIdx)
   if oldIdx == newIdx then return true end
-  local oldStr = tostring(oldIdx)
   local newStr = tostring(newIdx)
   local existing = config_parse.getWithComment(lines, "name_OSDSYS_ITEM_" .. newStr)
   if existing ~= nil then return false end -- already used

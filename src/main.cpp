@@ -111,7 +111,6 @@ char *resolveRootDevice(char *argv0) {
     }
 
     int fd = 0;
-    int attempts = 0;
     for (int i = 0; i < 8; i++) {
       result[4] = '0' + i;
       printf("main: probing %s\n", result);

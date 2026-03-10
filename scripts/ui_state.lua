@@ -4,6 +4,7 @@ local function initContext()
   return {
     main = nil,
     mainSel = 1,
+    selectConfigSelByContext = {},
     context = "ps2bbl",
     fileType = nil,
     currentPath = nil,
@@ -48,6 +49,7 @@ local function initContext()
     textInputGridSel = 1,
     textInputShift = false,
     editorCategoryIdx = 0,
+    editorCategoryOptSelByFile = {},
     loadChoices = nil,
     loadSel = 1,
     entryPathSel = 1,

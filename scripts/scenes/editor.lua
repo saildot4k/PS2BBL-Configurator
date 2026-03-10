@@ -11,6 +11,30 @@ local function formatTimerSeconds(msText)
   return string.format("%.1f", sec10 / 10)
 end
 
+local function getCategoryOptSel(ctx, categoryIdx)
+  if not categoryIdx or categoryIdx < 1 then return 1 end
+  local byFile = ctx.editorCategoryOptSelByFile
+  if type(byFile) ~= "table" then return 1 end
+  local fileKey = ctx.fileType or "__none__"
+  local byCategory = byFile[fileKey]
+  if type(byCategory) ~= "table" then return 1 end
+  local sel = byCategory[categoryIdx]
+  if type(sel) ~= "number" then return 1 end
+  return math.max(1, math.floor(sel))
+end
+
+local function setCategoryOptSel(ctx, categoryIdx, sel)
+  if not categoryIdx or categoryIdx < 1 then return end
+  if type(ctx.editorCategoryOptSelByFile) ~= "table" then
+    ctx.editorCategoryOptSelByFile = {}
+  end
+  local fileKey = ctx.fileType or "__none__"
+  if type(ctx.editorCategoryOptSelByFile[fileKey]) ~= "table" then
+    ctx.editorCategoryOptSelByFile[fileKey] = {}
+  end
+  ctx.editorCategoryOptSelByFile[fileKey][categoryIdx] = math.max(1, math.floor(tonumber(sel) or 1))
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Leave-save prompt when going back to file select with unsaved changes
@@ -25,7 +49,7 @@ local function run(ctx)
       if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
         ctx.returnToSelectConfigAfterSave = true
         ctx.saveChoices = locations
-        ctx.saveSel = 1
+        ctx.saveSel = ctx.saveSel or 1
         ctx.state = "choose_save"
       else
         local path = ctx.currentPath or (locations and locations[1])
@@ -115,13 +139,14 @@ local function run(ctx)
       if actionKey == "_menu_entries" then
         ctx.state = "menu_entries"
         ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
-        ctx.entrySel = 1
-        ctx.entryScroll = 0
+        ctx.entrySel = ctx.entrySel or 1
+        ctx.entryScroll = ctx.entryScroll or 0
       elseif actionKey == "_bbl_hotkeys" then
-        ctx.bblHotkeySel = 1
+        ctx.bblHotkeySel = ctx.bblHotkeySel or 1
         ctx.state = "bbl_hotkeys"
       else
-        ctx.editorCategoryIdx = ctx.optSel
+        local selectedCategoryIdx = ctx.optSel
+        ctx.editorCategoryIdx = selectedCategoryIdx
         local rawOpts = cat.options or {}
         -- DKWDRV custom path not applicable for HOSDMenu (no MC path)
         if ctx.context == "hosdmenu" and ctx.fileType == "osdmenu_cnf" then
@@ -132,8 +157,13 @@ local function run(ctx)
         else
           ctx.optList = rawOpts
         end
-        ctx.optSel = 1
-        ctx.optScroll = 0
+        local rememberedSel = getCategoryOptSel(ctx, selectedCategoryIdx)
+        if #ctx.optList > 0 then
+          ctx.optSel = math.max(1, math.min(rememberedSel, #ctx.optList))
+        else
+          ctx.optSel = 1
+        end
+        ctx.optScroll = ctx.optScroll or 0
       end
     end
     if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
@@ -390,17 +420,17 @@ local function run(ctx)
       elseif o.key == "_menu_entries" then
         ctx.state = "menu_entries"
         ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
-        ctx.entrySel = 1
-        ctx.entryScroll = 0
+        ctx.entrySel = ctx.entrySel or 1
+        ctx.entryScroll = ctx.entryScroll or 0
       elseif o.key == "_bbl_hotkeys" then
         ctx.bblEntryReturnState = nil
-        ctx.bblHotkeySel = 1
+        ctx.bblHotkeySel = ctx.bblHotkeySel or 1
         ctx.state = "bbl_hotkeys"
       elseif o.key == "_auto_path" then
         ctx.bblEntryReturnState = "editor"
         ctx.bblHotkeyKey = "AUTO"
-        ctx.bblEntrySel = 1
-        ctx.bblEntryScroll = 0
+        ctx.bblEntrySel = ctx.bblEntrySel or 1
+        ctx.bblEntryScroll = ctx.bblEntryScroll or 0
         ctx.bblEntryFocusSlot = nil
         ctx.state = "bbl_hotkey_entries"
       elseif o.key == "_auto_args" then
@@ -421,16 +451,16 @@ local function run(ctx)
           ctx.state = "bbl_hotkey_entry"
         else
           ctx.bblHotkeyKey = "AUTO"
-          ctx.bblEntrySel = 1
-          ctx.bblEntryScroll = 0
+          ctx.bblEntrySel = ctx.bblEntrySel or 1
+          ctx.bblEntryScroll = ctx.bblEntryScroll or 0
           ctx.bblEntryFocusSlot = nil
           ctx.state = "bbl_hotkey_entries"
         end
       elseif o.optType == "boot_paths" then
         ctx.bootKey = o.key
         ctx.entryIdx = nil
-        ctx.entryPathSel = 1
-        ctx.entryPathScroll = 0
+        ctx.entryPathSel = ctx.entryPathSel or 1
+        ctx.entryPathScroll = ctx.entryPathScroll or 0
         ctx.state = "entry_paths"
       elseif o.optType == "path" then
         ctx.editKey = o.key
@@ -442,8 +472,8 @@ local function run(ctx)
             ((o.key == "path_DKWDRV_ELF") and "mc_only" or ((ctx.context == "mbr") and "mbr" or "osdmenu"))
         ctx.pathPickerSub = "device"
         ctx.pathList = _.file_selector.getDevices(ctx.pathPickerContext) or {}
-        ctx.pathPickerSel = 1
-        ctx.pathPickerScroll = 0
+        ctx.pathPickerSel = ctx.pathPickerSel or 1
+        ctx.pathPickerScroll = ctx.pathPickerScroll or 0
         ctx.state = "path_picker"
       end
     end
@@ -468,7 +498,7 @@ local function run(ctx)
     local locations = _.getLocations(ctx.context, ctx.fileType, ctx.chosenMcSlot)
     if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
       ctx.saveChoices = locations
-      ctx.saveSel = 1
+      ctx.saveSel = ctx.saveSel or 1
       ctx.state = "choose_save"
     else
       local path = ctx.currentPath or (locations and locations[1])
@@ -495,8 +525,11 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     if isCategorizedFile and ctx.editorCategoryIdx and ctx.editorCategoryIdx > 0 then
+      setCategoryOptSel(ctx, ctx.editorCategoryIdx, ctx.optSel)
+      local prevCategoryIdx = ctx.editorCategoryIdx
       ctx.editorCategoryIdx = 0
       ctx.optList = nil
+      ctx.optSel = prevCategoryIdx
       ctx.saveSplash = nil
     else
       if ctx.configModified then

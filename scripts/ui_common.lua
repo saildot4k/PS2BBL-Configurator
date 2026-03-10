@@ -497,8 +497,6 @@ function common.drawSaveSplash(ctx)
       ctx.lines = nil
       ctx.optList = nil
       ctx.editorCategoryIdx = 0
-      ctx.egsmSel = 1
-      ctx.egsmScroll = 0
     end
   end
 end

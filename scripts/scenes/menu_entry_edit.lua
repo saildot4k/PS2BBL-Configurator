@@ -68,15 +68,15 @@ local function run(ctx)
       ctx.state = "text_input"
     elseif opt == _.menu_str.paths_label then
       ctx.state = "entry_paths"
-      ctx.entryPathSel = 1
-      ctx.entryPathScroll = 0
+      ctx.entryPathSel = ctx.entryPathSel or 1
+      ctx.entryPathScroll = ctx.entryPathScroll or 0
     elseif opt == _.menu_str.launch_disc_options then
-      ctx.cdromOptSel = 1
+      ctx.cdromOptSel = ctx.cdromOptSel or 1
       ctx.state = "entry_cdrom_options"
     elseif opt == _.menu_str.arguments then
       ctx.state = "entry_args"
-      ctx.entryArgSel = 1
-      ctx.entryArgScroll = 0
+      ctx.entryArgSel = ctx.entryArgSel or 1
+      ctx.entryArgScroll = ctx.entryArgScroll or 0
     end
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then

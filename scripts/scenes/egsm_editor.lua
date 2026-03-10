@@ -18,7 +18,7 @@ local function run(ctx)
       if #locations >= 2 then
         ctx.returnToSelectConfigAfterSave = true
         ctx.saveChoices = locations
-        ctx.saveSel = 1
+        ctx.saveSel = ctx.saveSel or 1
         ctx.state = "choose_save"
       else
         local path = ctx.currentPath or (locations and locations[1])
@@ -44,8 +44,6 @@ local function run(ctx)
       ctx.state = "select_config"
       ctx.currentPath = nil
       ctx.lines = nil
-      ctx.egsmSel = 1
-      ctx.egsmScroll = 0
       ctx.saveSplash = nil
     elseif (_.padEffective & _.PAD_CIRCLE) ~= 0 then
       ctx.editorLeavePrompt = nil
@@ -185,7 +183,7 @@ local function run(ctx)
     local locations = _.getLocations(ctx.context, "osdgsm_cnf", ctx.chosenMcSlot)
     if #locations >= 2 then
       ctx.saveChoices = locations
-      ctx.saveSel = 1
+      ctx.saveSel = ctx.saveSel or 1
       ctx.state = "choose_save"
     else
       local path = ctx.currentPath or (locations and locations[1])
@@ -211,7 +209,7 @@ local function run(ctx)
     if ctx.configModified then
       ctx.editorLeavePrompt = true
     else
-      ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.egsmSel = 1; ctx.egsmScroll = 0; ctx.saveSplash = nil
+      ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.saveSplash = nil
     end
   end
 end

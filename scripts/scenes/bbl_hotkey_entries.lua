@@ -138,13 +138,13 @@ local function run(ctx)
       ctx.state = "text_input"
     elseif sel.kind == "entry" then
       ctx.bblEntrySlot = sel.slot
-      ctx.bblEntryDetailSel = 1
+      ctx.bblEntryDetailSel = ctx.bblEntryDetailSel or 1
       ctx.state = "bbl_hotkey_entry"
     elseif sel.kind == "add" then
       local freeSlot = findFirstFreeSlot(_, ctx, keyId, maxEntries)
       if freeSlot then
         ctx.bblEntrySlot = freeSlot
-        ctx.bblEntryDetailSel = 1
+        ctx.bblEntryDetailSel = ctx.bblEntryDetailSel or 1
         ctx.state = "bbl_hotkey_entry"
       end
     end

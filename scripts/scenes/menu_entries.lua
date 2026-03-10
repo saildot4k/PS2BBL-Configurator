@@ -54,7 +54,7 @@ local function run(ctx)
     ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
     ctx.entrySel = (total == 0) and 1 or (ctx.entrySel + 1)
     ctx.entryIdx = newIdx
-    ctx.entryEditSub = 1
+    ctx.entryEditSub = ctx.entryEditSub or 1
     ctx.state = "menu_entry_edit"
   end
   if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
@@ -90,7 +90,7 @@ local function run(ctx)
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if total > 0 and ctx.entrySel >= 1 and ctx.entrySel <= #ctx.entryList then
       ctx.entryIdx = ctx.entryList[ctx.entrySel].idx
-      ctx.entryEditSub = 1
+      ctx.entryEditSub = ctx.entryEditSub or 1
       ctx.state = "menu_entry_edit"
     end
   end
@@ -127,7 +127,7 @@ local function run(ctx)
     local locations = _.getLocations(ctx.context, ctx.fileType, ctx.chosenMcSlot)
     if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
       ctx.saveChoices = locations
-      ctx.saveSel = 1
+      ctx.saveSel = ctx.saveSel or 1
       ctx.returnToMenuEntriesAfterSave = true
       ctx.state = "choose_save"
     else
