@@ -4,7 +4,7 @@ local function initContext()
   return {
     main = nil,
     mainSel = 1,
-    context = "osdmenu",
+    context = "ps2bbl",
     fileType = nil,
     currentPath = nil,
     lines = nil,

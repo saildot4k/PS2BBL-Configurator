@@ -9,6 +9,7 @@ local function run(ctx)
   for i = 1, math.min(_.MAX_VISIBLE, #choices) do
     local p = choices[i] or ""
     local label = (p:match("^mc0:") and _.dev_str.memory_card_1) or (p:match("^mc1:") and _.dev_str.memory_card_2) or
+        (p:match("^pfs0:") and _.dev_str.hdd) or
         p:sub(1, 40)
     local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
     local col = (i == ctx.saveSel) and _.SELECTED_ENTRY or _.WHITE

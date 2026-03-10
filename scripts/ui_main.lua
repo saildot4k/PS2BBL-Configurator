@@ -63,6 +63,12 @@ local function clearPathPickerState(s)
   s.pathPickerReturnState = nil
 end
 
+local function resolveContextFileType(s)
+  if s.context == "ps2bbl" then return "ps2bbl_ini" end
+  if s.context == "psxbbl" then return "psxbbl_ini" end
+  return nil
+end
+
 local function setStateAfterLoad(s)
   s.configModified = false
   if s.fileType == "osdgsm_cnf" then
@@ -80,7 +86,6 @@ end
 
 local function runMain(s, pad)
   local main_str = (C.strings and C.strings.main) or {}
-  local dev_str = (C.strings and C.strings.devices) or {}
   local dt, dlr = common.drawText, s.drawListRow
   local M = common.MARGIN_X
   local H = s.HINT_Y or common.HINT_Y
@@ -88,7 +93,6 @@ local function runMain(s, pad)
   local MY = s.MARGIN_Y or common.MARGIN_Y
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
-  local hddFailed = (s.hddNotFound == true)
 
   -- L1/R1: cycle language (only when not using CWD strings.lua override and more than one lang file)
   if not C.langCycleDisabled and C.langFiles and #C.langFiles > 1 then
@@ -101,9 +105,8 @@ local function runMain(s, pad)
         C.strings = newStrings
         C.langIndex = idx
         s.main = {
-          (newStrings.main and newStrings.main.main_osdmenu_mc) or "",
-          (newStrings.main and newStrings.main.main_hosdmenu_hdd) or "",
-          (newStrings.main and newStrings.main.main_osdmenu_mbr) or "",
+          (newStrings.main and newStrings.main.main_ps2bbl_mc) or "PS2BBL",
+          (newStrings.main and newStrings.main.main_psxbbl_mc) or "PSXBBL",
         }
       end
     elseif (pad & PAD_R1) ~= 0 then
@@ -113,30 +116,18 @@ local function runMain(s, pad)
         C.strings = newStrings
         C.langIndex = idx
         s.main = {
-          (newStrings.main and newStrings.main.main_osdmenu_mc) or "",
-          (newStrings.main and newStrings.main.main_hosdmenu_hdd) or "",
-          (newStrings.main and newStrings.main.main_osdmenu_mbr) or "",
+          (newStrings.main and newStrings.main.main_ps2bbl_mc) or "PS2BBL",
+          (newStrings.main and newStrings.main.main_psxbbl_mc) or "PSXBBL",
         }
       end
     end
   end
 
-  local function isSelectable(i)
-    if i == 1 then return true end
-    if (i == 2 or i == 3) and hddFailed then return false end
-    return true
-  end
-  if hddFailed and (s.mainSel == 2 or s.mainSel == 3) then s.mainSel = 1 end
   if (pad & PAD_UP) ~= 0 and s.mainSel > 1 then
     s.mainSel = s.mainSel - 1
-    while s.mainSel >= 1 and not isSelectable(s.mainSel) do s.mainSel = s.mainSel - 1 end
-    if s.mainSel < 1 then s.mainSel = 1 end
   end
   if (pad & PAD_DOWN) ~= 0 and s.mainSel < #s.main then
     s.mainSel = s.mainSel + 1
-    if s.mainSel > #s.main then s.mainSel = #s.main end
-    while s.mainSel >= 1 and not isSelectable(s.mainSel) do s.mainSel = s.mainSel - 1 end
-    if s.mainSel < 1 then s.mainSel = 1 end
   end
   if (pad & PAD_START) ~= 0 and not s.mainExitPrompt then s.mainExitPrompt = true end
   if s.mainExitPrompt then
@@ -164,41 +155,24 @@ local function runMain(s, pad)
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, hintItems or {}, nil, common.DIM)
   for i, label in ipairs(s.main) do
     local y = MY + sc(50) + (i - 1) * L
-    local grayed = (hddFailed and (i == 2 or i == 3))
-    local col
-    if grayed then
-      col = common.DIM
-    else
-      col = (i == s.mainSel) and SE or common.GRAY
-    end
+    local col = (i == s.mainSel) and SE or common.GRAY
     dlr(M + 20, y, i == s.mainSel, label, col)
   end
   if (pad & PAD_CROSS) ~= 0 then
-    if not isSelectable(s.mainSel) then
-      -- HOSDMenu/MBR grayed and unselectable
-    elseif s.mainSel == 1 then
-      s.context = "osdmenu"
+    if s.mainSel == 1 then
+      s.context = "ps2bbl"
+      s.fileType = "ps2bbl_ini"
       s.chosenMcSlot = nil
       clearPathPickerState(s)
       s.state = "choose_mc"
       s.mcSel = 1
     elseif s.mainSel == 2 then
-      s.context = "hosdmenu"
+      s.context = "psxbbl"
+      s.fileType = "psxbbl_ini"
       s.chosenMcSlot = nil
       clearPathPickerState(s)
-      if s.hddReady then
-        s.state = "select_config"; s.mainSel = 1
-      else
-        s.state = "initHdd"; s.initHddPhase = "load"
-      end
-    elseif s.mainSel == 3 then
-      s.context = "mbr"
-      s.chosenMcSlot = nil
-      if s.hddReady then
-        s.state = "select_config"; s.mainSel = 1
-      else
-        s.state = "initHdd"; s.initHddPhase = "load"
-      end
+      s.state = "choose_mc"
+      s.mcSel = 1
     end
   end
 end
@@ -220,6 +194,7 @@ local function runChooseMc(s, pad)
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   elseif #slots == 1 then
     s.chosenMcSlot = slots[1]
+    s.fileType = nil
     s.state = "select_config"
     s.mainSel = 1
   else
@@ -241,7 +216,10 @@ local function runChooseMc(s, pad)
       s.mcSel = s.mcSel + 1; if s.mcSel > #slots then s.mcSel = 1 end
     end
     if (pad & PAD_CROSS) ~= 0 then
-      s.chosenMcSlot = slots[s.mcSel]; s.state = "select_config"; s.mainSel = 1
+      s.chosenMcSlot = slots[s.mcSel]
+      s.fileType = nil
+      s.state = "select_config"
+      s.mainSel = 1
     end
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   end
@@ -256,9 +234,20 @@ local function runSelectConfig(s, pad)
   local MY = s.MARGIN_Y or common.MARGIN_Y
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
-  local options = (s.context == "mbr") and
-      { main_str.select_config_osdmbr_cnf, main_str.select_config_osdgsm_cnf } or
-      { main_str.select_config_osdmenu_cnf, main_str.select_config_osdgsm_cnf }
+  local iniFileType = resolveContextFileType(s)
+  local iniLabel = nil
+  if s.context == "ps2bbl" then
+    iniLabel = main_str.select_config_ps2bbl_ini or "PS2BBL.INI"
+  elseif s.context == "psxbbl" then
+    iniLabel = main_str.select_config_psxbbl_ini or "PSXBBL.INI"
+  end
+  if not iniFileType or not iniLabel then
+    s.state = "main"
+    s.mainSel = 1
+    s.chosenMcSlot = nil
+    return
+  end
+  local options = { iniLabel, main_str.select_config_osdgsm_cnf or "OSDGSM.CNF" }
   dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM)
   for i, label in ipairs(options) do
@@ -269,32 +258,24 @@ local function runSelectConfig(s, pad)
   if (pad & PAD_UP) ~= 0 and s.mainSel > 1 then s.mainSel = s.mainSel - 1 end
   if (pad & PAD_DOWN) ~= 0 and s.mainSel < #options then s.mainSel = s.mainSel + 1 end
   if (pad & PAD_CROSS) ~= 0 then
-    local sel = s.mainSel
-    if s.context == "mbr" then
-      if sel == 1 then s.fileType = "osdmbr_cnf" elseif sel == 2 then s.fileType = "osdgsm_cnf" end
+    if s.mainSel == 1 then
+      s.fileType = iniFileType
     else
-      if sel == 1 then s.fileType = "osdmenu_cnf" elseif sel == 2 then s.fileType = "osdgsm_cnf" end
-      clearPathPickerState(s)
+      s.fileType = "osdgsm_cnf"
     end
+    clearPathPickerState(s)
     s.state = "open"
     s.mainSel = 1
   end
   if (pad & PAD_CIRCLE) ~= 0 then
-    if s.context == "osdmenu" then
-      local slots = common.getPresentMcSlots()
-      if #slots <= 1 then
-        s.state = "main"
-        s.mainSel = 1
-        s.chosenMcSlot = nil
-      else
-        s.state = "choose_mc"
-        s.mainSel = 1
-      end
-    else
+    local slots = common.getPresentMcSlots()
+    if #slots <= 1 then
       s.state = "main"
       s.mainSel = 1
       s.chosenMcSlot = nil
-      clearPathPickerState(s)
+    else
+      s.state = "choose_mc"
+      s.mainSel = 1
     end
   end
 end
@@ -394,16 +375,25 @@ local function runOpen(s, pad)
     s.initHddPhase = "load"
     return
   end
-  -- Mount __sysconf when reading config (hosdmenu/mbr); unmount after load below
-  if (s.context == "hosdmenu" or s.context == "mbr") and System and System.fileXioMount then
-    System.fileXioMount("pfs0:", "hdd0:__sysconf")
-  end
   local dt = common.drawText
   local M = common.MARGIN_X
   local H = s.HINT_Y or common.HINT_Y
   local MY = s.MARGIN_Y or common.MARGIN_Y
   local sc = s.scaleY or function(y) return y end
   local locations = C.config_options.getLocations(s.context, s.fileType, s.chosenMcSlot)
+  local hasPfs0 = false
+  for i = 1, #locations do
+    if locations[i] and locations[i]:match("^pfs0:/") then
+      hasPfs0 = true
+      break
+    end
+  end
+  if hasPfs0 and System and System.loadModules then
+    System.loadModules("hdd")
+  end
+  if hasPfs0 and System and System.fileXioMount then
+    pcall(System.fileXioMount, "pfs0:", "hdd0:__sysconf")
+  end
   local existing = common.findExistingPaths(locations)
   if #existing == 0 then
     s.currentPath = locations[1]
@@ -417,10 +407,8 @@ local function runOpen(s, pad)
         for k, v in pairs(C.config_options.getOsdmenuDefaults()) do config_parse.set(s.lines, k, v) end
       end
       setStateAfterLoad(s)
-      if s.currentPath and s.currentPath:match("^pfs0:/") and System and System.fileXioUmount then
-        System.fileXioUmount("pfs0:")
-      end
     end
+    if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   elseif #existing == 1 then
     s.currentPath = existing[1]
     local ok, err = pcall(function() s.lines = config_parse.load(s.currentPath) end)
@@ -431,14 +419,13 @@ local function runOpen(s, pad)
       if (pad & PAD_CROSS) ~= 0 then s.state = "select_config" end
     else
       setStateAfterLoad(s)
-      if s.currentPath and s.currentPath:match("^pfs0:/") and System and System.fileXioUmount then
-        System.fileXioUmount("pfs0:")
-      end
     end
+    if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   else
     s.loadChoices = existing
     s.loadSel = 1
     s.state = "choose_load"
+    if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   end
 end
 
@@ -459,6 +446,7 @@ local function runChooseLoad(s, pad)
     local idx = i
     local p = choices[idx] or ""
     local label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
+        (p:match("^pfs0:") and dev_str.hdd) or
         p:sub(1, 40)
     local y = MY + sc(50) + (i - 1) * L
     local col = (idx == s.loadSel) and SE or common.WHITE
@@ -473,13 +461,20 @@ local function runChooseLoad(s, pad)
   end
   if (pad & PAD_CROSS) ~= 0 and #choices > 0 then
     s.currentPath = choices[s.loadSel]
+    local selectedIsPfs0 = s.currentPath and s.currentPath:match("^pfs0:/")
+    if selectedIsPfs0 and System and System.loadModules then
+      System.loadModules("hdd")
+    end
+    if selectedIsPfs0 and System and System.fileXioMount then
+      pcall(System.fileXioMount, "pfs0:", "hdd0:__sysconf")
+    end
     local ok = pcall(function() s.lines = config_parse.load(s.currentPath) end)
+    if selectedIsPfs0 and System and System.fileXioUmount then
+      pcall(System.fileXioUmount, "pfs0:")
+    end
     if ok and s.lines then
       setStateAfterLoad(s)
       s.loadChoices = nil
-      if s.currentPath and s.currentPath:match("^pfs0:/") and System and System.fileXioUmount then
-        System.fileXioUmount("pfs0:")
-      end
     end
   end
   if (pad & PAD_CIRCLE) ~= 0 then

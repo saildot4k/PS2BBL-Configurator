@@ -5,8 +5,18 @@
 
 local config_options = {}
 
--- Config file locations by context and file type (osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
+-- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
 function config_options.getLocations(context, fileType, chosenMcSlot)
+  if fileType == "ps2bbl_ini" then
+    if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/PS2BBL.INI" } end
+    if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/PS2BBL.INI" } end
+    return { "mc0:/SYS-CONF/PS2BBL.INI", "mc1:/SYS-CONF/PS2BBL.INI" }
+  end
+  if fileType == "psxbbl_ini" then
+    if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/PSXBBL.INI" } end
+    if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/PSXBBL.INI" } end
+    return { "mc0:/SYS-CONF/PSXBBL.INI", "mc1:/SYS-CONF/PSXBBL.INI" }
+  end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then
       if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDMENU.CNF" } end
@@ -21,6 +31,12 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
     return {}
   end
   if fileType == "osdgsm_cnf" then
+    if context == "ps2bbl" or context == "psxbbl" then
+      if chosenMcSlot == 1 then
+        return { "mc1:/SYS-CONF/OSDGSM.CNF", "mc0:/SYS-CONF/OSDGSM.CNF", "pfs0:/osdmenu/OSDGSM.CNF" }
+      end
+      return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF", "pfs0:/osdmenu/OSDGSM.CNF" }
+    end
     if context == "osdmenu" then
       if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDGSM.CNF" } end
       if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/OSDGSM.CNF" } end

@@ -91,10 +91,13 @@ local function mainLoop()
 
   local ctx = scene_module.initContext()
   ctx.font, ctx.drawMode, ctx.drawListRow = font, drawMode, drawListRow
-  ctx.main = { strings.main.main_osdmenu_mc, strings.main.main_hosdmenu_hdd, strings.main.main_osdmenu_mbr }
+  ctx.main = {
+    (strings.main.main_ps2bbl_mc or "PS2BBL"),
+    (strings.main.main_psxbbl_mc or "PSXBBL"),
+  }
 
   local mainSel = 1
-  local context, fileType, currentPath, lines = "osdmenu", nil, nil, nil
+  local context, fileType, currentPath, lines = "ps2bbl", nil, nil, nil
   local chosenMcSlot = nil
   local state = "main"
   local mcSel = 1
