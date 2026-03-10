@@ -203,8 +203,8 @@ end
 
 -- PS2BBL/PSXBBL hotkey keys and limits.
 local BBL_HOTKEYS = {
-  "AUTO", "SELECT", "L3", "R3", "START", "UP", "RIGHT", "DOWN", "LEFT",
-  "L2", "R2", "L1", "R1", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE"
+  "AUTO", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE", "UP", "DOWN", "LEFT", "RIGHT",
+  "L1", "L2", "L3", "R1", "R2", "R3", "SELECT", "START"
 }
 local BBL_MAX_ENTRIES = 10
 local BBL_MAX_ARGS_PER_ENTRY = 8

@@ -5,6 +5,15 @@
 
 local config_options = {}
 
+-- UI feature toggles. Keep eGSM code present but hidden until enabled.
+config_options.FEATURES = {
+  egsm_ui = false,
+}
+
+function config_options.isEgsmUiEnabled()
+  return config_options.FEATURES.egsm_ui == true
+end
+
 -- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
 function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "ps2bbl_ini" then
@@ -51,8 +60,8 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
 end
 
 config_options.BBL_HOTKEYS = {
-  "AUTO", "SELECT", "L3", "R3", "START", "UP", "RIGHT", "DOWN", "LEFT",
-  "L2", "R2", "L1", "R1", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE"
+  "AUTO", "TRIANGLE", "CIRCLE", "CROSS", "SQUARE", "UP", "DOWN", "LEFT", "RIGHT",
+  "L1", "L2", "L3", "R1", "R2", "R3", "SELECT", "START"
 }
 config_options.BBL_MAX_ENTRIES = 10
 config_options.BBL_MAX_ARGS_PER_ENTRY = 8
@@ -77,8 +86,16 @@ local function buildBblIniGlobalOptions()
       optType = "enum",
       default = "3",
       enumVals = { "0", "1", "2", "3", "4", "5" },
+      enumDisplayMap = {
+        ["0"] = "OFF",
+        ["1"] = "CONSOLE INFO",
+        ["2"] = "LOGO+INFO",
+        ["3"] = "HOTKEY NAME",
+        ["4"] = "HOTKEY FOUND FILE",
+        ["5"] = "HOTKEY FOUND PATH",
+      },
       label = "LOGO_DISPLAY",
-      desc = "0=off, 1=info, 2=logo+info, 3=name, 4=filename, 5=path.",
+      desc = "Display speed: FAST (0-3), SLOWER (4-5).",
     },
     {
       key = "KEY_READ_WAIT_TIME",
@@ -124,12 +141,6 @@ local function buildBblIniGlobalOptions()
       label = "PS1DRV_USE_PS1VN",
       desc = "Enable PS1 video negator.",
     },
-    {
-      key = "_load_irx_header",
-      optType = "header",
-      label = "LOAD_IRX_E#",
-      desc = "Additional IRX modules. Order matters.",
-    },
   }
 
   for i = 1, 10 do
@@ -149,11 +160,11 @@ config_options.ps2bbl_ini = buildBblIniGlobalOptions()
 config_options.psxbbl_ini = buildBblIniGlobalOptions()
 config_options.ps2bbl_ini_categories = {
   { name = "GLOBAL", options = config_options.ps2bbl_ini },
-  { name = "AUTO/HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO/HOTKEYS" } } },
+  { name = "AUTO / HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO / HOTKEYS" } } },
 }
 config_options.psxbbl_ini_categories = {
   { name = "GLOBAL", options = config_options.psxbbl_ini },
-  { name = "AUTO/HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO/HOTKEYS" } } },
+  { name = "AUTO / HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "AUTO / HOTKEYS" } } },
 }
 
 -- optType: "path", "bool", "enum", "string", "int", "text", "color", "action", "header"

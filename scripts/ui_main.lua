@@ -248,22 +248,24 @@ local function runSelectConfig(s, pad)
     s.chosenMcSlot = nil
     return
   end
-  local options = { iniLabel, main_str.select_config_osdgsm_cnf or "OSDGSM.CNF" }
+  local showEgsm = (C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled()) or false
+  local options = { { label = iniLabel, fileType = iniFileType } }
+  if showEgsm then
+    options[#options + 1] = { label = main_str.select_config_osdgsm_cnf or "OSDGSM.CNF", fileType = "osdgsm_cnf" }
+  end
+  if s.mainSel < 1 then s.mainSel = 1 end
+  if s.mainSel > #options then s.mainSel = #options end
   dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM)
-  for i, label in ipairs(options) do
+  for i, opt in ipairs(options) do
     local y = MY + sc(50) + (i - 1) * L
     local col = (i == s.mainSel) and SE or common.GRAY
-    dlr(M + 20, y, i == s.mainSel, label, col)
+    dlr(M + 20, y, i == s.mainSel, opt.label, col)
   end
   if (pad & PAD_UP) ~= 0 and s.mainSel > 1 then s.mainSel = s.mainSel - 1 end
   if (pad & PAD_DOWN) ~= 0 and s.mainSel < #options then s.mainSel = s.mainSel + 1 end
   if (pad & PAD_CROSS) ~= 0 then
-    if s.mainSel == 1 then
-      s.fileType = iniFileType
-    else
-      s.fileType = "osdgsm_cnf"
-    end
+    s.fileType = options[s.mainSel].fileType
     clearPathPickerState(s)
     s.state = "open"
     s.mainSel = 1

@@ -162,6 +162,13 @@ local function run(ctx)
         else
           valDisplay = #paths .. _.menu_str.path_s
         end
+      elseif o.optType == "enum" then
+        local raw = _.config_parse.get(ctx.lines, o.key) or o.default or ""
+        if raw ~= "" and o.enumDisplayMap and o.enumDisplayMap[raw] then
+          valDisplay = o.enumDisplayMap[raw]
+        else
+          valDisplay = raw
+        end
       else
         local multi = _.config_parse.getMulti(ctx.lines, o.key)
         if multi and #multi > 1 then
@@ -241,6 +248,11 @@ local function run(ctx)
     if selOpt then
       local descStr = (_.strings.options and _.strings.options[selOpt.key] and _.strings.options[selOpt.key].desc) or
           selOpt.desc or ""
+      if selOpt.key == "LOGO_DISPLAY" then
+        local cur = _.config_parse.get(ctx.lines, selOpt.key) or selOpt.default or ""
+        local n = tonumber(cur) or 0
+        descStr = (n >= 4) and "Display speed: SLOWER (4-5)" or "Display speed: FAST (0-3)"
+      end
       if descStr ~= "" then
         local tw = _.common.calcTextWidth(_.font, descStr, 0.72)
         local x = _.common.centerX(_, tw)

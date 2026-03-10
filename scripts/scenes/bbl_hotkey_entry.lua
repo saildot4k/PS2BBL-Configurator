@@ -69,21 +69,23 @@ local function run(ctx)
 
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if rows[ctx.bblEntryDetailSel] == "path" then
-      local currentPath, currentDisabled = _.config_parse.getBblHotkeyPath(ctx.lines, keyId, slot)
-      ctx.textInputTitleIdMode = nil
-      ctx.textInputPrompt = "LK_" .. keyId .. "_E" .. tostring(slot)
-      ctx.textInputValue = currentPath or ""
-      ctx.textInputMaxLen = 255
-      ctx.textInputCallback = function(val)
-        _.config_parse.setBblHotkeyPath(ctx.lines, keyId, slot, val or "", currentDisabled and true or false)
-        ctx.configModified = true
-        ctx.state = "bbl_hotkey_entry"
-      end
-      ctx.textInputReturnState = "bbl_hotkey_entry"
-      ctx.textInputGridSel = 1
-      ctx.textInputCursor = #ctx.textInputValue + 1
-      ctx.textInputScroll = 1
-      ctx.state = "text_input"
+      -- Reuse path picker so BBL slot paths support both manual input and device browse.
+      ctx.pathPickerContext = "path_only"
+      ctx.pathPickerSub = "device"
+      ctx.pathList = _.file_selector.getDevices("path_only") or {}
+      ctx.pathPickerSel = 1
+      ctx.pathPickerScroll = 0
+      ctx.pathBrowsePath = nil
+      ctx.pathPickerBootKey = nil
+      ctx.pathPickerForEntryIdx = nil
+      ctx.pathPickerEditIdx = nil
+      ctx.isAddPath = false
+      ctx.addPathKey = nil
+      ctx.pathPickerReturnState = "bbl_hotkey_entry"
+      ctx.pathPickerBblHotkeyKey = keyId
+      ctx.pathPickerBblHotkeySlot = slot
+      ctx.pathPickerBblHotkeyDisabled = data.disabled and true or false
+      ctx.state = "path_picker"
     else
       ctx.bblArgSel = 1
       ctx.bblArgScroll = 0

@@ -19,6 +19,23 @@ local function applyBootPathAndReturn(ctx, val)
   return true
 end
 
+-- Apply chosen path for a BBL hotkey slot and return next state. Returns nil if not a BBL slot pick.
+local function applyBblHotkeyPathAndReturn(ctx, val)
+  if not ctx.pathPickerBblHotkeyKey or not ctx.pathPickerBblHotkeySlot or not ctx.lines then return nil end
+  local _ = ctx._
+  local slot = tonumber(ctx.pathPickerBblHotkeySlot)
+  if not slot then return nil end
+  _.config_parse.setBblHotkeyPath(ctx.lines, ctx.pathPickerBblHotkeyKey, slot, val,
+    ctx.pathPickerBblHotkeyDisabled and true or false)
+  ctx.state = ctx.pathPickerReturnState or "bbl_hotkey_entry"
+  ctx.pathPickerBblHotkeyKey = nil
+  ctx.pathPickerBblHotkeySlot = nil
+  ctx.pathPickerBblHotkeyDisabled = nil
+  ctx.pathPickerReturnState = nil
+  ctx.pathPickerEditIdx = nil
+  return true
+end
+
 -- Convert pfs path (pfs0:/ or pfs1:/...) to full partition path (hdd0:PART:pfs:...). Returns nil if not a pfs path.
 local function pfsToPartitionPath(pfsPath, partitionPath)
   if not pfsPath or not partitionPath then return nil end
@@ -42,6 +59,11 @@ local function applyManualPath(ctx, val)
       ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
       ctx.pathPickerForEntryIdx = nil
       ctx.pathPickerEditIdx = nil
+    elseif ctx.pathPickerBblHotkeyKey then
+      ctx.state = ctx.pathPickerReturnState or "bbl_hotkey_entry"
+      ctx.pathPickerBblHotkeyKey = nil
+      ctx.pathPickerBblHotkeySlot = nil
+      ctx.pathPickerBblHotkeyDisabled = nil
     else
       ctx.state = ctx.pathPickerReturnState or "editor"
     end
@@ -58,6 +80,7 @@ local function applyManualPath(ctx, val)
   ctx.pfs1Mounted = nil
   ctx.configModified = true
   if applyBootPathAndReturn(ctx, val) then
+  elseif applyBblHotkeyPathAndReturn(ctx, val) then
   elseif ctx.pathPickerForEntryIdx then
     local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
     if ctx.pathPickerEditIdx then
@@ -100,6 +123,17 @@ local function run(ctx)
       if mode == "single" then
         _.config_parse.set(ctx.lines, ctx.editKey, chosenVal)
         ctx.state = "editor"
+      elseif mode == "bbl_hotkey" then
+        local slot = tonumber(ctx.pathPickerBblHotkeySlot)
+        if slot then
+          _.config_parse.setBblHotkeyPath(ctx.lines, ctx.pathPickerBblHotkeyKey, slot, chosenVal,
+            ctx.pathPickerBblHotkeyDisabled and true or false)
+        end
+        ctx.state = ctx.pathPickerReturnState or "bbl_hotkey_entry"
+        ctx.pathPickerBblHotkeyKey = nil
+        ctx.pathPickerBblHotkeySlot = nil
+        ctx.pathPickerBblHotkeyDisabled = nil
+        ctx.pathPickerReturnState = nil
       elseif mode == "entry" then
         local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
         if ctx.pathPickerEditIdx then
@@ -355,6 +389,7 @@ local function run(ctx)
                 ctx.pathPickerReturnState = nil
                 ctx.pathPickerForEntryIdx = nil
                 ctx.pathPickerEditIdx = nil
+              elseif applyBblHotkeyPathAndReturn(ctx, pathVal) then
               elseif ctx.pathPickerForEntryIdx then
                 local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
                 if ctx.pathPickerEditIdx then
@@ -471,6 +506,12 @@ local function run(ctx)
         if ctx.pathPickerBootKey then
           ctx.state = ctx.pathPickerReturnState or "editor"
           ctx.pathPickerBootKey = nil; ctx.pathPickerReturnState = nil
+        elseif ctx.pathPickerBblHotkeyKey then
+          ctx.state = ctx.pathPickerReturnState or "bbl_hotkey_entry"
+          ctx.pathPickerBblHotkeyKey = nil
+          ctx.pathPickerBblHotkeySlot = nil
+          ctx.pathPickerBblHotkeyDisabled = nil
+          ctx.pathPickerReturnState = nil
         elseif ctx.pathPickerForEntryIdx then
           ctx.entryIdx = ctx.pathPickerForEntryIdx
           ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -530,6 +571,7 @@ local function run(ctx)
       local partFull = p.full or ("hdd0:" .. (p.name or ""))
       local val = partFull .. ":PATINFO"
       if applyBootPathAndReturn(ctx, val) then
+      elseif applyBblHotkeyPathAndReturn(ctx, val) then
       elseif ctx.pathPickerForEntryIdx then
         local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
         if ctx.pathPickerEditIdx then
@@ -668,6 +710,8 @@ local function run(ctx)
             ctx.pathPickerWildcardConfirm = true
             if ctx.pathPickerBootKey then
               ctx.pathPickerWildcardMode = "boot"
+            elseif ctx.pathPickerBblHotkeyKey then
+              ctx.pathPickerWildcardMode = "bbl_hotkey"
             elseif ctx.pathPickerForEntryIdx then
               ctx.pathPickerWildcardMode = "entry"
             elseif ctx.isAddPath then
@@ -676,6 +720,7 @@ local function run(ctx)
               ctx.pathPickerWildcardMode = "single"
             end
           elseif applyBootPathAndReturn(ctx, val) then
+          elseif applyBblHotkeyPathAndReturn(ctx, val) then
           elseif ctx.pathPickerForEntryIdx then
             local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
             if ctx.pathPickerEditIdx then

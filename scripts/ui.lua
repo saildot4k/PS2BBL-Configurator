@@ -119,6 +119,7 @@ local function mainLoop()
   local entryList, entrySel, entryScroll = {}, 1, 0
   local entryIdx, entryEditSub = nil, 1
   local pathPickerForEntryIdx = nil
+  local pathPickerBblHotkeyKey, pathPickerBblHotkeySlot, pathPickerBblHotkeyDisabled = nil, nil, nil
   local textInputPrompt, textInputValue, textInputMaxLen, textInputCallback = nil, "", 79, nil
   local textInputGridSel, textInputShift = 1, false
   local editorCategoryIdx = 0
@@ -146,6 +147,8 @@ local function mainLoop()
     c.entryList, c.entrySel, c.entryScroll = entryList, entrySel, entryScroll
     c.entryIdx, c.entryEditSub = entryIdx, entryEditSub
     c.pathPickerForEntryIdx = pathPickerForEntryIdx
+    c.pathPickerBblHotkeyKey, c.pathPickerBblHotkeySlot, c.pathPickerBblHotkeyDisabled = pathPickerBblHotkeyKey,
+        pathPickerBblHotkeySlot, pathPickerBblHotkeyDisabled
     c.textInputPrompt, c.textInputValue, c.textInputMaxLen = textInputPrompt, textInputValue, textInputMaxLen
     c.textInputGridSel, c.textInputShift = textInputGridSel, textInputShift
     c.editorCategoryIdx = editorCategoryIdx
@@ -173,6 +176,8 @@ local function mainLoop()
     entryList, entrySel, entryScroll = c.entryList, c.entrySel, c.entryScroll
     entryIdx, entryEditSub = c.entryIdx, c.entryEditSub
     pathPickerForEntryIdx = c.pathPickerForEntryIdx
+    pathPickerBblHotkeyKey, pathPickerBblHotkeySlot, pathPickerBblHotkeyDisabled = c.pathPickerBblHotkeyKey,
+        c.pathPickerBblHotkeySlot, c.pathPickerBblHotkeyDisabled
     textInputPrompt, textInputValue, textInputMaxLen = c.textInputPrompt, c.textInputValue, c.textInputMaxLen
     textInputGridSel, textInputShift = c.textInputGridSel, c.textInputShift
     editorCategoryIdx = c.editorCategoryIdx

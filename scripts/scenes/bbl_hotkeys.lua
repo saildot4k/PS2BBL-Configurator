@@ -14,7 +14,7 @@ local function run(ctx)
     return
   end
 
-  local title = "AUTO/HOTKEYS"
+  local title = "AUTO / HOTKEYS"
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
 
   ctx.bblHotkeySel = ctx.bblHotkeySel or 1
