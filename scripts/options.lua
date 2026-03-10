@@ -48,25 +48,40 @@ end
 
 -- Known PS2BBL/PSXBBL lookup locations, excluding CWD (CONFIG.INI) because CWD is launch-dependent.
 -- Ordered to match PS2BBL source search order (first -> last), ignoring unsupported XFROM.
-local function buildBblIniLocations(mcFile)
+local function buildPs2BblIniLocations()
   local out = {}
   appendUnique(out, "mmce1:/PS2BBL/PS2BBL.INI")
   appendUnique(out, "mmce0:/PS2BBL/PS2BBL.INI")
-  appendUnique(out, "pfs0:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI")
   appendUnique(out, "massX:/PS2BBL/CONFIG.INI")
   appendUnique(out, "mass:/PS2BBL/CONFIG.INI")
-  appendUnique(out, "mc1:/SYS-CONF/" .. mcFile)
-  appendUnique(out, "mc0:/SYS-CONF/" .. mcFile)
+  appendUnique(out, "mc1:/SYS-CONF/PS2BBL.INI")
+  appendUnique(out, "mc0:/SYS-CONF/PS2BBL.INI")
+  return out
+end
+
+-- PSXBBL checks PSXBBL.INI on memory cards before the shared PS2BBL paths.
+local function buildPsxBblIniLocations()
+  local out = {}
+  appendUnique(out, "mc1:/SYS-CONF/PSXBBL.INI")
+  appendUnique(out, "mc0:/SYS-CONF/PSXBBL.INI")
+  appendUnique(out, "mmce1:/PS2BBL/PS2BBL.INI")
+  appendUnique(out, "mmce0:/PS2BBL/PS2BBL.INI")
+  appendUnique(out, "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "massX:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "mass:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "mc1:/SYS-CONF/PS2BBL.INI")
+  appendUnique(out, "mc0:/SYS-CONF/PS2BBL.INI")
   return out
 end
 
 -- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
 function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "ps2bbl_ini" then
-    return buildBblIniLocations("PS2BBL.INI")
+    return buildPs2BblIniLocations()
   end
   if fileType == "psxbbl_ini" then
-    return buildBblIniLocations("PSXBBL.INI")
+    return buildPsxBblIniLocations()
   end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then

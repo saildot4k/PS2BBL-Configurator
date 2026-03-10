@@ -280,13 +280,13 @@ local function runMain(s, pad)
       s.fileType = "ps2bbl_ini"
       s.chosenMcSlot = nil
       clearPathPickerState(s)
-      s.state = "choose_mc"
+      s.state = "select_config"
     elseif s.mainSel == 2 then
       s.context = "psxbbl"
       s.fileType = "psxbbl_ini"
       s.chosenMcSlot = nil
       clearPathPickerState(s)
-      s.state = "choose_mc"
+      s.state = "select_config"
     end
   end
 end
@@ -335,8 +335,66 @@ local function runChooseMc(s, pad)
   end
 end
 
+local function isVisible(visibility, key)
+  if not visibility or not key then return true end
+  local v = visibility[key]
+  if v == nil then return true end
+  return v == true
+end
+
+local function appendUniquePath(paths, path)
+  if not path or path == "" then return end
+  for i = 1, #paths do
+    if paths[i] == path then return end
+  end
+  paths[#paths + 1] = path
+end
+
+local function buildBblSourceOptions(iniFileType)
+  local main_str = (C.strings and C.strings.main) or {}
+  local dev_str = (C.strings and C.strings.devices) or {}
+  local visibility = (C.config_options and C.config_options.getBblPathDeviceVisibility and
+      C.config_options.getBblPathDeviceVisibility()) or nil
+  local psxMode = (iniFileType == "psxbbl_ini")
+  local out = {}
+  local function addDevice(visKey, label, paths)
+    if not isVisible(visibility, visKey) then return end
+    local rows = {}
+    if type(paths) == "table" then
+      for i = 1, #paths do
+        appendUniquePath(rows, paths[i])
+      end
+    else
+      appendUniquePath(rows, paths)
+    end
+    if #rows == 0 then return end
+    out[#out + 1] = { label = label, action = "known_paths", paths = rows }
+  end
+  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" })
+  addDevice("mmce", dev_str.mmce_0 or "MMCE in slot 1", { "mmce0:/PS2BBL/PS2BBL.INI" })
+  addDevice("hdd", dev_str.hdd or "APA-formatted HDD", { "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI" })
+  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" })
+  addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" })
+  local mc1Paths, mc0Paths = {}, {}
+  if psxMode then
+    appendUniquePath(mc1Paths, "mc1:/SYS-CONF/PSXBBL.INI")
+    appendUniquePath(mc0Paths, "mc0:/SYS-CONF/PSXBBL.INI")
+  end
+  appendUniquePath(mc1Paths, "mc1:/SYS-CONF/PS2BBL.INI")
+  appendUniquePath(mc0Paths, "mc0:/SYS-CONF/PS2BBL.INI")
+  addDevice("mc", dev_str.memory_card_2 or "Memory Card 2", mc1Paths)
+  addDevice("mc", dev_str.memory_card_1 or "Memory Card 1", mc0Paths)
+  out[#out + 1] = {
+    label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
+    action = "browse_ini",
+    fileType = iniFileType,
+  }
+  return out
+end
+
 local function runSelectConfig(s, pad)
   local main_str = (C.strings and C.strings.main) or {}
+  local path_str = (C.strings and C.strings.path_picker) or {}
   local dt, dlr = common.drawText, s.drawListRow
   local M = common.MARGIN_X
   local H = s.HINT_Y or common.HINT_Y
@@ -345,48 +403,41 @@ local function runSelectConfig(s, pad)
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
   local iniFileType = resolveIniFileType(s)
-  local iniLabel = nil
-  if iniFileType == "ps2bbl_ini" then
-    iniLabel = main_str.select_config_ps2bbl_ini or "PS2BBL.INI"
-  elseif iniFileType == "psxbbl_ini" then
-    iniLabel = main_str.select_config_psxbbl_ini or "PSXBBL.INI"
-  end
-  if not iniFileType or not iniLabel then
+  if iniFileType ~= "ps2bbl_ini" and iniFileType ~= "psxbbl_ini" then
     s.state = "main"
-    s.chosenMcSlot = nil
     return
   end
-  local showEgsm = (C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled()) or false
-  local options = { { label = iniLabel, fileType = iniFileType, action = "open_known" } }
-  if iniFileType == "ps2bbl_ini" or iniFileType == "psxbbl_ini" then
-    options[#options + 1] = {
-      label = main_str.select_config_browse_ini or "Browse config file (.INI)",
-      fileType = iniFileType,
-      action = "browse_ini",
-    }
-  end
-  if showEgsm then
-    options[#options + 1] = { label = main_str.select_config_osdgsm_cnf or "OSDGSM.CNF", fileType = "osdgsm_cnf" }
-  end
+
+  local options = buildBblSourceOptions(iniFileType)
   local sel = getSelectConfigSel(s)
   if sel < 1 then sel = 1 end
   if sel > #options then sel = #options end
   setSelectConfigSel(s, sel)
+
   dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
+  if path_str.bbl_build_device_hint then
+    local bblName = (iniFileType == "psxbbl_ini") and "PSXBBL" or "PS2BBL"
+    local hint = tostring(path_str.bbl_build_device_hint):gsub("PS%?BBL", bblName)
+    if common.truncateTextToWidth then
+      hint = common.truncateTextToWidth(s.font, hint, (s.w or 640) - (M * 2), 0.55)
+    end
+    dt(s.font, s.drawMode, M, MY + sc(20), 0.55, hint, common.DIM)
+  end
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM)
   for i, opt in ipairs(options) do
     local y = MY + sc(50) + (i - 1) * L
     local col = (i == sel) and SE or common.GRAY
-    dlr(M + 20, y, i == sel, opt.label, col)
+    dlr(M + 20, y, i == sel, opt.label or "", col)
   end
   if (pad & PAD_UP) ~= 0 and sel > 1 then sel = sel - 1 end
   if (pad & PAD_DOWN) ~= 0 and sel < #options then sel = sel + 1 end
   setSelectConfigSel(s, sel)
+
   if (pad & PAD_CROSS) ~= 0 then
     local pick = options[sel]
-    s.fileType = pick.fileType
+    s.fileType = iniFileType
     clearPathPickerState(s)
-    if pick.action == "browse_ini" then
+    if pick and pick.action == "browse_ini" then
       s.pathPickerContext = "config_ini"
       s.pathPickerTarget = "config_open"
       s.pathPickerFileExts = { ".ini" }
@@ -397,19 +448,23 @@ local function runSelectConfig(s, pad)
       s.pathBrowsePath = nil
       s.pathPickerReturnState = "select_config"
       s.state = "path_picker"
-    else
-      s.openExplicitPath = nil
-      s.state = "open"
+    elseif pick and pick.action == "known_paths" then
+      s.loadChoices = {}
+      s.loadPathExists = {}
+      local paths = pick.paths or {}
+      for i = 1, #paths do
+        local p = paths[i]
+        s.loadChoices[#s.loadChoices + 1] = p
+        s.loadPathExists[#s.loadPathExists + 1] = pathExists(p)
+      end
+      s.loadAllowCreate = true
+      s.loadSel = 1
+      s.state = "choose_load"
     end
   end
+
   if (pad & PAD_CIRCLE) ~= 0 then
-    local slots = common.getPresentMcSlots()
-    if #slots <= 1 then
-      s.state = "main"
-      s.chosenMcSlot = nil
-    else
-      s.state = "choose_mc"
-    end
+    s.state = "main"
   end
 end
 
@@ -579,6 +634,8 @@ local function runOpen(s, pad)
     else
       s.loadSel = s.loadSel or 1
     end
+    s.loadAllowCreate = nil
+    s.loadPathExists = nil
     s.state = "choose_load"
   end
 end
@@ -594,6 +651,7 @@ local function runChooseLoad(s, pad)
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
   local choices = s.loadChoices or {}
+  local allowCreate = (s.loadAllowCreate == true)
   if s.loadSel < 1 then s.loadSel = 1 end
   if s.loadSel > #choices then s.loadSel = #choices end
   local maxVis = common.MAX_VISIBLE
@@ -606,14 +664,26 @@ local function runChooseLoad(s, pad)
   for i = scroll + 1, math.min(scroll + maxVis, total) do
     local idx = i
     local p = choices[idx] or ""
-    local label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
-        (p:match("^massX:") and dev_str.mx4sio_sd) or
-        ((p:match("^mass:") or p:match("^mass%d:")) and dev_str.usb_storage_0) or
-        (p:match("^mmce0:") and dev_str.mmce_0) or
-        (p:match("^mmce1:") and dev_str.mmce_1) or
-        (p:match("^hdd0:") and dev_str.hdd) or
-        (p:match("^pfs0:") and dev_str.hdd) or
-        p:sub(1, 40)
+    local label = nil
+    if allowCreate then
+      local exists = (type(s.loadPathExists) == "table") and s.loadPathExists[idx] or false
+      local status = exists and " [FOUND]" or " [NEW]"
+      local raw = p .. status
+      if common.truncateTextToWidth then
+        label = common.truncateTextToWidth(s.font, raw, (s.w or 640) - (M + 24), common.FONT_SCALE)
+      else
+        label = raw:sub(1, 60)
+      end
+    else
+      label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
+          (p:match("^massX:") and dev_str.mx4sio_sd) or
+          ((p:match("^mass:") or p:match("^mass%d:")) and dev_str.usb_storage_0) or
+          (p:match("^mmce0:") and dev_str.mmce_0) or
+          (p:match("^mmce1:") and dev_str.mmce_1) or
+          (p:match("^hdd0:") and dev_str.hdd) or
+          (p:match("^pfs0:") and dev_str.hdd) or
+          p:sub(1, 40)
+    end
     local y = MY + sc(50) + (i - scroll - 1) * L
     local col = (idx == s.loadSel) and SE or common.WHITE
     dlr(M + 20, y, idx == s.loadSel, label, col)
@@ -627,15 +697,29 @@ local function runChooseLoad(s, pad)
   end
   if (pad & PAD_CROSS) ~= 0 and #choices > 0 then
     s.currentPath = choices[s.loadSel]
-    local loaded = loadLinesWithDeviceAccess(s.currentPath)
-    if loaded then
-      s.lines = loaded
+    local exists = allowCreate and ((type(s.loadPathExists) == "table" and s.loadPathExists[s.loadSel]) or pathExists(s.currentPath))
+    if allowCreate and not exists then
+      initEmptyLinesForFileType(s)
       setStateAfterLoad(s)
       s.loadChoices = nil
+      s.loadAllowCreate = nil
+      s.loadPathExists = nil
+    else
+      local loaded = loadLinesWithDeviceAccess(s.currentPath)
+      if loaded then
+        s.lines = loaded
+        setStateAfterLoad(s)
+        s.loadChoices = nil
+        s.loadAllowCreate = nil
+        s.loadPathExists = nil
+      end
     end
   end
   if (pad & PAD_CIRCLE) ~= 0 then
-    s.state = "select_config"; s.loadChoices = nil
+    s.state = "select_config"
+    s.loadChoices = nil
+    s.loadAllowCreate = nil
+    s.loadPathExists = nil
   end
 end
 
