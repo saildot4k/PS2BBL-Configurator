@@ -112,6 +112,7 @@ local function mainLoop()
   local pathPickerSub = nil
   local pathPickerSel, pathPickerScroll = 1, 0
   local pathBrowsePath, pathList = nil, nil
+  local pathPickerTarget, pathPickerFileExts = nil, nil
   local isAddPath, addPathKey = false, nil
   local pathPickerContext = "osdmenu"
   local pfs1Mounted = nil
@@ -134,6 +135,7 @@ local function mainLoop()
   local bootKey, pathPickerBootKey, pathPickerReturnState = nil, nil, nil
   local configModified, editorLeavePrompt, returnToSelectConfigAfterSave, returnToSelectConfigAfterSaveFlash = false, nil,
       nil, nil
+  local openExplicitPath = nil
 
   local function syncToS(c)
     c.state, c.lines, c.currentPath, c.fileType, c.context = state, lines, currentPath, fileType, context
@@ -141,7 +143,9 @@ local function mainLoop()
     c.optList, c.optSel, c.optScroll, c.saveSplash = optList, optSel, optScroll, saveSplash
     c.editKey, c.pathPickerSub, c.pathPickerSel, c.pathPickerScroll = editKey, pathPickerSub, pathPickerSel,
         pathPickerScroll
-    c.pathBrowsePath, c.pathList, c.isAddPath, c.addPathKey = pathBrowsePath, pathList, isAddPath, addPathKey
+    c.pathBrowsePath, c.pathList, c.pathPickerTarget, c.pathPickerFileExts = pathBrowsePath, pathList, pathPickerTarget,
+        pathPickerFileExts
+    c.isAddPath, c.addPathKey = isAddPath, addPathKey
     c.pathPickerContext, c.pfs1Mounted = pathPickerContext, pfs1Mounted
     c.colorOpt, c.colorCh, c.colorVals = colorOpt, colorCh, colorVals
     c.entryList, c.entrySel, c.entryScroll = entryList, entrySel, entryScroll
@@ -163,6 +167,7 @@ local function mainLoop()
     c.prevPad, c.holdFrameCount = prevPad, holdFrameCount
     c.configModified, c.editorLeavePrompt, c.returnToSelectConfigAfterSave, c.returnToSelectConfigAfterSaveFlash =
         configModified, editorLeavePrompt, returnToSelectConfigAfterSave, returnToSelectConfigAfterSaveFlash
+    c.openExplicitPath = openExplicitPath
   end
   local function syncFromS(c)
     state, lines, currentPath, fileType, context = c.state, c.lines, c.currentPath, c.fileType, c.context
@@ -170,7 +175,9 @@ local function mainLoop()
     optList, optSel, optScroll, saveSplash = c.optList, c.optSel, c.optScroll, c.saveSplash
     editKey, pathPickerSub, pathPickerSel, pathPickerScroll = c.editKey, c.pathPickerSub, c.pathPickerSel,
         c.pathPickerScroll
-    pathBrowsePath, pathList, isAddPath, addPathKey = c.pathBrowsePath, c.pathList, c.isAddPath, c.addPathKey
+    pathBrowsePath, pathList = c.pathBrowsePath, c.pathList
+    pathPickerTarget, pathPickerFileExts = c.pathPickerTarget, c.pathPickerFileExts
+    isAddPath, addPathKey = c.isAddPath, c.addPathKey
     pathPickerContext, pfs1Mounted = c.pathPickerContext, c.pfs1Mounted
     colorOpt, colorCh, colorVals = c.colorOpt, c.colorCh, c.colorVals
     entryList, entrySel, entryScroll = c.entryList, c.entrySel, c.entryScroll
@@ -193,6 +200,7 @@ local function mainLoop()
     prevPad, holdFrameCount = c.prevPad or prevPad, c.holdFrameCount or 0
     configModified, editorLeavePrompt, returnToSelectConfigAfterSave, returnToSelectConfigAfterSaveFlash =
         c.configModified, c.editorLeavePrompt, c.returnToSelectConfigAfterSave, c.returnToSelectConfigAfterSaveFlash
+    openExplicitPath = c.openExplicitPath
   end
 
   local REPEATABLE_MASK = PAD_UP | PAD_DOWN | PAD_LEFT | PAD_RIGHT | PAD_L1 | PAD_R1 | PAD_L2 | PAD_R2

@@ -24,6 +24,8 @@ local function initContext()
     pathPickerScroll = 0,
     pathBrowsePath = nil,
     pathList = nil,
+    pathPickerTarget = nil,
+    pathPickerFileExts = nil,
     isAddPath = false,
     addPathKey = nil,
     pathPickerContext = "osdmenu",
@@ -77,6 +79,7 @@ local function initContext()
     editorLeavePrompt = nil,
     returnToSelectConfigAfterSave = nil,
     returnToSelectConfigAfterSaveFlash = nil,
+    openExplicitPath = nil,
   }
 end
 

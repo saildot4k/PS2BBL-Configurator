@@ -60,6 +60,8 @@ local function clearPathPickerState(s)
   s.bootKey = nil
   s.pathPickerBootKey = nil
   s.pathPickerReturnState = nil
+  s.pathPickerTarget = nil
+  s.pathPickerFileExts = nil
 end
 
 local function getSelectConfigSelTable(s)
@@ -96,6 +98,90 @@ local function resolveIniFileType(s)
     return s.fileType
   end
   return nil
+end
+
+local function initEmptyLinesForFileType(s)
+  s.lines = config_parse.parse("")
+  if s.fileType == "osdmenu_cnf" and C.config_options.getOsdmenuDefaults then
+    for k, v in pairs(C.config_options.getOsdmenuDefaults()) do config_parse.set(s.lines, k, v) end
+  end
+end
+
+local function getPathModuleType(path)
+  if not path or path == "" then return nil end
+  local p = tostring(path)
+  if p:match("^massX:") then return "mx4sio" end
+  if p:match("^mass%d*:") then return "usb" end
+  if p:match("^mmce%d:") then return "mmce" end
+  if p:match("^hdd%d:") or p:match("^pfs%d:/") then return "hdd" end
+  return nil
+end
+
+local function mapPartitionPathToMountedPfs(path)
+  if not path then return nil, nil end
+  local part, rest = tostring(path):match("^(hdd%d:[^:]+):pfs:(.*)$")
+  if not part then return nil, nil end
+  if not rest or rest == "" then rest = "/" end
+  if rest:sub(1, 1) ~= "/" then rest = "/" .. rest end
+  return part, "pfs0:" .. rest
+end
+
+local function beginPathAccess(path)
+  local moduleType = getPathModuleType(path)
+  if moduleType and System and System.loadModules then
+    pcall(System.loadModules, moduleType)
+  end
+  local part, mapped = mapPartitionPathToMountedPfs(path)
+  if part and mapped then
+    local mounted = nil
+    if System and System.fileXioMount then
+      pcall(System.fileXioMount, "pfs0:", part)
+      mounted = "pfs0:"
+    end
+    return mounted, mapped
+  end
+  local mounted = nil
+  if path and path:match("^pfs0:/") and System and System.fileXioMount then
+    pcall(System.fileXioMount, "pfs0:", "hdd0:__sysconf")
+    mounted = "pfs0:"
+  end
+  return mounted, path
+end
+
+local function endPathAccess(mounted)
+  if mounted and System and System.fileXioUmount then
+    pcall(System.fileXioUmount, mounted)
+  end
+end
+
+local function pathExists(path)
+  local mounted, accessPath = beginPathAccess(path)
+  local ok = common.tryOpen(accessPath or path)
+  endPathAccess(mounted)
+  return ok
+end
+
+local function findExistingPathsWithDeviceAccess(locations)
+  local out = {}
+  for _, p in ipairs(locations or {}) do
+    if p and p ~= "" and pathExists(p) then
+      out[#out + 1] = p
+    end
+  end
+  return out
+end
+
+local function loadLinesWithDeviceAccess(path)
+  local mounted, accessPath = beginPathAccess(path)
+  local ok, lines, err = pcall(config_parse.load, accessPath or path)
+  endPathAccess(mounted)
+  if ok and lines then
+    return lines
+  end
+  if ok then
+    return nil, err
+  end
+  return nil, lines
 end
 
 local function setStateAfterLoad(s)
@@ -271,7 +357,14 @@ local function runSelectConfig(s, pad)
     return
   end
   local showEgsm = (C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled()) or false
-  local options = { { label = iniLabel, fileType = iniFileType } }
+  local options = { { label = iniLabel, fileType = iniFileType, action = "open_known" } }
+  if iniFileType == "ps2bbl_ini" or iniFileType == "psxbbl_ini" then
+    options[#options + 1] = {
+      label = main_str.select_config_browse_ini or "Browse config file (.INI)",
+      fileType = iniFileType,
+      action = "browse_ini",
+    }
+  end
   if showEgsm then
     options[#options + 1] = { label = main_str.select_config_osdgsm_cnf or "OSDGSM.CNF", fileType = "osdgsm_cnf" }
   end
@@ -290,9 +383,24 @@ local function runSelectConfig(s, pad)
   if (pad & PAD_DOWN) ~= 0 and sel < #options then sel = sel + 1 end
   setSelectConfigSel(s, sel)
   if (pad & PAD_CROSS) ~= 0 then
-    s.fileType = options[sel].fileType
+    local pick = options[sel]
+    s.fileType = pick.fileType
     clearPathPickerState(s)
-    s.state = "open"
+    if pick.action == "browse_ini" then
+      s.pathPickerContext = "config_ini"
+      s.pathPickerTarget = "config_open"
+      s.pathPickerFileExts = { ".ini" }
+      s.pathPickerSub = "device"
+      s.pathList = (C.file_selector and C.file_selector.getDevices and C.file_selector.getDevices("config_ini")) or {}
+      s.pathPickerSel = 1
+      s.pathPickerScroll = 0
+      s.pathBrowsePath = nil
+      s.pathPickerReturnState = "select_config"
+      s.state = "path_picker"
+    else
+      s.openExplicitPath = nil
+      s.state = "open"
+    end
   end
   if (pad & PAD_CIRCLE) ~= 0 then
     local slots = common.getPresentMcSlots()
@@ -402,47 +510,57 @@ local function runOpen(s, pad)
   local H = s.HINT_Y or common.HINT_Y
   local MY = s.MARGIN_Y or common.MARGIN_Y
   local sc = s.scaleY or function(y) return y end
-  local locations = C.config_options.getLocations(s.context, s.fileType, s.chosenMcSlot)
-  local hasPfs0 = false
-  for i = 1, #locations do
-    if locations[i] and locations[i]:match("^pfs0:/") then
-      hasPfs0 = true
-      break
+  if s.openExplicitPath and s.currentPath and s.currentPath ~= "" then
+    if not pathExists(s.currentPath) then
+      initEmptyLinesForFileType(s)
+      s.openExplicitPath = nil
+      setStateAfterLoad(s)
+      return
     end
+    local loaded = loadLinesWithDeviceAccess(s.currentPath)
+    if loaded then
+      s.lines = loaded
+      s.openExplicitPath = nil
+      setStateAfterLoad(s)
+      return
+    end
+    dt(s.font, s.drawMode, M, MY + sc(60), common.FONT_SCALE, main_str.failed_to_load .. tostring(s.currentPath),
+      common.GRAY)
+    common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_back_items, nil, common.DIM)
+    if (pad & PAD_CROSS) ~= 0 then
+      s.openExplicitPath = nil
+      s.state = "select_config"
+    end
+    return
   end
-  if hasPfs0 and System and System.loadModules then
-    System.loadModules("hdd")
-  end
-  if hasPfs0 and System and System.fileXioMount then
-    pcall(System.fileXioMount, "pfs0:", "hdd0:__sysconf")
-  end
-  local existing = common.findExistingPaths(locations)
+  local locations = C.config_options.getLocations(s.context, s.fileType, s.chosenMcSlot)
+  local existing = findExistingPathsWithDeviceAccess(locations)
   if #existing == 0 then
-    s.currentPath = locations[1]
+    if C.config_options and C.config_options.getDefaultLocation then
+      s.currentPath = C.config_options.getDefaultLocation(s.context, s.fileType, s.chosenMcSlot)
+    else
+      s.currentPath = locations[1]
+    end
     if not s.currentPath then
       dt(s.font, s.drawMode, M, MY + sc(60), common.FONT_SCALE, main_str.no_location, common.GRAY)
       common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_back_items, nil, common.DIM)
       if (pad & PAD_CROSS) ~= 0 then s.state = "select_config" end
     else
-      s.lines = config_parse.parse("")
-      if s.fileType == "osdmenu_cnf" and C.config_options.getOsdmenuDefaults then
-        for k, v in pairs(C.config_options.getOsdmenuDefaults()) do config_parse.set(s.lines, k, v) end
-      end
+      initEmptyLinesForFileType(s)
       setStateAfterLoad(s)
     end
-    if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   elseif #existing == 1 then
     s.currentPath = existing[1]
-    local ok = pcall(function() s.lines = config_parse.load(s.currentPath) end)
-    if not ok or not s.lines then
+    local loaded = loadLinesWithDeviceAccess(s.currentPath)
+    if not loaded then
       dt(s.font, s.drawMode, M, MY + sc(60), common.FONT_SCALE, main_str.failed_to_load .. tostring(s.currentPath),
         common.GRAY)
       common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_back_items, nil, common.DIM)
       if (pad & PAD_CROSS) ~= 0 then s.state = "select_config" end
     else
+      s.lines = loaded
       setStateAfterLoad(s)
     end
-    if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   else
     local prevPath = nil
     if s.loadChoices and s.loadSel and s.loadChoices[s.loadSel] then
@@ -462,7 +580,6 @@ local function runOpen(s, pad)
       s.loadSel = s.loadSel or 1
     end
     s.state = "choose_load"
-    if hasPfs0 and System and System.fileXioUmount then pcall(System.fileXioUmount, "pfs0:") end
   end
 end
 
@@ -490,6 +607,11 @@ local function runChooseLoad(s, pad)
     local idx = i
     local p = choices[idx] or ""
     local label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
+        (p:match("^massX:") and dev_str.mx4sio_sd) or
+        ((p:match("^mass:") or p:match("^mass%d:")) and dev_str.usb_storage_0) or
+        (p:match("^mmce0:") and dev_str.mmce_0) or
+        (p:match("^mmce1:") and dev_str.mmce_1) or
+        (p:match("^hdd0:") and dev_str.hdd) or
         (p:match("^pfs0:") and dev_str.hdd) or
         p:sub(1, 40)
     local y = MY + sc(50) + (i - scroll - 1) * L
@@ -505,18 +627,9 @@ local function runChooseLoad(s, pad)
   end
   if (pad & PAD_CROSS) ~= 0 and #choices > 0 then
     s.currentPath = choices[s.loadSel]
-    local selectedIsPfs0 = s.currentPath and s.currentPath:match("^pfs0:/")
-    if selectedIsPfs0 and System and System.loadModules then
-      System.loadModules("hdd")
-    end
-    if selectedIsPfs0 and System and System.fileXioMount then
-      pcall(System.fileXioMount, "pfs0:", "hdd0:__sysconf")
-    end
-    local ok = pcall(function() s.lines = config_parse.load(s.currentPath) end)
-    if selectedIsPfs0 and System and System.fileXioUmount then
-      pcall(System.fileXioUmount, "pfs0:")
-    end
-    if ok and s.lines then
+    local loaded = loadLinesWithDeviceAccess(s.currentPath)
+    if loaded then
+      s.lines = loaded
       setStateAfterLoad(s)
       s.loadChoices = nil
     end

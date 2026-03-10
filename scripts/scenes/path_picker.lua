@@ -50,9 +50,84 @@ local function clearLoadedIfIopReset(ctx)
   ctx.pathPickerLoadedDeviceTypes = {}
 end
 
+local function isConfigOpenTarget(ctx)
+  return ctx and ctx.pathPickerTarget == "config_open"
+end
+
+local function hasIniFilter(ctx)
+  if not ctx or type(ctx.pathPickerFileExts) ~= "table" then return false end
+  for i = 1, #ctx.pathPickerFileExts do
+    local ext = tostring(ctx.pathPickerFileExts[i] or ""):lower()
+    if ext ~= "" and ext:sub(1, 1) ~= "." then ext = "." .. ext end
+    if ext == ".ini" then return true end
+  end
+  return false
+end
+
+local function listBrowseEntries(ctx, path)
+  local _ = ctx._
+  if isConfigOpenTarget(ctx) then
+    local raw = _.file_selector.listDirectory(path) or {}
+    local out = {}
+    for i = 1, #raw do
+      local e = raw[i]
+      if e and e.directory then
+        table.insert(out, e)
+      elseif e and tostring(e.name or ""):lower() == "config.ini" then
+        table.insert(out, e)
+      end
+    end
+    return out
+  end
+  local exts = ctx.pathPickerFileExts
+  if type(exts) == "table" and #exts > 0 and _.common and _.common.listDirectoryFiltered then
+    return _.common.listDirectoryFiltered(path, _.file_selector, { extensions = exts })
+  end
+  return _.listDirectoryElfOnly(path)
+end
+
+local function clearPickerTransient(ctx)
+  ctx.pathList = nil
+  ctx.pathBrowsePath = nil
+  ctx.pathPickerBdmPrefix = nil
+  ctx.pathPickerBdmMountpoint = nil
+  ctx.pathPickerBrowseSelStack = nil
+end
+
+local function clearConfigOpenPickerState(ctx)
+  ctx.pathPickerTarget = nil
+  ctx.pathPickerFileExts = nil
+end
+
+local function applyConfigOpenPathAndReturn(ctx, val)
+  if not isConfigOpenTarget(ctx) then return nil end
+  if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
+  if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
+  ctx.pfs0Mounted = nil
+  ctx.pfs1Mounted = nil
+  clearPickerTransient(ctx)
+  ctx.currentPath = tostring(val or ""):gsub("/$", "")
+  ctx.openExplicitPath = true
+  ctx.state = "open"
+  ctx.pathPickerReturnState = nil
+  clearConfigOpenPickerState(ctx)
+  return true
+end
+
 -- Apply a manually entered path and leave path picker (used by "Enter path manually" text input callback).
 local function applyManualPath(ctx, val)
   if not val or val == "" then
+    if isConfigOpenTarget(ctx) then
+      if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
+      if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
+      ctx.pfs0Mounted = nil
+      ctx.pfs1Mounted = nil
+      ctx.state = ctx.pathPickerReturnState or "select_config"
+      clearPickerTransient(ctx)
+      ctx.pathPickerReturnState = nil
+      clearConfigOpenPickerState(ctx)
+      return
+    end
     -- Done with empty path: return to entry paths or path_picker so we don't show "Choose device" / "No devices"
     if ctx.pathPickerForEntryIdx then
       ctx.entryIdx = ctx.pathPickerForEntryIdx
@@ -78,6 +153,9 @@ local function applyManualPath(ctx, val)
   ctx.pathBrowsePath = nil
   ctx.pfs0Mounted = nil
   ctx.pfs1Mounted = nil
+  if applyConfigOpenPathAndReturn(ctx, val) then
+    return
+  end
   ctx.configModified = true
   if applyBootPathAndReturn(ctx, val) then
   elseif applyBblHotkeyPathAndReturn(ctx, val) then
@@ -106,6 +184,7 @@ local function applyManualPath(ctx, val)
   ctx.pathPickerReturnState = nil
   ctx.pathPickerBdmPrefix = nil
   ctx.pathPickerBdmMountpoint = nil
+  clearConfigOpenPickerState(ctx)
 end
 
 local function ensureBblCommandRows(ctx)
@@ -275,7 +354,7 @@ local function run(ctx)
           ctx.pathPickerBdmMountpoint = mpNorm
           ctx.pathPickerBdmPrefix = _.file_selector.getBdmPathPrefix(load.deviceId)
           ctx.pathBrowsePath = (mp:sub(-1) == ":") and (mp .. "/") or mp
-          ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+          ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
           ctx.pathPickerSub = "browse"
           ctx.pathPickerSel = 1
           ctx.pathPickerScroll = 0
@@ -299,7 +378,7 @@ local function run(ctx)
     if not ctx.pathPickerLoadingTimeoutMsg and not ctx.pathPickerLoading then
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1,
         ctx.isAddPath and _.path_str.add_path_choose_device or _.path_str.choose_device, _.WHITE)
-      if ctx.pathPickerContext == "path_only" and _.path_str.bbl_build_device_hint then
+      if (ctx.pathPickerContext == "path_only" or ctx.pathPickerContext == "config_ini") and _.path_str.bbl_build_device_hint then
         local hint = _.path_str.bbl_build_device_hint
         hint = hint:gsub("PS%?BBL", getSelectedBblName(ctx))
         if _.common.truncateTextToWidth then
@@ -514,7 +593,7 @@ local function run(ctx)
                     ctx.pathPickerBdmMountpoint = mpNorm
                     ctx.pathPickerBdmPrefix = _.file_selector.getBdmPathPrefix(e.deviceId)
                     ctx.pathBrowsePath = (mp:sub(-1) == ":") and (mp .. "/") or mp
-                    ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+                    ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
                     ctx.pathPickerSub = "browse"
                     ctx.pathPickerSel = 1
                     ctx.pathPickerScroll = 0
@@ -535,7 +614,7 @@ local function run(ctx)
                 local browsePath = e.name or ""
                 if browsePath and browsePath ~= "" and browsePath:find(":") then
                   ctx.pathBrowsePath = (browsePath:sub(-1) == ":") and (browsePath .. "/") or browsePath
-                  ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+                  ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
                 else
                   ctx.pathBrowsePath = nil
                   ctx.pathList = {}
@@ -583,6 +662,10 @@ local function run(ctx)
           ctx.entryIdx = ctx.pathPickerForEntryIdx
           ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
           ctx.pathPickerForEntryIdx = nil; ctx.pathPickerEditIdx = nil
+        elseif isConfigOpenTarget(ctx) then
+          ctx.state = ctx.pathPickerReturnState or "select_config"
+          ctx.pathPickerReturnState = nil
+          clearConfigOpenPickerState(ctx)
         else
           ctx.state = "editor"
         end
@@ -617,9 +700,9 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(60), _.FONT_SCALE, _.path_str.no_partitions, _
         .DIM)
     end
-    _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7,
-      _.path_str.cross_open_square_patinfo_circle_back_items or _.path_str.cross_open_circle_back_items, nil, _.DIM,
-      _.w - 2 * _.MARGIN_X)
+    local partHint = isConfigOpenTarget(ctx) and _.path_str.cross_open_circle_back_items or
+        (_.path_str.cross_open_square_patinfo_circle_back_items or _.path_str.cross_open_circle_back_items)
+    _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, partHint, nil, _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
       ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #parts end
     end
@@ -632,7 +715,7 @@ local function run(ctx)
     if (_.padEffective & _.PAD_RIGHT) ~= 0 then
       ctx.pathPickerSel = math.min(#parts, ctx.pathPickerSel + maxVis)
     end
-    if (_.padEffective & _.PAD_SQUARE) ~= 0 and #parts > 0 then
+    if not isConfigOpenTarget(ctx) and (_.padEffective & _.PAD_SQUARE) ~= 0 and #parts > 0 then
       local p = parts[ctx.pathPickerSel]
       if not p then p = {} end
       local partFull = p.full or ("hdd0:" .. (p.name or ""))
@@ -672,14 +755,14 @@ local function run(ctx)
         if System.fileXioMount then System.fileXioMount("pfs0:", partFull) end
         ctx.pfs0Mounted = partFull
         ctx.pathBrowsePath = "pfs0:/"
-        ctx.pathList = _.listDirectoryElfOnly("pfs0:/")
+        ctx.pathList = listBrowseEntries(ctx, "pfs0:/")
         ctx.pathPickerSub = "browse"
         ctx.pathPickerSel = 1; ctx.pathPickerScroll = 0
       else
         if System.fileXioMount then System.fileXioMount("pfs1:", partFull) end
         ctx.pfs1Mounted = partFull
         ctx.pathBrowsePath = "pfs1:/"
-        local ok, list = pcall(_.listDirectoryElfOnly, "pfs1:/")
+        local ok, list = pcall(listBrowseEntries, ctx, "pfs1:/")
         ctx.pathList = (ok and list) and list or {}
         ctx.pathPickerSub = "browse"
         ctx.pathPickerSel = 1; ctx.pathPickerScroll = 0
@@ -728,10 +811,25 @@ local function run(ctx)
       _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, label, col)
     end
     if #show == 0 then
-      _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(55), _.FONT_SCALE, _.path_str.no_elf_files, _.DIM)
+      local noFilesLabel = hasIniFilter(ctx) and (_.path_str.no_ini_files or "No INI files or folders") or _.path_str.no_elf_files
+      _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(55), _.FONT_SCALE, noFilesLabel, _.DIM)
     end
-    _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.path_str.cross_select_file_items, nil, _.DIM,
-      _.w - 2 * _.MARGIN_X)
+    local browseHint = _.path_str.cross_select_file_items
+    if isConfigOpenTarget(ctx) and ctx.pathBrowsePath then
+      browseHint = _.path_str.cross_select_create_circle_back_items or browseHint
+    end
+    _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, browseHint, nil, _.DIM, _.w - 2 * _.MARGIN_X)
+    if isConfigOpenTarget(ctx) and ctx.pathBrowsePath and (_.padEffective & _.PAD_SELECT) ~= 0 then
+      local dir = tostring(ctx.pathBrowsePath):gsub("/$", "")
+      local val = dir .. "/CONFIG.INI"
+      local partPath = ctx.pfs1Mounted or ctx.pfs0Mounted
+      if partPath then
+        val = pfsToPartitionPath(val, partPath) or val
+      end
+      if applyConfigOpenPathAndReturn(ctx, val) then
+        return
+      end
+    end
     if #show > 0 then
       if (_.padEffective & _.PAD_UP) ~= 0 then
         ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #show end
@@ -753,7 +851,7 @@ local function run(ctx)
           ctx.pathPickerBrowseSelStack = ctx.pathPickerBrowseSelStack or {}
           table.insert(ctx.pathPickerBrowseSelStack, ctx.pathPickerSel)
           ctx.pathBrowsePath = e.full
-          ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+          ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
           ctx.pathPickerSel = 1
           ctx.pathPickerScroll = 0
         else
@@ -767,7 +865,10 @@ local function run(ctx)
               val = ctx.pathPickerBdmPrefix .. ":" .. (rest ~= "" and "/" .. rest or "")
             end
           end
-          if _.file_selector.canWildcard and _.file_selector.canWildcard(val) then
+          local openedConfig = false
+          if applyConfigOpenPathAndReturn(ctx, val) then
+            openedConfig = true
+          elseif _.file_selector.canWildcard and _.file_selector.canWildcard(val) then
             ctx.pathPickerPendingPath = val
             ctx.pathPickerWildcardConfirm = true
             if ctx.pathPickerBootKey then
@@ -806,16 +907,16 @@ local function run(ctx)
             _.config_parse.set(ctx.lines, ctx.editKey, val)
             ctx.state = "editor"
           end
-          ctx.configModified = true
-          if not ctx.pathPickerWildcardConfirm then
-            if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
-            if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
-            ctx.pathList = nil
-            ctx.pathBrowsePath = nil
-            ctx.pathPickerBdmPrefix = nil
-            ctx.pathPickerBdmMountpoint = nil
-            ctx.pfs0Mounted = nil
-            ctx.pfs1Mounted = nil
+          if not openedConfig then
+            ctx.configModified = true
+            if not ctx.pathPickerWildcardConfirm then
+              if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
+              if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
+              clearPickerTransient(ctx)
+              ctx.pfs0Mounted = nil
+              ctx.pfs1Mounted = nil
+              clearConfigOpenPickerState(ctx)
+            end
           end
         end
       end
@@ -848,7 +949,7 @@ local function run(ctx)
             ctx.pathPickerScroll = centeredScroll(ctx.pathPickerSel, n, _.MAX_VISIBLE_LIST)
           else
             ctx.pathBrowsePath = (up:sub(-1) == ":") and (up .. "/") or up
-            ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
+            ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
             local stack = ctx.pathPickerBrowseSelStack or {}
             ctx.pathPickerSel = math.max(1, math.min(table.remove(stack) or 1, #(ctx.pathList or {})))
             ctx.pathPickerBrowseSelStack = #stack > 0 and stack or nil

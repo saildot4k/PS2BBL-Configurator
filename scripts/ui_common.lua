@@ -278,31 +278,73 @@ end
 
 -- Save config; for pfs0 (__sysconf) paths we mount, save, then unmount so ELF browsing does not break saving.
 function common.saveConfig(ctx, path, lines, createDir)
-  local toPfs0 = path and path:match("^pfs0:/")
-  if toPfs0 and System and System.fileXioMount then
-    System.fileXioMount("pfs0:", "hdd0:__sysconf")
+  local savePath = path
+  local saveDir = createDir
+  local mounted = nil
+
+  local part, rest = tostring(path or ""):match("^(hdd%d:[^:]+):pfs:(.*)$")
+  if part and rest then
+    if rest == "" then rest = "/" end
+    if rest:sub(1, 1) ~= "/" then rest = "/" .. rest end
+    savePath = "pfs0:" .. rest
+    if saveDir and saveDir ~= "" then
+      local dPart, dRest = tostring(saveDir):match("^(hdd%d:[^:]+):pfs:(.*)$")
+      if dPart and dPart == part and dRest then
+        if dRest == "" then dRest = "/" end
+        if dRest:sub(1, 1) ~= "/" then dRest = "/" .. dRest end
+        saveDir = "pfs0:" .. dRest
+      end
+    end
+    if System and System.fileXioMount then
+      System.fileXioMount("pfs0:", part)
+      mounted = "pfs0:"
+    end
+  elseif savePath and savePath:match("^pfs0:/") then
+    if System and System.fileXioMount then
+      System.fileXioMount("pfs0:", "hdd0:__sysconf")
+      mounted = "pfs0:"
+    end
   end
-  local ok, err = ctx._.config_parse.save(path, lines, createDir)
-  if toPfs0 and System and System.fileXioUmount then
-    System.fileXioUmount("pfs0:")
+  local ok, err = ctx._.config_parse.save(savePath, lines, saveDir)
+  if mounted and System and System.fileXioUmount then
+    System.fileXioUmount(mounted)
   end
   return ok, err
 end
 
-function common.listDirectoryElfOnly(path, file_selector)
+function common.listDirectoryFiltered(path, file_selector, opts)
   local raw = file_selector.listDirectory(path) or {}
   local out = {}
+  local includeDirs = not (opts and opts.includeDirs == false)
+  local extSet = nil
+  if opts and type(opts.extensions) == "table" and #opts.extensions > 0 then
+    extSet = {}
+    for i = 1, #opts.extensions do
+      local ext = tostring(opts.extensions[i] or ""):lower()
+      if ext ~= "" then
+        if ext:sub(1, 1) ~= "." then ext = "." .. ext end
+        extSet[ext] = true
+      end
+    end
+    if next(extSet) == nil then extSet = nil end
+  end
+
   for _, e in ipairs(raw) do
     if e.directory then
+      if includeDirs then table.insert(out, e) end
+    elseif not extSet then
       table.insert(out, e)
     else
-      local name = e.name or ""
-      if name:sub(-4):lower() == ".elf" then
-        table.insert(out, e)
-      end
+      local name = tostring(e.name or ""):lower()
+      local dot = name:match("%.[^%.]+$")
+      if dot and extSet[dot] then table.insert(out, e) end
     end
   end
   return out
+end
+
+function common.listDirectoryElfOnly(path, file_selector)
+  return common.listDirectoryFiltered(path, file_selector, { extensions = { ".elf" } })
 end
 
 local PAD_UP, PAD_DOWN, PAD_LEFT, PAD_RIGHT = 0x0010, 0x0040, 0x0080, 0x0020

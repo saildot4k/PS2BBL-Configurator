@@ -143,7 +143,7 @@ function file_selector.getDevices(context)
     end
     return out
   end
-  if context == "path_only" then
+  if context == "path_only" or context == "config_ini" then
     local visibility = getBblPathDeviceVisibility()
     local out = {}
     for _, s in ipairs(STATIC) do

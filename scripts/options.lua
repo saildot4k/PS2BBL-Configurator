@@ -31,17 +31,42 @@ function config_options.getBblPathDeviceVisibility()
   return config_options.BBL_PATH_DEVICE_VISIBILITY
 end
 
+local function appendUnique(out, path)
+  if not path or path == "" then return end
+  for i = 1, #out do
+    if out[i] == path then return end
+  end
+  out[#out + 1] = path
+end
+
+local function buildBblDefaultMcPath(mcFile, chosenMcSlot)
+  if chosenMcSlot == 1 then
+    return "mc1:/SYS-CONF/" .. mcFile
+  end
+  return "mc0:/SYS-CONF/" .. mcFile
+end
+
+-- Known PS2BBL/PSXBBL lookup locations, excluding CWD (CONFIG.INI) because CWD is launch-dependent.
+-- Ordered to match PS2BBL source search order (first -> last), ignoring unsupported XFROM.
+local function buildBblIniLocations(mcFile)
+  local out = {}
+  appendUnique(out, "mmce1:/PS2BBL/PS2BBL.INI")
+  appendUnique(out, "mmce0:/PS2BBL/PS2BBL.INI")
+  appendUnique(out, "pfs0:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "massX:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "mass:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "mc1:/SYS-CONF/" .. mcFile)
+  appendUnique(out, "mc0:/SYS-CONF/" .. mcFile)
+  return out
+end
+
 -- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
 function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "ps2bbl_ini" then
-    if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/PS2BBL.INI" } end
-    if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/PS2BBL.INI" } end
-    return { "mc0:/SYS-CONF/PS2BBL.INI", "mc1:/SYS-CONF/PS2BBL.INI" }
+    return buildBblIniLocations("PS2BBL.INI")
   end
   if fileType == "psxbbl_ini" then
-    if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/PSXBBL.INI" } end
-    if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/PSXBBL.INI" } end
-    return { "mc0:/SYS-CONF/PSXBBL.INI", "mc1:/SYS-CONF/PSXBBL.INI" }
+    return buildBblIniLocations("PSXBBL.INI")
   end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then
@@ -74,6 +99,18 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
     return {}
   end
   return {}
+end
+
+-- Preferred create/save path when no existing file was found.
+function config_options.getDefaultLocation(context, fileType, chosenMcSlot)
+  if fileType == "ps2bbl_ini" then
+    return buildBblDefaultMcPath("PS2BBL.INI", chosenMcSlot)
+  end
+  if fileType == "psxbbl_ini" then
+    return buildBblDefaultMcPath("PSXBBL.INI", chosenMcSlot)
+  end
+  local loc = config_options.getLocations(context, fileType, chosenMcSlot)
+  return (loc and loc[1]) or nil
 end
 
 config_options.BBL_HOTKEYS = {
