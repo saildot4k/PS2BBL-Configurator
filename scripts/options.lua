@@ -107,9 +107,9 @@ local function buildBblIniGlobalOptions()
         ["0"] = "OFF",
         ["1"] = "CONSOLE INFO",
         ["2"] = "LOGO+INFO",
-        ["3"] = "HOTKEY NAME",
-        ["4"] = "HOTKEY FOUND FILE",
-        ["5"] = "HOTKEY FOUND PATH",
+        ["3"] = "LAUNCH KEY NAME",
+        ["4"] = "LAUNCH KEY FOUND FILE",
+        ["5"] = "LAUNCH KEY FOUND PATH",
       },
       label = "LOGO_DISPLAY",
       desc = "Display speed: FAST (0-3), SLOWER (4-5).",
@@ -207,12 +207,12 @@ config_options.psxbbl_ini_auto = buildBblIniAutoOptions()
 config_options.ps2bbl_ini_categories = {
   { name = "GLOBAL", options = config_options.ps2bbl_ini },
   { name = "AUTOBOOT", options = config_options.ps2bbl_ini_auto },
-  { name = "HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "HOTKEYS" } } },
+  { name = "LAUNCH KEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "LAUNCH KEYS" } } },
 }
 config_options.psxbbl_ini_categories = {
   { name = "GLOBAL", options = config_options.psxbbl_ini },
   { name = "AUTOBOOT", options = config_options.psxbbl_ini_auto },
-  { name = "HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "HOTKEYS" } } },
+  { name = "LAUNCH KEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "LAUNCH KEYS" } } },
 }
 
 -- optType: "path", "bool", "enum", "string", "int", "text", "color", "action", "header"

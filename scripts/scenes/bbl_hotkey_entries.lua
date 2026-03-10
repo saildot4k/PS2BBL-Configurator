@@ -26,6 +26,14 @@ local function buildRows(_, ctx, keyId, maxEntries)
   return rows
 end
 
+local function formatArgCount(n)
+  local count = tonumber(n) or 0
+  if count == 1 then
+    return "(1 arg)"
+  end
+  return "(" .. tostring(count) .. " args)"
+end
+
 local function run(ctx)
   local _ = ctx._
   if not ctx.lines then
@@ -69,8 +77,25 @@ local function run(ctx)
     ctx.bblEntryScroll = 0
   end
 
-  local title = (keyId == "AUTO") and "AUTOBOOT" or (keyId .. " - HOTKEYS")
-  _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
+  local titleSuffix = "- Launch Key"
+  if keyId == "AUTO" then
+    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, "AUTOBOOT " .. titleSuffix, _.WHITE)
+  else
+    local icon = _.common.getPadIcon(keyId)
+    local baseIconW = _.common.PAD_ICON_W or 26
+    local baseIconH = _.common.PAD_ICON_H or 26
+    local textH = (_.common and _.common.FT_PIXEL_H) or 18
+    local iconH = math.min(baseIconH, textH)
+    local iconW = math.max(1, math.floor((baseIconW * iconH) / baseIconH + 0.5))
+    local iconGap = 8
+    local iconY = _.MARGIN_Y + math.floor(((_.LINE_H or iconH) - iconH) / 2)
+    if _.Graphics.drawScaleImage then
+      _.Graphics.drawScaleImage(icon, _.MARGIN_X, iconY, iconW, iconH)
+    else
+      _.Graphics.drawImage(icon, _.MARGIN_X, iconY)
+    end
+    _.drawText(_.font, _.drawMode, _.MARGIN_X + iconW + iconGap, _.MARGIN_Y, 1, titleSuffix, _.WHITE)
+  end
   local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
 
   for i = ctx.bblEntryScroll + 1, math.min(ctx.bblEntryScroll + _.MAX_VISIBLE_LIST, #rows) do
@@ -84,7 +109,7 @@ local function run(ctx)
     elseif row.kind == "entry" then
       local slot = row.data
       local p = (slot.path ~= "" and slot.path) or _.common_str.not_set
-      text = "E" .. tostring(row.slot) .. ": " .. p .. " (" .. tostring(slot.argCount) .. (_.menu_str.arg_s or " arg(s)") .. ")"
+      text = "E" .. tostring(row.slot) .. ": " .. p .. " " .. formatArgCount(slot.argCount)
       if slot.disabled then
         col = (i == ctx.bblEntrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)
       end
