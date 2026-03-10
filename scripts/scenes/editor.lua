@@ -447,7 +447,6 @@ local function run(ctx)
         ctx.entrySel = ctx.entrySel or 1
         ctx.entryScroll = ctx.entryScroll or 0
       elseif o.key == "_bbl_hotkeys" then
-        ctx.bblEntryReturnState = nil
         ctx.bblHotkeySel = ctx.bblHotkeySel or 1
         ctx.state = "bbl_hotkeys"
       elseif o.optType == "bbl_slot" and o.bblEntrySlot then

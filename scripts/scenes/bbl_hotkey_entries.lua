@@ -42,16 +42,14 @@ local function run(ctx)
   end
   local keyId = ctx.bblHotkeyKey
   if not keyId or keyId == "" then
-    ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
-    ctx.bblEntryReturnState = nil
+    ctx.state = "bbl_hotkeys"
     return
   end
 
   local maxEntries = (_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10
   local rows = buildRows(_, ctx, keyId, maxEntries)
   if #rows == 0 then
-    ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
-    ctx.bblEntryReturnState = nil
+    ctx.state = "bbl_hotkeys"
     return
   end
 
@@ -202,8 +200,7 @@ local function run(ctx)
   end
 
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
-    ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
-    ctx.bblEntryReturnState = nil
+    ctx.state = "bbl_hotkeys"
     ctx.bblEntryDetailReturnState = nil
   end
 end
