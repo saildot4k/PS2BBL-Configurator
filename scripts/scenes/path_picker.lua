@@ -126,9 +126,15 @@ local function ensureBblCommandRows(ctx)
     { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker or "$HDDCHECKER (HDD build)", special = "bbl_cmd" },
     { name = "$RUNKELF:", desc = p.bbl_cmd_runkelf or "$RUNKELF:<path>", special = "bbl_cmd", bblTokenPrompt = true },
   }
-  for i = #cmdRows, 1, -1 do
-    table.insert(ctx.pathList, 1, cmdRows[i])
+  for i = 1, #cmdRows do
+    table.insert(ctx.pathList, cmdRows[i])
   end
+end
+
+local function centeredScroll(sel, total, maxVis)
+  if total <= maxVis then return 0 end
+  local s = sel - math.floor(maxVis / 2)
+  return math.max(0, math.min(s, total - maxVis))
 end
 
 local function run(ctx)
@@ -675,12 +681,7 @@ local function run(ctx)
       ctx.pathBrowsePath = nil
       local n = #(ctx.pathList or {})
       ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerDeviceSel or 1, n))
-      ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
-      if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-        ctx.pathPickerScroll = ctx.pathPickerSel -
-            _.MAX_VISIBLE_LIST
-      end
-      if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
+      ctx.pathPickerScroll = centeredScroll(ctx.pathPickerSel, n, _.MAX_VISIBLE_LIST)
     end
   else
     local headerPath = ctx.pathBrowsePath or ""
@@ -822,12 +823,7 @@ local function run(ctx)
           ctx.pathBrowsePath = "hdd0:"
           local n = #(ctx.pathList or {})
           ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerPartitionSel or 1, n))
-          ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
-          if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-            ctx.pathPickerScroll = ctx.pathPickerSel -
-                _.MAX_VISIBLE_LIST
-          end
-          if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
+          ctx.pathPickerScroll = centeredScroll(ctx.pathPickerSel, n, _.MAX_VISIBLE_LIST)
         else
           local up = ctx.pathBrowsePath:gsub("/$", ""):gsub("/[^/]+$", "")
           if up == ctx.pathBrowsePath:gsub("/$", "") then
@@ -839,25 +835,14 @@ local function run(ctx)
             ctx.pathBrowsePath = nil
             local n = #(ctx.pathList or {})
             ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerDeviceSel or 1, n))
-            ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
-            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-              ctx.pathPickerScroll = ctx.pathPickerSel -
-                  _.MAX_VISIBLE_LIST
-            end
-            if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
+            ctx.pathPickerScroll = centeredScroll(ctx.pathPickerSel, n, _.MAX_VISIBLE_LIST)
           else
             ctx.pathBrowsePath = (up:sub(-1) == ":") and (up .. "/") or up
             ctx.pathList = _.listDirectoryElfOnly(ctx.pathBrowsePath)
             local stack = ctx.pathPickerBrowseSelStack or {}
             ctx.pathPickerSel = math.max(1, math.min(table.remove(stack) or 1, #(ctx.pathList or {})))
             ctx.pathPickerBrowseSelStack = #stack > 0 and stack or nil
-            ctx.pathPickerScroll = math.max(0,
-              math.min(ctx.pathPickerScroll or 0, math.max(0, #(ctx.pathList or {}) - _.MAX_VISIBLE_LIST)))
-            if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-              ctx.pathPickerScroll = ctx.pathPickerSel -
-                  _.MAX_VISIBLE_LIST
-            end
-            if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
+            ctx.pathPickerScroll = centeredScroll(ctx.pathPickerSel, #(ctx.pathList or {}), _.MAX_VISIBLE_LIST)
           end
         end
       else
@@ -870,12 +855,7 @@ local function run(ctx)
         ctx.pathBrowsePath = nil
         local n = #(ctx.pathList or {})
         ctx.pathPickerSel = math.max(1, math.min(ctx.pathPickerDeviceSel or 1, n))
-        ctx.pathPickerScroll = math.max(0, math.min(ctx.pathPickerScroll or 0, math.max(0, n - _.MAX_VISIBLE_LIST)))
-        if ctx.pathPickerSel > ctx.pathPickerScroll + _.MAX_VISIBLE_LIST then
-          ctx.pathPickerScroll = ctx.pathPickerSel -
-              _.MAX_VISIBLE_LIST
-        end
-        if ctx.pathPickerSel < ctx.pathPickerScroll + 1 then ctx.pathPickerScroll = ctx.pathPickerSel - 1 end
+        ctx.pathPickerScroll = centeredScroll(ctx.pathPickerSel, n, _.MAX_VISIBLE_LIST)
       end
     end
   end

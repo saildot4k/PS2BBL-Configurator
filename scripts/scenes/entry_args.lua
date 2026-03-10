@@ -40,11 +40,12 @@ local function run(ctx)
   local total = #args
   if ctx.entryArgSel < 1 then ctx.entryArgSel = 1 end
   if ctx.entryArgSel > total then ctx.entryArgSel = (total > 0) and total or 1 end
-  if ctx.entryArgSel > ctx.entryArgScroll + _.MAX_VISIBLE_LIST then
-    ctx.entryArgScroll = ctx.entryArgSel -
-        _.MAX_VISIBLE_LIST
+  if total > _.MAX_VISIBLE_LIST then
+    ctx.entryArgScroll = ctx.entryArgSel - math.floor(_.MAX_VISIBLE_LIST / 2)
+    ctx.entryArgScroll = math.max(0, math.min(ctx.entryArgScroll, total - _.MAX_VISIBLE_LIST))
+  else
+    ctx.entryArgScroll = 0
   end
-  if ctx.entryArgSel < ctx.entryArgScroll + 1 then ctx.entryArgScroll = ctx.entryArgSel - 1 end
   local titleStr
   if isBoot then
     titleStr = ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..

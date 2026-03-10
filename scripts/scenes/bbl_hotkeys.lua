@@ -23,12 +23,8 @@ local function run(ctx)
   ctx.bblHotkeyScroll = ctx.bblHotkeyScroll or 0
 
   if #hotkeys > _.MAX_VISIBLE_LIST then
-    if ctx.bblHotkeySel > ctx.bblHotkeyScroll + _.MAX_VISIBLE_LIST then
-      ctx.bblHotkeyScroll = ctx.bblHotkeySel - _.MAX_VISIBLE_LIST
-    end
-    if ctx.bblHotkeySel < ctx.bblHotkeyScroll + 1 then
-      ctx.bblHotkeyScroll = ctx.bblHotkeySel - 1
-    end
+    ctx.bblHotkeyScroll = ctx.bblHotkeySel - math.floor(_.MAX_VISIBLE_LIST / 2)
+    ctx.bblHotkeyScroll = math.max(0, math.min(ctx.bblHotkeyScroll, #hotkeys - _.MAX_VISIBLE_LIST))
   else
     ctx.bblHotkeyScroll = 0
   end

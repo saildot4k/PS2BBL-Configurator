@@ -114,9 +114,16 @@ local function run(ctx)
     local cats = categories
     if ctx.optSel < 1 then ctx.optSel = 1 end
     if ctx.optSel > #cats then ctx.optSel = #cats end
-    for i = 1, math.min(_.MAX_VISIBLE, #cats) do
+    local maxVis = _.MAX_VISIBLE
+    if #cats > maxVis then
+      ctx.optScroll = ctx.optSel - math.floor(maxVis / 2)
+      ctx.optScroll = math.max(0, math.min(ctx.optScroll, #cats - maxVis))
+    else
+      ctx.optScroll = 0
+    end
+    for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #cats) do
       local cat = cats[i]
-      local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.ROW_H
+      local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.optScroll - 1) * _.ROW_H
       local col = (i == ctx.optSel) and _.SELECTED_ENTRY or _.WHITE
       local catLabel = cat.name or _.common_str.empty
       if ctx.fileType == "osdmenu_cnf" then

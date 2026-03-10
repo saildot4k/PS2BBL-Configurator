@@ -6,12 +6,19 @@ local function run(ctx)
   local choices = ctx.saveChoices or {}
   if ctx.saveSel < 1 then ctx.saveSel = 1 end
   if ctx.saveSel > #choices then ctx.saveSel = #choices end
-  for i = 1, math.min(_.MAX_VISIBLE, #choices) do
+  local maxVis = _.MAX_VISIBLE
+  local total = #choices
+  local scroll = 0
+  if total > maxVis then
+    scroll = ctx.saveSel - math.floor(maxVis / 2)
+    scroll = math.max(0, math.min(scroll, total - maxVis))
+  end
+  for i = scroll + 1, math.min(scroll + maxVis, total) do
     local p = choices[i] or ""
     local label = (p:match("^mc0:") and _.dev_str.memory_card_1) or (p:match("^mc1:") and _.dev_str.memory_card_2) or
         (p:match("^pfs0:") and _.dev_str.hdd) or
         p:sub(1, 40)
-    local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
+    local y = _.MARGIN_Y + _.scaleY(50) + (i - scroll - 1) * _.LINE_H
     local col = (i == ctx.saveSel) and _.SELECTED_ENTRY or _.WHITE
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.saveSel, label, col)
   end

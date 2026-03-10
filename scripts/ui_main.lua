@@ -472,13 +472,20 @@ local function runChooseLoad(s, pad)
   local choices = s.loadChoices or {}
   if s.loadSel < 1 then s.loadSel = 1 end
   if s.loadSel > #choices then s.loadSel = #choices end
-  for i = 1, math.min(common.MAX_VISIBLE, #choices) do
+  local maxVis = common.MAX_VISIBLE
+  local total = #choices
+  local scroll = 0
+  if total > maxVis then
+    scroll = s.loadSel - math.floor(maxVis / 2)
+    scroll = math.max(0, math.min(scroll, total - maxVis))
+  end
+  for i = scroll + 1, math.min(scroll + maxVis, total) do
     local idx = i
     local p = choices[idx] or ""
     local label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
         (p:match("^pfs0:") and dev_str.hdd) or
         p:sub(1, 40)
-    local y = MY + sc(50) + (i - 1) * L
+    local y = MY + sc(50) + (i - scroll - 1) * L
     local col = (idx == s.loadSel) and SE or common.WHITE
     dlr(M + 20, y, idx == s.loadSel, label, col)
   end

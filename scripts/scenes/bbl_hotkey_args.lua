@@ -122,19 +122,22 @@ local function run(ctx)
       kind = "manual",
       desc = "Enter any custom argument manually.",
     },
-    {
+  }
+
+  if not isNhddlElfPath then
+    table.insert(presetRows, {
       label = "-appid",
       value = "-appid",
       desc = "Forces app visual game ID even if APP_GAMEID = 0.",
       uniqueKey = "appid",
-    },
-    {
+    })
+    table.insert(presetRows, {
       label = "-titleid=<11 chars>",
       kind = "titleid",
       desc = "Overrides app title ID (up to 11 characters).",
       uniqueKey = "titleid",
-    },
-  }
+    })
+  end
 
   if isNhddlElfPath then
     table.insert(presetRows, {
@@ -277,12 +280,8 @@ local function run(ctx)
     end
     ctx.bblArgAddScroll = ctx.bblArgAddScroll or 0
     if #rows > _.MAX_VISIBLE_LIST then
-      if ctx.bblArgAddSel > ctx.bblArgAddScroll + _.MAX_VISIBLE_LIST then
-        ctx.bblArgAddScroll = ctx.bblArgAddSel - _.MAX_VISIBLE_LIST
-      end
-      if ctx.bblArgAddSel < ctx.bblArgAddScroll + 1 then
-        ctx.bblArgAddScroll = ctx.bblArgAddSel - 1
-      end
+      ctx.bblArgAddScroll = ctx.bblArgAddSel - math.floor(_.MAX_VISIBLE_LIST / 2)
+      ctx.bblArgAddScroll = math.max(0, math.min(ctx.bblArgAddScroll, #rows - _.MAX_VISIBLE_LIST))
     else
       ctx.bblArgAddScroll = 0
     end
@@ -386,12 +385,8 @@ local function run(ctx)
   end
   ctx.bblArgScroll = ctx.bblArgScroll or 0
   if total > _.MAX_VISIBLE_LIST then
-    if ctx.bblArgSel > ctx.bblArgScroll + _.MAX_VISIBLE_LIST then
-      ctx.bblArgScroll = ctx.bblArgSel - _.MAX_VISIBLE_LIST
-    end
-    if ctx.bblArgSel < ctx.bblArgScroll + 1 then
-      ctx.bblArgScroll = ctx.bblArgSel - 1
-    end
+    ctx.bblArgScroll = ctx.bblArgSel - math.floor(_.MAX_VISIBLE_LIST / 2)
+    ctx.bblArgScroll = math.max(0, math.min(ctx.bblArgScroll, total - _.MAX_VISIBLE_LIST))
   else
     ctx.bblArgScroll = 0
   end

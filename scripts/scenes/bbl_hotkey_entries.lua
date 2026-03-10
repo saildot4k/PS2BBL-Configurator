@@ -63,12 +63,8 @@ local function run(ctx)
   ctx.bblEntryScroll = ctx.bblEntryScroll or 0
 
   if #rows > _.MAX_VISIBLE_LIST then
-    if ctx.bblEntrySel > ctx.bblEntryScroll + _.MAX_VISIBLE_LIST then
-      ctx.bblEntryScroll = ctx.bblEntrySel - _.MAX_VISIBLE_LIST
-    end
-    if ctx.bblEntrySel < ctx.bblEntryScroll + 1 then
-      ctx.bblEntryScroll = ctx.bblEntrySel - 1
-    end
+    ctx.bblEntryScroll = ctx.bblEntrySel - math.floor(_.MAX_VISIBLE_LIST / 2)
+    ctx.bblEntryScroll = math.max(0, math.min(ctx.bblEntryScroll, #rows - _.MAX_VISIBLE_LIST))
   else
     ctx.bblEntryScroll = 0
   end
