@@ -154,7 +154,8 @@ local function run(ctx)
     ctx.bblArgScroll = 0
   end
 
-  local title = keyId .. " - E" .. tostring(slot) .. " args (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ")"
+  local displayKey = (keyId == "AUTO") and "AUTOBOOT" or keyId
+  local title = displayKey .. " - E" .. tostring(slot) .. " args (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ")"
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
 
   local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X

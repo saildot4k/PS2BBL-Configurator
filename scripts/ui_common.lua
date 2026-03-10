@@ -214,6 +214,8 @@ function common.buildEditorHintItems(selOpt, hintEditItems, getDefaultFn, enumHi
         local toInsert = item
         if selOpt.optType == "enum" and (pad == "left" or pad == "right") and enumHintLabels and enumHintLabels[pad] then
           toInsert = { pad = item.pad, label = enumHintLabels[pad], row = item.row }
+        elseif selOpt.optType ~= "enum" and selOpt.intPadLabels and selOpt.intPadLabels[pad] then
+          toInsert = { pad = item.pad, label = tostring(selOpt.intPadLabels[pad]), row = item.row }
         end
         table.insert(out, toInsert)
       end

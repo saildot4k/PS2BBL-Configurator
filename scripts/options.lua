@@ -172,8 +172,10 @@ local function buildBblIniAutoOptions()
       default = "6000",
       min = 0,
       max = 600000,
+      intPadDeltas = { left = -100, L1 = -1000, L2 = -10000, R2 = 10000, R1 = 1000, right = 100 },
+      intPadLabels = { left = "-0.1s", L1 = "-1s", L2 = "-10s", R2 = "+10s", R1 = "+1s", right = "+0.1s" },
       label = "TIMER",
-      desc = "Milliseconds to wait for key input before AUTO launch.",
+      desc = "Seconds to wait for key input before AUTO launch (saved as milliseconds).",
     },
     {
       key = "NAME_AUTO",
@@ -204,12 +206,12 @@ config_options.ps2bbl_ini_auto = buildBblIniAutoOptions()
 config_options.psxbbl_ini_auto = buildBblIniAutoOptions()
 config_options.ps2bbl_ini_categories = {
   { name = "GLOBAL", options = config_options.ps2bbl_ini },
-  { name = "AUTO", options = config_options.ps2bbl_ini_auto },
+  { name = "AUTOBOOT", options = config_options.ps2bbl_ini_auto },
   { name = "HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "HOTKEYS" } } },
 }
 config_options.psxbbl_ini_categories = {
   { name = "GLOBAL", options = config_options.psxbbl_ini },
-  { name = "AUTO", options = config_options.psxbbl_ini_auto },
+  { name = "AUTOBOOT", options = config_options.psxbbl_ini_auto },
   { name = "HOTKEYS", options = { { key = "_bbl_hotkeys", optType = "action", label = "HOTKEYS" } } },
 }
 

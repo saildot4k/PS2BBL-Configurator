@@ -20,7 +20,8 @@ local function run(ctx)
   if ctx.bblEntryDetailSel < 1 then ctx.bblEntryDetailSel = 1 end
   if ctx.bblEntryDetailSel > #rows then ctx.bblEntryDetailSel = #rows end
 
-  local title = keyId .. " - E" .. tostring(slot)
+  local displayKey = (keyId == "AUTO") and "AUTOBOOT" or keyId
+  local title = displayKey .. " - E" .. tostring(slot)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
 
   local pathDisp = (data.path ~= "" and data.path) or _.common_str.not_set

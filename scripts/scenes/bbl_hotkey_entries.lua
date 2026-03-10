@@ -34,14 +34,16 @@ local function run(ctx)
   end
   local keyId = ctx.bblHotkeyKey
   if not keyId or keyId == "" then
-    ctx.state = "bbl_hotkeys"
+    ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
+    ctx.bblEntryReturnState = nil
     return
   end
 
   local maxEntries = (_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10
   local rows = buildRows(_, ctx, keyId, maxEntries)
   if #rows == 0 then
-    ctx.state = "bbl_hotkeys"
+    ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
+    ctx.bblEntryReturnState = nil
     return
   end
 
@@ -71,7 +73,7 @@ local function run(ctx)
     ctx.bblEntryScroll = 0
   end
 
-  local title = (keyId == "AUTO") and "AUTO" or (keyId .. " - HOTKEYS")
+  local title = (keyId == "AUTO") and "AUTOBOOT" or (keyId .. " - HOTKEYS")
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
   local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
 
@@ -174,7 +176,8 @@ local function run(ctx)
   end
 
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
-    ctx.state = "bbl_hotkeys"
+    ctx.state = ctx.bblEntryReturnState or "bbl_hotkeys"
+    ctx.bblEntryReturnState = nil
   end
 end
 

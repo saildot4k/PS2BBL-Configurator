@@ -1,5 +1,16 @@
 --[[ Editor state: config option list and category list (OSDMENU). ]]
 
+local function formatTimerSeconds(msText)
+  local ms = tonumber(msText or "")
+  if not ms then return msText end
+  if ms <= 0 then return "0" end
+  local sec10 = math.floor((ms + 50) / 100)
+  if sec10 % 10 == 0 then
+    return tostring(math.floor(sec10 / 10))
+  end
+  return string.format("%.1f", sec10 / 10)
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Leave-save prompt when going back to file select with unsaved changes
@@ -177,6 +188,9 @@ local function run(ctx)
           valDisplay = _.config_parse.get(ctx.lines, o.key) or o.default or ""
         end
       end
+      if o.key == "KEY_READ_WAIT_TIME" and valDisplay and valDisplay ~= "" then
+        valDisplay = formatTimerSeconds(valDisplay)
+      end
       if valDisplay == "" and (o.optType == "path" or o.optType == "boot_paths" or o.optType == "text" or o.optType == "enum") then
         valDisplay = _.common_str.not_set
       end
@@ -319,12 +333,22 @@ local function run(ctx)
             end
           end
           local delta = 0
-          if (_.padEffective & _.PAD_RIGHT) ~= 0 then delta = 1 end
-          if (_.padEffective & _.PAD_LEFT) ~= 0 then delta = -1 end
-          if (_.padEffective & _.PAD_R1) ~= 0 then delta = 10 end
-          if (_.padEffective & _.PAD_L1) ~= 0 then delta = -10 end
-          if (_.padEffective & _.PAD_R2) ~= 0 then delta = 50 end
-          if (_.padEffective & _.PAD_L2) ~= 0 then delta = -50 end
+          if o.intPadDeltas then
+            local d = o.intPadDeltas
+            if (_.padEffective & _.PAD_RIGHT) ~= 0 then delta = tonumber(d.right) or delta end
+            if (_.padEffective & _.PAD_LEFT) ~= 0 then delta = tonumber(d.left) or delta end
+            if (_.padEffective & _.PAD_R1) ~= 0 then delta = tonumber(d.R1) or delta end
+            if (_.padEffective & _.PAD_L1) ~= 0 then delta = tonumber(d.L1) or delta end
+            if (_.padEffective & _.PAD_R2) ~= 0 then delta = tonumber(d.R2) or delta end
+            if (_.padEffective & _.PAD_L2) ~= 0 then delta = tonumber(d.L2) or delta end
+          else
+            if (_.padEffective & _.PAD_RIGHT) ~= 0 then delta = 1 end
+            if (_.padEffective & _.PAD_LEFT) ~= 0 then delta = -1 end
+            if (_.padEffective & _.PAD_R1) ~= 0 then delta = 10 end
+            if (_.padEffective & _.PAD_L1) ~= 0 then delta = -10 end
+            if (_.padEffective & _.PAD_R2) ~= 0 then delta = 50 end
+            if (_.padEffective & _.PAD_L2) ~= 0 then delta = -50 end
+          end
           if delta ~= 0 then
             num = num + delta
             if num < minV then num = minV end
@@ -369,15 +393,18 @@ local function run(ctx)
         ctx.entrySel = 1
         ctx.entryScroll = 0
       elseif o.key == "_bbl_hotkeys" then
+        ctx.bblEntryReturnState = nil
         ctx.bblHotkeySel = 1
         ctx.state = "bbl_hotkeys"
       elseif o.key == "_auto_path" then
+        ctx.bblEntryReturnState = "editor"
         ctx.bblHotkeyKey = "AUTO"
         ctx.bblEntrySel = 1
         ctx.bblEntryScroll = 0
         ctx.bblEntryFocusSlot = nil
         ctx.state = "bbl_hotkey_entries"
       elseif o.key == "_auto_args" then
+        ctx.bblEntryReturnState = "editor"
         local maxEntries = (_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10
         local firstUsedSlot = nil
         for si = 1, maxEntries do
