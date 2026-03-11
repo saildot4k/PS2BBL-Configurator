@@ -93,15 +93,22 @@ local function isBblContext(context)
 end
 
 local function nextStateAfterMcSelection(s)
-  return isBblContext(s.context) and "select_config" or "open"
+  if isBblContext(s.context) then return "select_config" end
+  if s.context == "osdmenu" then return "select_config" end
+  return "open"
 end
 
 local function getOpenParentState(s)
   if isBblContext(s.context) then
     return "select_config"
   end
-  if s.context == "osdmenu" or s.context == "freemcboot" then
-    if s.fileType == "osdmenu_cnf" or s.fileType == "osdgsm_cnf" or s.fileType == "freemcboot_cnf" then
+  if s.context == "osdmenu" then
+    if s.fileType == "osdmenu_cnf" or s.fileType == "osdgsm_cnf" then
+      return "select_config"
+    end
+  end
+  if s.context == "freemcboot" then
+    if s.fileType == "freemcboot_cnf" then
       local slots = (common.getPresentMcSlots and common.getPresentMcSlots()) or {}
       if type(slots) == "table" and #slots > 1 then
         return "choose_mc"
@@ -495,6 +502,56 @@ local function runSelectConfig(s, pad)
   local MY = s.MARGIN_Y or common.MARGIN_Y
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
+
+  if s.context == "osdmenu" then
+    local options = {
+      { label = main_str.select_config_osdmenu_cnf or "OSDMENU.CNF", fileType = "osdmenu_cnf" },
+      { label = main_str.select_config_osdgsm_cnf or "OSDGSM.CNF", fileType = "osdgsm_cnf" },
+    }
+    local sel = getSelectConfigSel(s)
+    if sel < 1 then sel = 1 end
+    if sel > #options then sel = #options end
+    setSelectConfigSel(s, sel)
+
+    dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
+    common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM)
+    for i, opt in ipairs(options) do
+      local y = MY + sc(50) + (i - 1) * L
+      local col = (i == sel) and SE or common.GRAY
+      dlr(M + 20, y, i == sel, opt.label or "", col)
+    end
+
+    if (pad & PAD_UP) ~= 0 then
+      sel = sel - 1
+      if sel < 1 then sel = #options end
+    end
+    if (pad & PAD_DOWN) ~= 0 then
+      sel = sel + 1
+      if sel > #options then sel = 1 end
+    end
+    setSelectConfigSel(s, sel)
+
+    if (pad & PAD_CROSS) ~= 0 then
+      local pick = options[sel]
+      if pick and pick.fileType then
+        s.fileType = pick.fileType
+        clearLoadChoiceState(s)
+        clearPathPickerState(s)
+        s.state = "open"
+        return
+      end
+    end
+    if (pad & PAD_CIRCLE) ~= 0 then
+      local slots = (common.getPresentMcSlots and common.getPresentMcSlots()) or {}
+      if type(slots) == "table" and #slots > 1 then
+        s.state = "choose_mc"
+      else
+        s.state = "main"
+      end
+    end
+    return
+  end
+
   local iniFileType = resolveIniFileType(s)
   if iniFileType ~= "ps2bbl_ini" and iniFileType ~= "psxbbl_ini" then
     s.state = "open"
