@@ -88,7 +88,7 @@ local function resolveNextOsdItemKey(lines)
 end
 
 local overlayLogoCache = {}
-local OVERLAY_LOGO_OPACITY = 0.15 -- 85% transparent
+local OVERLAY_LOGO_OPACITY = 0.25 -- 75% transparent
 local OVERLAY_LOGO_OPACITY_R3 = 1.0 -- keep splash/title logo fully visible if selected
 
 local function getOverlayLogoColor(key)

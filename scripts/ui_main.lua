@@ -1001,9 +1001,7 @@ local function runChooseLoad(s, pad)
     if isBrowseIni then
       label = choice.label or (main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)")
     elseif allowCreate then
-      local exists = (type(s.loadPathExists) == "table") and s.loadPathExists[idx] or false
-      local status = exists and " [FOUND]" or " [NEW]"
-      local raw = p .. status
+      local raw = p
       if common.truncateTextToWidth then
         label = common.truncateTextToWidth(s.font, raw, (s.w or 640) - (M + 24), common.FONT_SCALE)
       else
