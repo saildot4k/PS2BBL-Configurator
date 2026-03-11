@@ -26,6 +26,8 @@ local function initContext()
     pathList = nil,
     pathPickerTarget = nil,
     pathPickerFileExts = nil,
+    pathPickerLockedDevice = nil,
+    pathPickerLockedDeviceStarted = nil,
     isAddPath = false,
     addPathKey = nil,
     pathPickerContext = "osdmenu",

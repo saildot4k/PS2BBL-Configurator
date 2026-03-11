@@ -62,6 +62,8 @@ local function clearPathPickerState(s)
   s.pathPickerReturnState = nil
   s.pathPickerTarget = nil
   s.pathPickerFileExts = nil
+  s.pathPickerLockedDevice = nil
+  s.pathPickerLockedDeviceStarted = nil
 end
 
 local function clearLoadChoiceState(s)
@@ -362,7 +364,7 @@ local function buildBblSourceOptions(iniFileType)
       C.config_options.getBblPathDeviceVisibility()) or nil
   local iniName = (iniFileType == "psxbbl_ini") and "PSXBBL.INI" or "PS2BBL.INI"
   local out = {}
-  local function addDevice(visKey, label, paths, browseDeviceName, browseDeviceId)
+  local function addDevice(visKey, label, paths, browseDeviceName, browseDeviceId, browseDeviceType)
     if not isVisible(visibility, visKey) then return end
     local rows = {}
     if type(paths) == "table" then
@@ -379,13 +381,14 @@ local function buildBblSourceOptions(iniFileType)
       paths = rows,
       browseDeviceName = browseDeviceName,
       browseDeviceId = browseDeviceId,
+      browseDeviceType = browseDeviceType,
     }
   end
-  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" }, "mmce1:")
-  addDevice("mmce", dev_str.mmce_0 or "MMCE in slot 1", { "mmce0:/PS2BBL/PS2BBL.INI" }, "mmce0:")
-  addDevice("hdd", dev_str.hdd or "APA-formatted HDD", { "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI" }, "hdd0:")
-  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" }, nil, "mx4sio")
-  addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" }, nil, "usb0")
+  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" }, "mmce1:", nil, "mmce")
+  addDevice("mmce", dev_str.mmce_0 or "MMCE in slot 1", { "mmce0:/PS2BBL/PS2BBL.INI" }, "mmce0:", nil, "mmce")
+  addDevice("hdd", dev_str.hdd or "APA-formatted HDD", { "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI" }, "hdd0:", nil, "hdd")
+  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" }, nil, "mx4sio", "mx4sio")
+  addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" }, nil, "usb0", "usb")
   addDevice("mc", dev_str.memory_card_2 or "Memory Card 2", { "mc1:/SYS-CONF/" .. iniName }, "mc1:")
   addDevice("mc", dev_str.memory_card_1 or "Memory Card 1", { "mc0:/SYS-CONF/" .. iniName }, "mc0:")
   return out
@@ -450,6 +453,7 @@ local function runSelectConfig(s, pad)
         label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
         browseDeviceName = pick.browseDeviceName,
         browseDeviceId = pick.browseDeviceId,
+        browseDeviceType = pick.browseDeviceType,
       }
       s.loadPathExists[#s.loadPathExists + 1] = false
       s.loadAllowCreate = true
@@ -713,17 +717,25 @@ local function runChooseLoad(s, pad)
           break
         end
       end
+      if not targetDevice and #allDevices == 1 then
+        targetDevice = allDevices[1]
+      end
+      if not targetDevice and (chosen.browseDeviceName or chosen.browseDeviceId) then
+        targetDevice = {
+          name = chosen.browseDeviceName,
+          deviceId = chosen.browseDeviceId,
+          deviceType = chosen.browseDeviceType,
+          desc = chosen.label,
+        }
+      end
       s.pathPickerContext = "config_ini"
       s.pathPickerTarget = "config_open"
       s.pathPickerFileExts = { ".ini" }
       s.pathPickerSub = "device"
-      if targetDevice then
-        s.pathList = { targetDevice }
-        s.pathPickerSel = 2
-      else
-        s.pathList = allDevices
-        s.pathPickerSel = 1
-      end
+      s.pathPickerLockedDevice = targetDevice
+      s.pathPickerLockedDeviceStarted = nil
+      s.pathList = targetDevice and { targetDevice } or {}
+      s.pathPickerSel = 1
       s.pathPickerScroll = 0
       s.pathBrowsePath = nil
       s.pathPickerReturnState = "choose_load"
