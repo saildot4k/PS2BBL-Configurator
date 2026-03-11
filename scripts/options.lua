@@ -302,23 +302,15 @@ end
 local function buildFreemcbootAutoOptions()
   local out = {
     {
-      key = "KEY_READ_WAIT_TIME",
+      key = "pad_delay",
       optType = "int",
-      default = "6000",
+      default = "0",
       min = 0,
       max = 600000,
       intPadDeltas = { left = -100, L1 = -1000, L2 = -10000, R2 = 10000, R1 = 1000, right = 100 },
       intPadLabels = { left = "-0.1s", L1 = "-1s", L2 = "-10s", R2 = "+10s", R1 = "+1s", right = "+0.1s" },
-      label = "Timer:",
-      desc = "Seconds until this list is executed.",
-    },
-    {
-      key = "NAME_AUTO",
-      optType = "text",
-      default = "",
-      label = "NAME",
-      desc = "Display name for AUTO.",
-      maxLen = 64,
+      label = "Pad Delay:",
+      desc = "Delay before AUTOBOOT launch key selection is processed.",
     },
   }
   local maxSlots = (type(config_options.FMCB_BBL_MAX_ENTRIES) == "number" and config_options.FMCB_BBL_MAX_ENTRIES) or 3
@@ -329,7 +321,7 @@ local function buildFreemcbootAutoOptions()
       bblKeyId = "AUTO",
       bblEntrySlot = i,
       label = "E" .. tostring(i),
-      desc = "Edit LK_AUTO_E" .. tostring(i) .. " (no arguments).",
+      desc = "Edit LK_Auto_E" .. tostring(i) .. " (no arguments).",
     })
   end
   return out
@@ -402,18 +394,62 @@ config_options.osdmenu_cnf_categories = {
   },
 }
 config_options.freemcboot_cnf_auto = buildFreemcbootAutoOptions()
-config_options.freemcboot_cnf_categories = {}
-for i = 1, #config_options.osdmenu_cnf_categories do
-  config_options.freemcboot_cnf_categories[#config_options.freemcboot_cnf_categories + 1] =
-      config_options.osdmenu_cnf_categories[i]
-end
-config_options.freemcboot_cnf_categories[#config_options.freemcboot_cnf_categories + 1] = {
-  name = "AUTOBOOT",
-  options = config_options.freemcboot_cnf_auto,
-}
-config_options.freemcboot_cnf_categories[#config_options.freemcboot_cnf_categories + 1] = {
-  name = "LAUNCH KEYS",
-  options = { { key = "_bbl_hotkeys", optType = "action", label = "LAUNCH KEYS" } },
+config_options.freemcboot_cnf_categories = {
+  {
+    name = "OSD behavior modifiers",
+    options = {
+      { key = "OSDSYS_video_mode",    optType = "enum", default = "AUTO", enumVals = { "AUTO", "PAL", "NTSC" } },
+      { key = "OSDSYS_Skip_Disc",     optType = "bool", default = "0" },
+      { key = "OSDSYS_Skip_Logo",     optType = "bool", default = "1" },
+      { key = "OSDSYS_Inner_Browser", optType = "bool", default = "0" },
+      { key = "OSDSYS_Skip_MC",       optType = "bool", default = "1" },
+      { key = "OSDSYS_Skip_HDD",      optType = "bool", default = "1" },
+      { key = "Debug_Screen",         optType = "bool", default = "0" },
+    },
+  },
+  {
+    name = "FHDB custom menu options",
+    options = {
+      { key = "hacked_OSDSYS",              optType = "bool",  default = "1" },
+      { key = "OSDSYS_scroll_menu",         optType = "bool",  default = "1" },
+      { key = "OSDSYS_menu_x",              optType = "int",   default = "320" },
+      { key = "OSDSYS_menu_y",              optType = "int",   default = "110" },
+      { key = "OSDSYS_enter_x",             optType = "int",   default = "30" },
+      { key = "OSDSYS_enter_y",             optType = "int",   default = "-1" },
+      { key = "OSDSYS_version_x",           optType = "int",   default = "-1" },
+      { key = "OSDSYS_version_y",           optType = "int",   default = "-1" },
+      { key = "OSDSYS_cursor_max_velocity", optType = "int",   default = "1000" },
+      { key = "OSDSYS_cursor_acceleration", optType = "int",   default = "100" },
+      { key = "OSDSYS_left_cursor",         optType = "text",  default = "",                   maxLen = 19 },
+      { key = "OSDSYS_right_cursor",        optType = "text",  default = "",                   maxLen = 19 },
+      { key = "OSDSYS_menu_top_delimiter",  optType = "text",  default = "",                   maxLen = 79 },
+      { key = "OSDSYS_menu_bottom_delimiter", optType = "text", default = "",                  maxLen = 79 },
+      { key = "OSDSYS_num_displayed_items", optType = "int",   default = "7" },
+      { key = "OSDSYS_selected_color",      optType = "color", default = "0x10,0x80,0xE0,0x80" },
+      { key = "OSDSYS_unselected_color",    optType = "color", default = "0x33,0x33,0x33,0x80" },
+    },
+  },
+  {
+    name = "Disc Options",
+    options = {
+      { key = "FastBoot",   optType = "bool", default = "1" },
+      { key = "ESR_Path_E1", optType = "path", default = "mass:/BOOT/ESR.ELF" },
+      { key = "ESR_Path_E2", optType = "path", default = "mc?:/BOOT/ESR.ELF" },
+      { key = "ESR_Path_E3", optType = "path", default = "hdd0:__sysconf:pfs:/FMCB/ESR.ELF" },
+    },
+  },
+  {
+    name = "AUTOBOOT",
+    options = config_options.freemcboot_cnf_auto,
+  },
+  {
+    name = "LAUNCH KEYS",
+    options = { { key = "_bbl_hotkeys", optType = "action", label = "LAUNCH KEYS" } },
+  },
+  {
+    name = "Edit menu entries",
+    options = { { key = "_menu_entries", optType = "action" } },
+  },
 }
 
 -- Get default value for a single key from osdmenu_cnf_categories (nil if no default).
@@ -440,21 +476,23 @@ function config_options.getOsdmenuDefaults()
 end
 
 function config_options.getFreemcbootDefault(key)
-  local def = config_options.getOsdmenuDefault(key)
-  if def ~= nil then return def end
-  for _, o in ipairs(config_options.freemcboot_cnf_auto or {}) do
-    if o.key == key and o.default ~= nil then
-      return o.default
+  for _, cat in ipairs(config_options.freemcboot_cnf_categories or {}) do
+    for _, o in ipairs(cat.options or {}) do
+      if o.key == key and o.default ~= nil then
+        return o.default
+      end
     end
   end
   return nil
 end
 
 function config_options.getFreemcbootDefaults()
-  local out = config_options.getOsdmenuDefaults()
-  for _, o in ipairs(config_options.freemcboot_cnf_auto or {}) do
-    if o.key and o.default ~= nil and o.key:sub(1, 1) ~= "_" then
-      out[o.key] = o.default
+  local out = {}
+  for _, cat in ipairs(config_options.freemcboot_cnf_categories or {}) do
+    for _, o in ipairs(cat.options or {}) do
+      if o.key and o.default ~= nil and o.key:sub(1, 1) ~= "_" then
+        out[o.key] = o.default
+      end
     end
   end
   return out

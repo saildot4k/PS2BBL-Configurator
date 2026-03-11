@@ -161,8 +161,10 @@ local function run(ctx)
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.optScroll - 1) * _.ROW_H
       local col = (i == ctx.optSel) and _.SELECTED_ENTRY or _.WHITE
       local catLabel = cat.name or _.common_str.empty
-      if ctx.fileType == "osdmenu_cnf" or ctx.fileType == "freemcboot_cnf" then
+      if ctx.fileType == "osdmenu_cnf" then
         catLabel = (_.strings.categories and _.strings.categories[i]) or catLabel
+      elseif ctx.fileType == "freemcboot_cnf" then
+        catLabel = (_.strings.categories_freemcboot and _.strings.categories_freemcboot[i]) or catLabel
       end
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel,
         catLabel, col)

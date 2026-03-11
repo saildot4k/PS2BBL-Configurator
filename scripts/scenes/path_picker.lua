@@ -214,14 +214,21 @@ local function ensureBblCommandRows(ctx)
   end
   local _ = ctx._
   local p = _.path_str or {}
-  local cmdRows = {
-    { name = "$CDVD", desc = p.bbl_cmd_cdvd or "$CDVD", special = "bbl_cmd" },
-    { name = "$CDVD_NO_PS2LOGO", desc = p.bbl_cmd_cdvd_no_logo or "$CDVD_NO_PS2LOGO", special = "bbl_cmd" },
-    { name = "$OSDSYS", desc = p.bbl_cmd_osdsys or "$OSDSYS", special = "bbl_cmd" },
-    { name = "$CREDITS", desc = p.bbl_cmd_credits or "$CREDITS", special = "bbl_cmd" },
-    { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker or "$HDDCHECKER (HDD build)", special = "bbl_cmd" },
-    { name = "$RUNKELF:", desc = p.bbl_cmd_runkelf or "$RUNKELF:<path>", special = "bbl_cmd", bblTokenPrompt = true },
-  }
+  local cmdRows
+  if ctx.fileType == "freemcboot_cnf" then
+    cmdRows = {
+      { name = "OSDSYS", desc = p.fmcb_cmd_osdsys or "OSDSYS", special = "bbl_cmd" },
+    }
+  else
+    cmdRows = {
+      { name = "$CDVD", desc = p.bbl_cmd_cdvd or "$CDVD", special = "bbl_cmd" },
+      { name = "$CDVD_NO_PS2LOGO", desc = p.bbl_cmd_cdvd_no_logo or "$CDVD_NO_PS2LOGO", special = "bbl_cmd" },
+      { name = "$OSDSYS", desc = p.bbl_cmd_osdsys or "$OSDSYS", special = "bbl_cmd" },
+      { name = "$CREDITS", desc = p.bbl_cmd_credits or "$CREDITS", special = "bbl_cmd" },
+      { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker or "$HDDCHECKER (HDD build)", special = "bbl_cmd" },
+      { name = "$RUNKELF:", desc = p.bbl_cmd_runkelf or "$RUNKELF:<path>", special = "bbl_cmd", bblTokenPrompt = true },
+    }
+  end
   for i = 1, #cmdRows do
     table.insert(ctx.pathList, cmdRows[i])
   end

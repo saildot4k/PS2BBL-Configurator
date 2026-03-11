@@ -120,6 +120,7 @@ strings.path_picker = {
   bbl_cmd_cdvd = "$CDVD (Launch disc)",
   bbl_cmd_cdvd_no_logo = "$CDVD_NO_PS2LOGO (Launch disc no logo)",
   bbl_cmd_osdsys = "$OSDSYS (Launch browser)",
+  fmcb_cmd_osdsys = "OSDSYS (Launch browser)",
   bbl_cmd_credits = "$CREDITS",
   bbl_cmd_hddchecker = "$HDDCHECKER (HDD build)",
   bbl_cmd_runkelf = "$RUNKELF:<path>",
@@ -182,6 +183,15 @@ strings.categories = {
   [4] = "Edit menu entries",
 }
 
+strings.categories_freemcboot = {
+  [1] = "OSD behavior modifiers",
+  [2] = "FHDB custom menu options",
+  [3] = "Disc Options",
+  [4] = "AUTOBOOT",
+  [5] = "LAUNCH KEYS",
+  [6] = "Edit menu entries",
+}
+
 -- OSDMENU.CNF option labels and descriptions (by option key)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Force video mode", desc = "Force OSD video mode" },
@@ -189,6 +199,10 @@ strings.options_osdmenu = {
   OSDSYS_Skip_Disc = { label = "Skip disc", desc = "Skip automatic disc launch" },
   OSDSYS_Skip_Logo = { label = "Skip intro", desc = "Skip SCE intro animation" },
   OSDSYS_Inner_Browser = { label = "Inner browser", desc = "Boot into memory card browser" },
+  OSDSYS_Skip_MC = { label = "Skip MC", desc = "Skip memory card check in browser" },
+  OSDSYS_Skip_HDD = { label = "Skip HDD", desc = "Skip HDD check in browser" },
+  Debug_Screen = { label = "Debug screen", desc = "Enable debug screen output" },
+  hacked_OSDSYS = { label = "Hacked OSD", desc = "Enable FHDB patched OSD menu mode" },
   OSDSYS_custom_menu = { label = "Custom menu", desc = "Enable custom menu" },
   OSDSYS_scroll_menu = { label = "Infinite scrolling", desc = "Enable infinite scrolling" },
   OSDSYS_menu_x = { label = "Menu X", desc = "Custom menu X position" },
@@ -214,6 +228,11 @@ strings.options_osdmenu = {
   ps1drv_use_ps1vn = { label = "Use PS1VN", desc = "Use PS1 Video Mode Negator" },
   app_gameid = { label = "Application Game ID", desc = "Enable visual game ID for ELF files" },
   path_DKWDRV_ELF = { label = "DKWDRV path", desc = "Custom path to DKWDRV.ELF" },
+  pad_delay = { label = "Pad delay", desc = "Delay before AUTOBOOT launch key selection" },
+  FastBoot = { label = "Fast boot", desc = "Enable fast disc boot handling" },
+  ESR_Path_E1 = { label = "ESR path E1", desc = "Primary ESR path" },
+  ESR_Path_E2 = { label = "ESR path E2", desc = "Secondary ESR path" },
+  ESR_Path_E3 = { label = "ESR path E3", desc = "Tertiary ESR path" },
   _menu_entries = { label = "Edit menu entries", desc = "Edit custom menu entries: name, paths, arguments" },
 }
 

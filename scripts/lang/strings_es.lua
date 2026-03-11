@@ -120,6 +120,7 @@ strings.path_picker = {
   bbl_cmd_cdvd = "$CDVD (Lanzar disco)",
   bbl_cmd_cdvd_no_logo = "$CDVD_NO_PS2LOGO (Disco sin logo)",
   bbl_cmd_osdsys = "$OSDSYS (Abrir navegador)",
+  fmcb_cmd_osdsys = "OSDSYS (Abrir navegador)",
   bbl_cmd_credits = "$CREDITS",
   bbl_cmd_hddchecker = "$HDDCHECKER (build HDD)",
   bbl_cmd_runkelf = "$RUNKELF:<ruta>",
@@ -182,6 +183,15 @@ strings.categories = {
   [4] = "Editar entradas del menú",
 }
 
+strings.categories_freemcboot = {
+  [1] = "Modificadores de comportamiento de OSD",
+  [2] = "Opciones de menú personalizadas de FHDB",
+  [3] = "Opciones de disco",
+  [4] = "AUTOBOOT",
+  [5] = "LAUNCH KEYS",
+  [6] = "Editar entradas del menú",
+}
+
 -- Etiquetas y descripciones de opciones de OSDMENU.CNF (por clave de opción)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Forzar modo de video", desc = "Forzar modo de video de OSD" },
@@ -189,6 +199,10 @@ strings.options_osdmenu = {
   OSDSYS_Skip_Disc = { label = "Saltar disco", desc = "Saltar lanzamiento automático de disco" },
   OSDSYS_Skip_Logo = { label = "Saltar intro", desc = "Saltar animación de introducción de SCE" },
   OSDSYS_Inner_Browser = { label = "Navegador interno", desc = "Arrancar en el navegador de la tarjeta de memoria" },
+  OSDSYS_Skip_MC = { label = "Saltar MC", desc = "Saltar comprobación de tarjeta de memoria en el navegador" },
+  OSDSYS_Skip_HDD = { label = "Saltar HDD", desc = "Saltar comprobación de HDD en el navegador" },
+  Debug_Screen = { label = "Pantalla de depuración", desc = "Habilitar salida de pantalla de depuración" },
+  hacked_OSDSYS = { label = "OSD modificado", desc = "Habilitar modo de menú OSD parcheado de FHDB" },
   OSDSYS_custom_menu = { label = "Menú personalizado", desc = "Habilitar menú personalizado" },
   OSDSYS_scroll_menu = { label = "Desplazamiento infinito", desc = "Habilitar desplazamiento infinito" },
   OSDSYS_menu_x = { label = "Menú X", desc = "Posición X del menú personalizado" },
@@ -214,6 +228,11 @@ strings.options_osdmenu = {
   ps1drv_use_ps1vn = { label = "Usar PS1VN", desc = "Usar Negador de Modo de Video de PS1" },
   app_gameid = { label = "ID de juego de aplicación", desc = "Habilitar ID de juego visual para archivos ELF" },
   path_DKWDRV_ELF = { label = "Ruta DKWDRV", desc = "Ruta personalizada a DKWDRV.ELF" },
+  pad_delay = { label = "Retardo de pad", desc = "Retardo antes de procesar la selección de tecla de AUTOBOOT" },
+  FastBoot = { label = "Inicio rápido", desc = "Habilitar manejo de inicio rápido de disco" },
+  ESR_Path_E1 = { label = "Ruta ESR E1", desc = "Ruta ESR primaria" },
+  ESR_Path_E2 = { label = "Ruta ESR E2", desc = "Ruta ESR secundaria" },
+  ESR_Path_E3 = { label = "Ruta ESR E3", desc = "Ruta ESR terciaria" },
   _menu_entries = { label = "Editar entradas del menú", desc = "Editar entradas de menú personalizadas: nombre, rutas, argumentos" },
 }
 
