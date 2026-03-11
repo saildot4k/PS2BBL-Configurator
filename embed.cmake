@@ -1,7 +1,7 @@
 # Embedded resources: paths relative to source dir
 set(EMBED_FILES
     res/boot.lua
-    res/logo_ps2bble.png
+    res/logo_r3configurat3r.png
     res/loading.png
 )
 

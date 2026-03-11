@@ -347,6 +347,7 @@ local function runMain(s, pad)
   end
   if (pad & PAD_CROSS) ~= 0 then
     if s.mainSel == 1 then
+      s.mainOverlayLogoKey = "freemcboot"
       s.context = "freemcboot"
       s.fileType = "freemcboot_cnf"
       s.chosenMcSlot = nil
@@ -354,6 +355,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "choose_mc"
     elseif s.mainSel == 2 then
+      s.mainOverlayLogoKey = "freehdboot"
       s.context = "freehddboot"
       s.fileType = "freemcboot_cnf"
       s.chosenMcSlot = nil
@@ -361,6 +363,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "open"
     elseif s.mainSel == 3 then
+      s.mainOverlayLogoKey = "osdmenu"
       s.context = "osdmenu"
       s.fileType = "osdmenu_cnf"
       s.chosenMcSlot = nil
@@ -368,6 +371,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "choose_mc"
     elseif s.mainSel == 4 then
+      s.mainOverlayLogoKey = "osdmenu_mbr"
       s.context = "mbr"
       s.fileType = "osdmbr_cnf"
       s.chosenMcSlot = nil
@@ -375,6 +379,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "open"
     elseif s.mainSel == 5 then
+      s.mainOverlayLogoKey = "hosdmenu"
       s.context = "hosdmenu"
       s.fileType = "osdmenu_cnf"
       s.chosenMcSlot = nil
@@ -382,6 +387,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "open"
     elseif egsmEnabled and s.mainSel == egsmIndex then
+      s.mainOverlayLogoKey = "osdmenu"
       s.context = "osdmenu"
       s.fileType = "osdgsm_cnf"
       s.chosenMcSlot = nil
@@ -389,6 +395,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "choose_mc"
     elseif s.mainSel == ps2bblIndex then
+      s.mainOverlayLogoKey = "ps2bbl"
       s.context = "ps2bbl"
       s.fileType = "ps2bbl_ini"
       s.chosenMcSlot = nil
@@ -396,6 +403,7 @@ local function runMain(s, pad)
       clearPathPickerState(s)
       s.state = "select_config"
     elseif s.mainSel == psxbblIndex then
+      s.mainOverlayLogoKey = "psxbbl"
       s.context = "psxbbl"
       s.fileType = "psxbbl_ini"
       s.chosenMcSlot = nil

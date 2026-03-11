@@ -367,6 +367,8 @@ function common.runLayout(ctx)
   local h = (vmode and vmode.height) or common.DEFAULT_H
   local sy = h / common.DEFAULT_H
   if ctx then
+    ctx.w = w
+    ctx.h = h
     ctx.sy = sy
     ctx.MARGIN_Y = math.floor(common.MARGIN_Y * sy)
     ctx.LINE_H = common.LINE_H
@@ -382,6 +384,9 @@ function common.runSceneLoop(ctx, sceneName, runHandler)
   while true do
     Screen.clear(common.BGCOLOR)
     common.runLayout(ctx)
+    if ctx and ctx.drawBackgroundLayer then
+      ctx.drawBackgroundLayer(ctx)
+    end
     local padEffective = common.getPadEffective(ctx)
     runHandler(ctx, padEffective)
     if ctx.state ~= sceneName then

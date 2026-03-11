@@ -408,7 +408,7 @@ config_options.freemcboot_cnf_categories = {
     },
   },
   {
-    name = "FHDB custom menu options",
+    name = "OSD custom menu options",
     options = {
       { key = "hacked_OSDSYS",              optType = "bool",  default = "1" },
       { key = "OSDSYS_scroll_menu",         optType = "bool",  default = "1" },

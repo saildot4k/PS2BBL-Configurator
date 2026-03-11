@@ -87,6 +87,66 @@ local function resolveNextOsdItemKey(lines)
   return prefix .. tostring(maxN + 1)
 end
 
+local overlayLogoCache = {}
+local OVERLAY_LOGO_OPACITY = 0.15 -- 85% transparency
+local OVERLAY_LOGO_COLOR = Color.new(0x80, 0x80, 0x80, math.floor(0x80 * OVERLAY_LOGO_OPACITY + 0.5))
+
+local function getSelectionOverlayLogoTexture(key)
+  if not key or key == "" then return nil end
+  local cached = overlayLogoCache[key]
+  if cached ~= nil then
+    return (cached ~= false) and cached or nil
+  end
+  local path = "res/logo_" .. tostring(key) .. ".png"
+  if not common.tryOpen(path) then
+    overlayLogoCache[key] = false
+    return nil
+  end
+  local ok, img = pcall(Graphics.loadImage, path)
+  if ok and img then
+    if Graphics.setImageFilters and LINEAR then
+      pcall(Graphics.setImageFilters, img, LINEAR)
+    end
+    overlayLogoCache[key] = img
+    return img
+  end
+  overlayLogoCache[key] = false
+  return nil
+end
+
+local function drawSelectionOverlayLogo(ctx)
+  if not ctx then return end
+  if ctx.state == "main" then
+    -- Returning to first screen clears active selection logo until next selection.
+    ctx.mainOverlayLogoKey = nil
+    return
+  end
+  local key = ctx.mainOverlayLogoKey
+  if not key or key == "" then return end
+  local tex = getSelectionOverlayLogoTexture(key)
+  if not tex then return end
+
+  local sw = ctx.w or common.DEFAULT_W
+  local sh = ctx.h or common.DEFAULT_H
+  local iw = (Graphics.getImageWidth and Graphics.getImageWidth(tex)) or 0
+  local ih = (Graphics.getImageHeight and Graphics.getImageHeight(tex)) or 0
+  if iw <= 0 or ih <= 0 then return end
+
+  local maxW = math.floor(sw * 0.90)
+  local maxH = math.floor(sh * 0.72)
+  local scale = math.min(1.0, maxW / iw, maxH / ih)
+  local dw = math.max(1, math.floor(iw * scale + 0.5))
+  local dh = math.max(1, math.floor(ih * scale + 0.5))
+  local x = math.floor((sw - dw) / 2)
+  local y = math.floor((sh - dh) / 2)
+
+  if Graphics.drawScaleImage then
+    Graphics.drawScaleImage(tex, x, y, dw, dh, OVERLAY_LOGO_COLOR)
+  else
+    Graphics.drawImage(tex, x, y, OVERLAY_LOGO_COLOR)
+  end
+end
+
 local function mainLoop()
   local font, drawMode = loadCustomFont()
   local function drawListRow(x, y, selected, label, col)
@@ -95,6 +155,7 @@ local function mainLoop()
 
   local ctx = scene_module.initContext()
   ctx.font, ctx.drawMode, ctx.drawListRow = font, drawMode, drawListRow
+  ctx.drawBackgroundLayer = drawSelectionOverlayLogo
   ctx.main = {
     (strings.main.main_freemcboot or "FreeMCBoot"),
     (strings.main.main_freehddboot or "FreeHDBoot"),
@@ -220,6 +281,8 @@ local function mainLoop()
     local vmode = Screen.getMode()
     local w = (vmode and vmode.width) or common.DEFAULT_W
     local h = (vmode and vmode.height) or common.DEFAULT_H
+    c.w = w
+    c.h = h
     local sy = h / common.DEFAULT_H -- vertical scale for PAL (512) vs NTSC (448); keeps proportions
     c.sy = sy
     -- Keep font at NTSC size on both modes so text fits; only layout (positions, row heights) scales on PAL
@@ -234,6 +297,9 @@ local function mainLoop()
     c.HINT_Y = h - math.floor(24 * sy)
     c.DESC_Y_BOTTOM = c.HINT_Y - common.PAD_HINT_TOTAL_H - common.DESC_TO_HINT_MARGIN
     c.scaleY = function(y) return math.floor((y or 0) * sy) end
+    if c.drawBackgroundLayer then
+      c.drawBackgroundLayer(c)
+    end
     local fps = (h == 512) and 50 or 60            -- PAL 50Hz, NTSC 60Hz
     local REPEAT_DELAY_FRAMES = math.ceil(fps / 3) -- repeat every 1/3 s
     local HINT_Y = c.HINT_Y

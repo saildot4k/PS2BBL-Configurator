@@ -185,7 +185,7 @@ strings.categories = {
 
 strings.categories_freemcboot = {
   [1] = "OSD behavior modifiers",
-  [2] = "FHDB custom menu options",
+  [2] = "OSD custom menu options",
   [3] = "Disc Options",
   [4] = "AUTOBOOT",
   [5] = "LAUNCH KEYS",

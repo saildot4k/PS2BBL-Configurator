@@ -11,6 +11,7 @@ local function initContext()
     lines = nil,
     chosenMcSlot = nil,
     state = "main",
+    mainOverlayLogoKey = nil,
     mcSel = 1,
     hddReady = false,
     prevPad = 0,

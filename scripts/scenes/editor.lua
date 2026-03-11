@@ -289,6 +289,13 @@ local function run(ctx)
         local nameDisp = (nameVal ~= "" and nameVal) or _.common_str.empty
         lab = (_.menu_str.name or "Name: ") .. nameDisp
         valDisplay = ""
+      elseif ctx.fileType == "freemcboot_cnf" and o.key and o.key:match("^ESR_Path_E%d+$") then
+        inlineAutoRow = true
+        local slotIdx = o.key:match("^ESR_Path_E(%d+)$") or "?"
+        local pathVal = _.config_parse.get(ctx.lines, o.key) or o.default or ""
+        local pathDisp = (pathVal ~= "" and pathVal) or _.common_str.not_set
+        lab = "ESR path E" .. tostring(slotIdx) .. ": " .. pathDisp
+        valDisplay = ""
       elseif o.optType == "bbl_slot" and (o.bblKeyId == "AUTO" or (o.key and o.key:match("^_auto_e%d+$"))) then
         inlineAutoRow = true
         local slotIdx = tonumber(o.bblEntrySlot) or 0
