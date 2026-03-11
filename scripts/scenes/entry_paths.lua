@@ -25,6 +25,9 @@ local function run(ctx)
     if flags.specialargs then hasSpecialArgsPath = true end
   end
   local pathRows = #paths
+  local isFmcbEntry = (not isBoot) and (ctx.fileType == "freemcboot_cnf")
+  local maxPathsPerEntry = (isFmcbEntry and ((_.config_options and _.config_options.FMCB_MAX_PATHS_PER_ENTRY) or 3)) or nil
+  local canAddPath = (not isFmcbEntry) or (pathRows < maxPathsPerEntry)
   local total = pathRows
   if isBoot and (hasArgsPaths or hasSpecialArgsPath) then total = total + 1 end -- Arguments or Launch Disc options row
   if ctx.entryPathSel < 1 then ctx.entryPathSel = 1 end
@@ -98,6 +101,15 @@ local function run(ctx)
     pathHints = paths[ctx.entryPathSel].disabled and (_.menu_str.paths_hint_items_with_enable or pathHints)
         or (_.menu_str.paths_hint_items_with_disable or pathHints)
   end
+  if not canAddPath then
+    local filtered = {}
+    for _, item in ipairs(pathHints or {}) do
+      if item.pad ~= "select" then
+        filtered[#filtered + 1] = item
+      end
+    end
+    pathHints = filtered
+  end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, pathHints, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -136,7 +148,7 @@ local function run(ctx)
       openPathPicker(ctx.entryPathSel)
     end
   end
-  if (_.padEffective & _.PAD_SELECT) ~= 0 then openPathPicker(nil) end
+  if (_.padEffective & _.PAD_SELECT) ~= 0 and canAddPath then openPathPicker(nil) end
   if (_.padEffective & _.PAD_L1) ~= 0 then
     if ctx.entryPathSel >= 1 and ctx.entryPathSel <= #paths and ctx.entryPathSel > 1 then
       paths = isBoot and (_.config_parse.getBootPaths(ctx.lines, ctx.bootKey) or {}) or

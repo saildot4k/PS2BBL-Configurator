@@ -7,7 +7,7 @@ local config_options = {}
 
 -- UI feature toggles. Keep eGSM code present but hidden until enabled.
 config_options.FEATURES = {
-  egsm_ui = false,
+  egsm_ui = true,
 }
 
 -- Device visibility for PS2BBL/PSXBBL path picker (path_only context).
@@ -81,6 +81,28 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "psxbbl_ini" then
     return buildPsxBblIniLocations()
   end
+  if fileType == "freemcboot_cnf" then
+    if chosenMcSlot == 0 then
+      return {
+        "mc0:/SYS-CONF/FREEMCB.CNF",
+        "mass:/FREEMCB.CNF",
+        "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+      }
+    end
+    if chosenMcSlot == 1 then
+      return {
+        "mc1:/SYS-CONF/FREEMCB.CNF",
+        "mass:/FREEMCB.CNF",
+        "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+      }
+    end
+    return {
+      "mc0:/SYS-CONF/FREEMCB.CNF",
+      "mc1:/SYS-CONF/FREEMCB.CNF",
+      "mass:/FREEMCB.CNF",
+      "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+    }
+  end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then
       if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDMENU.CNF" } end
@@ -122,6 +144,9 @@ function config_options.getDefaultLocation(context, fileType, chosenMcSlot)
   if fileType == "psxbbl_ini" then
     return buildBblDefaultMcPath("PSXBBL.INI", chosenMcSlot)
   end
+  if fileType == "freemcboot_cnf" then
+    return buildBblDefaultMcPath("FREEMCB.CNF", chosenMcSlot)
+  end
   local loc = config_options.getLocations(context, fileType, chosenMcSlot)
   return (loc and loc[1]) or nil
 end
@@ -132,6 +157,9 @@ config_options.BBL_HOTKEYS = {
 }
 config_options.BBL_MAX_ENTRIES = 10
 config_options.BBL_MAX_ARGS_PER_ENTRY = 8
+config_options.FMCB_MAX_ENTRIES = 99
+config_options.FMCB_MAX_PATHS_PER_ENTRY = 3
+config_options.FMCB_BBL_MAX_ENTRIES = 3
 
 function config_options.getBblHotkeys()
   return config_options.BBL_HOTKEYS
@@ -249,6 +277,42 @@ local function buildBblIniAutoOptions()
   return out
 end
 
+local function buildFreemcbootAutoOptions()
+  local out = {
+    {
+      key = "KEY_READ_WAIT_TIME",
+      optType = "int",
+      default = "6000",
+      min = 0,
+      max = 600000,
+      intPadDeltas = { left = -100, L1 = -1000, L2 = -10000, R2 = 10000, R1 = 1000, right = 100 },
+      intPadLabels = { left = "-0.1s", L1 = "-1s", L2 = "-10s", R2 = "+10s", R1 = "+1s", right = "+0.1s" },
+      label = "Timer:",
+      desc = "Seconds until this list is executed.",
+    },
+    {
+      key = "NAME_AUTO",
+      optType = "text",
+      default = "",
+      label = "NAME",
+      desc = "Display name for AUTO.",
+      maxLen = 64,
+    },
+  }
+  local maxSlots = (type(config_options.FMCB_BBL_MAX_ENTRIES) == "number" and config_options.FMCB_BBL_MAX_ENTRIES) or 3
+  for i = 1, maxSlots do
+    table.insert(out, {
+      key = "_auto_e" .. tostring(i),
+      optType = "bbl_slot",
+      bblKeyId = "AUTO",
+      bblEntrySlot = i,
+      label = "E" .. tostring(i),
+      desc = "Edit LK_AUTO_E" .. tostring(i) .. " (no arguments).",
+    })
+  end
+  return out
+end
+
 config_options.ps2bbl_ini = buildBblIniGlobalOptions()
 config_options.psxbbl_ini = buildBblIniGlobalOptions()
 config_options.ps2bbl_ini_auto = buildBblIniAutoOptions()
@@ -315,6 +379,20 @@ config_options.osdmenu_cnf_categories = {
     },
   },
 }
+config_options.freemcboot_cnf_auto = buildFreemcbootAutoOptions()
+config_options.freemcboot_cnf_categories = {}
+for i = 1, #config_options.osdmenu_cnf_categories do
+  config_options.freemcboot_cnf_categories[#config_options.freemcboot_cnf_categories + 1] =
+      config_options.osdmenu_cnf_categories[i]
+end
+config_options.freemcboot_cnf_categories[#config_options.freemcboot_cnf_categories + 1] = {
+  name = "AUTOBOOT",
+  options = config_options.freemcboot_cnf_auto,
+}
+config_options.freemcboot_cnf_categories[#config_options.freemcboot_cnf_categories + 1] = {
+  name = "LAUNCH KEYS",
+  options = { { key = "_bbl_hotkeys", optType = "action", label = "LAUNCH KEYS" } },
+}
 
 -- Get default value for a single key from osdmenu_cnf_categories (nil if no default).
 function config_options.getOsdmenuDefault(key)
@@ -334,6 +412,27 @@ function config_options.getOsdmenuDefaults()
       if o.key and o.default ~= nil and o.key:sub(1, 1) ~= "_" then
         out[o.key] = o.default
       end
+    end
+  end
+  return out
+end
+
+function config_options.getFreemcbootDefault(key)
+  local def = config_options.getOsdmenuDefault(key)
+  if def ~= nil then return def end
+  for _, o in ipairs(config_options.freemcboot_cnf_auto or {}) do
+    if o.key == key and o.default ~= nil then
+      return o.default
+    end
+  end
+  return nil
+end
+
+function config_options.getFreemcbootDefaults()
+  local out = config_options.getOsdmenuDefaults()
+  for _, o in ipairs(config_options.freemcboot_cnf_auto or {}) do
+    if o.key and o.default ~= nil and o.key:sub(1, 1) ~= "_" then
+      out[o.key] = o.default
     end
   end
   return out

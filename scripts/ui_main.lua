@@ -70,6 +70,43 @@ local function clearLoadChoiceState(s)
   s.loadChoices = nil
   s.loadAllowCreate = nil
   s.loadPathExists = nil
+  s.loadReturnState = nil
+end
+
+local function buildMainChoices(main_str)
+  return {
+    main_str.main_ps2bbl_mc or "PS2BBL",
+    main_str.main_psxbbl_mc or "PSXBBL",
+    main_str.main_osdmenu or "OSDMenu",
+    main_str.main_osdmenu_mbr or "OSDMenu MBR",
+    main_str.main_hosdmenu or "HOSDMenu",
+    main_str.main_egsm or "eGSM",
+    main_str.main_freemcboot or "FreeMCBoot",
+  }
+end
+
+local function isBblContext(context)
+  return context == "ps2bbl" or context == "psxbbl"
+end
+
+local function nextStateAfterMcSelection(s)
+  return isBblContext(s.context) and "select_config" or "open"
+end
+
+local function getOpenParentState(s)
+  if isBblContext(s.context) then
+    return "select_config"
+  end
+  if s.context == "osdmenu" or s.context == "freemcboot" then
+    if s.fileType == "osdmenu_cnf" or s.fileType == "osdgsm_cnf" or s.fileType == "freemcboot_cnf" then
+      local slots = (common.getPresentMcSlots and common.getPresentMcSlots()) or {}
+      if type(slots) == "table" and #slots > 1 then
+        return "choose_mc"
+      end
+      return "main"
+    end
+  end
+  return "main"
 end
 
 local function getSelectConfigSelTable(s)
@@ -110,7 +147,9 @@ end
 
 local function initEmptyLinesForFileType(s)
   s.lines = config_parse.parse("")
-  if s.fileType == "osdmenu_cnf" and C.config_options.getOsdmenuDefaults then
+  if s.fileType == "freemcboot_cnf" and C.config_options.getFreemcbootDefaults then
+    for k, v in pairs(C.config_options.getFreemcbootDefaults()) do config_parse.set(s.lines, k, v) end
+  elseif s.fileType == "osdmenu_cnf" and C.config_options.getOsdmenuDefaults then
     for k, v in pairs(C.config_options.getOsdmenuDefaults()) do config_parse.set(s.lines, k, v) end
   end
 end
@@ -127,7 +166,12 @@ end
 
 local function mapPartitionPathToMountedPfs(path)
   if not path then return nil, nil end
-  local part, rest = tostring(path):match("^(hdd%d:[^:]+):pfs:(.*)$")
+  local raw = tostring(path)
+  local part, rest = raw:match("^(hdd%d:[^:]+):pfs:(.*)$")
+  if not part then
+    -- Accept FMCB-style partition path (hdd0:__sysconf/dir/file) in addition to :pfs: form.
+    part, rest = raw:match("^(hdd%d:[^/:]+)(/.*)$")
+  end
   if not part then return nil, nil end
   if not rest or rest == "" then rest = "/" end
   if rest:sub(1, 1) ~= "/" then rest = "/" .. rest end
@@ -194,7 +238,8 @@ end
 
 local function setStateAfterLoad(s)
   s.configModified = false
-  local isCategorized = (s.fileType == "osdmenu_cnf" or s.fileType == "ps2bbl_ini" or s.fileType == "psxbbl_ini")
+  local isCategorized = (s.fileType == "osdmenu_cnf" or s.fileType == "freemcboot_cnf" or s.fileType == "ps2bbl_ini" or
+      s.fileType == "psxbbl_ini")
   if s.fileType == "osdgsm_cnf" then
     s.state = "egsm_editor"
     s.egsmSel, s.egsmScroll = 1, 0
@@ -218,6 +263,12 @@ local function runMain(s, pad)
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
 
+  if type(s.main) ~= "table" or #s.main < 7 then
+    s.main = buildMainChoices(main_str)
+  end
+  if s.mainSel < 1 then s.mainSel = 1 end
+  if s.mainSel > #s.main then s.mainSel = #s.main end
+
   -- L1/R1: cycle language (only when not using CWD strings.lua override and more than one lang file)
   if not C.langCycleDisabled and C.langFiles and #C.langFiles > 1 then
     local idx = C.langIndex or 1
@@ -228,10 +279,7 @@ local function runMain(s, pad)
       if okLoad and newStrings and type(newStrings) == "table" then
         C.strings = newStrings
         C.langIndex = idx
-        s.main = {
-          (newStrings.main and newStrings.main.main_ps2bbl_mc) or "PS2BBL",
-          (newStrings.main and newStrings.main.main_psxbbl_mc) or "PSXBBL",
-        }
+        s.main = buildMainChoices(newStrings.main or {})
       end
     elseif (pad & PAD_R1) ~= 0 then
       idx = idx % #C.langFiles + 1
@@ -239,10 +287,7 @@ local function runMain(s, pad)
       if okLoad and newStrings and type(newStrings) == "table" then
         C.strings = newStrings
         C.langIndex = idx
-        s.main = {
-          (newStrings.main and newStrings.main.main_ps2bbl_mc) or "PS2BBL",
-          (newStrings.main and newStrings.main.main_psxbbl_mc) or "PSXBBL",
-        }
+        s.main = buildMainChoices(newStrings.main or {})
       end
     end
   end
@@ -287,14 +332,51 @@ local function runMain(s, pad)
       s.context = "ps2bbl"
       s.fileType = "ps2bbl_ini"
       s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
       clearPathPickerState(s)
       s.state = "select_config"
     elseif s.mainSel == 2 then
       s.context = "psxbbl"
       s.fileType = "psxbbl_ini"
       s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
       clearPathPickerState(s)
       s.state = "select_config"
+    elseif s.mainSel == 3 then
+      s.context = "osdmenu"
+      s.fileType = "osdmenu_cnf"
+      s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
+      clearPathPickerState(s)
+      s.state = "choose_mc"
+    elseif s.mainSel == 4 then
+      s.context = "mbr"
+      s.fileType = "osdmbr_cnf"
+      s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
+      clearPathPickerState(s)
+      s.state = "open"
+    elseif s.mainSel == 5 then
+      s.context = "hosdmenu"
+      s.fileType = "osdmenu_cnf"
+      s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
+      clearPathPickerState(s)
+      s.state = "open"
+    elseif s.mainSel == 6 then
+      s.context = "osdmenu"
+      s.fileType = "osdgsm_cnf"
+      s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
+      clearPathPickerState(s)
+      s.state = "choose_mc"
+    elseif s.mainSel == 7 then
+      s.context = "freemcboot"
+      s.fileType = "freemcboot_cnf"
+      s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
+      clearPathPickerState(s)
+      s.state = "choose_mc"
     end
   end
 end
@@ -316,7 +398,7 @@ local function runChooseMc(s, pad)
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   elseif #slots == 1 then
     s.chosenMcSlot = slots[1]
-    s.state = "select_config"
+    s.state = nextStateAfterMcSelection(s)
   else
     dt(s.font, s.drawMode, M, MY, 1.1, main_str.select_memory_card, common.WHITE)
     dt(s.font, s.drawMode, M, MY + sc(24), 0.8, main_str.config_card_hint, common.DIM)
@@ -337,7 +419,7 @@ local function runChooseMc(s, pad)
     end
     if (pad & PAD_CROSS) ~= 0 then
       s.chosenMcSlot = slots[s.mcSel]
-      s.state = "select_config"
+      s.state = nextStateAfterMcSelection(s)
     end
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   end
@@ -406,7 +488,7 @@ local function runSelectConfig(s, pad)
   local SE = common.SELECTED_ENTRY
   local iniFileType = resolveIniFileType(s)
   if iniFileType ~= "ps2bbl_ini" and iniFileType ~= "psxbbl_ini" then
-    s.state = "main"
+    s.state = "open"
     return
   end
 
@@ -458,6 +540,7 @@ local function runSelectConfig(s, pad)
       s.loadPathExists[#s.loadPathExists + 1] = false
       s.loadAllowCreate = true
       s.loadSel = 1
+      s.loadReturnState = "select_config"
       s.state = "choose_load"
     end
   end
@@ -507,7 +590,7 @@ local function runInitHdd(s, pad)
       if common.isHddPresent() then
         s.hddReady = true
         s.hddNotFound = nil
-        s.state = "select_config"
+        s.state = "open"
         s.initHddPhase = nil
         s.initHddFrames = nil
         return
@@ -586,7 +669,7 @@ local function runOpen(s, pad)
     if (pad & PAD_CROSS) ~= 0 then
       s.openExplicitPath = nil
       clearLoadChoiceState(s)
-      s.state = "select_config"
+      s.state = getOpenParentState(s)
     end
     return
   end
@@ -601,7 +684,7 @@ local function runOpen(s, pad)
     if not s.currentPath then
       dt(s.font, s.drawMode, M, MY + sc(60), common.FONT_SCALE, main_str.no_location, common.GRAY)
       common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_back_items, nil, common.DIM)
-      if (pad & PAD_CROSS) ~= 0 then s.state = "select_config" end
+      if (pad & PAD_CROSS) ~= 0 then s.state = getOpenParentState(s) end
     else
       initEmptyLinesForFileType(s)
       setStateAfterLoad(s)
@@ -613,7 +696,7 @@ local function runOpen(s, pad)
       dt(s.font, s.drawMode, M, MY + sc(60), common.FONT_SCALE, main_str.failed_to_load .. tostring(s.currentPath),
         common.GRAY)
       common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_back_items, nil, common.DIM)
-      if (pad & PAD_CROSS) ~= 0 then s.state = "select_config" end
+      if (pad & PAD_CROSS) ~= 0 then s.state = getOpenParentState(s) end
     else
       s.lines = loaded
       setStateAfterLoad(s)
@@ -638,6 +721,7 @@ local function runOpen(s, pad)
     end
     s.loadAllowCreate = nil
     s.loadPathExists = nil
+    s.loadReturnState = getOpenParentState(s)
     s.state = "choose_load"
   end
 end
@@ -679,6 +763,12 @@ local function runChooseLoad(s, pad)
         label = common.truncateTextToWidth(s.font, raw, (s.w or 640) - (M + 24), common.FONT_SCALE)
       else
         label = raw:sub(1, 60)
+      end
+    elseif s.fileType == "freemcboot_cnf" then
+      if common.truncateTextToWidth then
+        label = common.truncateTextToWidth(s.font, p, (s.w or 640) - (M + 24), common.FONT_SCALE)
+      else
+        label = p:sub(1, 60)
       end
     else
       label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
@@ -759,7 +849,7 @@ local function runChooseLoad(s, pad)
     end
   end
   if (pad & PAD_CIRCLE) ~= 0 then
-    s.state = "select_config"
+    s.state = s.loadReturnState or "select_config"
     clearLoadChoiceState(s)
   end
 end

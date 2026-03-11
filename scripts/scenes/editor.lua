@@ -47,6 +47,25 @@ local function setCategoryOptSel(ctx, categoryIdx, sel)
   ctx.editorCategoryOptSelByFile[fileKey][categoryIdx] = math.max(1, math.floor(tonumber(sel) or 1))
 end
 
+local function getEditorBackState(ctx)
+  local context = ctx and ctx.context or nil
+  local fileType = ctx and ctx.fileType or nil
+  if context == "ps2bbl" or context == "psxbbl" then
+    return "select_config"
+  end
+  if context == "osdmenu" or context == "freemcboot" then
+    if fileType == "osdmenu_cnf" or fileType == "osdgsm_cnf" or fileType == "freemcboot_cnf" then
+      local common = ctx and ctx._ and ctx._.common or nil
+      local slots = (common and common.getPresentMcSlots and common.getPresentMcSlots()) or {}
+      if type(slots) == "table" and #slots > 1 then
+        return "choose_mc"
+      end
+      return "main"
+    end
+  end
+  return "main"
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Leave-save prompt when going back to file select with unsaved changes
@@ -59,7 +78,7 @@ local function run(ctx)
       ctx.saveSplash = nil
       local locations = _.getLocations(ctx.context, ctx.fileType, ctx.chosenMcSlot)
       if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
-        ctx.returnToSelectConfigAfterSave = true
+        ctx.returnToSelectConfigAfterSave = getEditorBackState(ctx)
         ctx.saveChoices = locations
         ctx.saveSel = ctx.saveSel or 1
         ctx.state = "choose_save"
@@ -69,12 +88,13 @@ local function run(ctx)
           ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
           local parentDir = path:match("^(.+)/[^/]+$")
           local ok, err = _.common.saveConfig(ctx, path, ctx.lines, parentDir)
-          if ok then
-            ctx.currentPath = path
-            ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
-            ctx.configModified = false
-            ctx.returnToSelectConfigAfterSaveFlash = true
-          else
+              if ok then
+                ctx.currentPath = path
+                ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
+                ctx.configModified = false
+                ctx.returnStateAfterSaveFlash = getEditorBackState(ctx)
+                ctx.returnToSelectConfigAfterSaveFlash = true
+              else
             ctx.saveSplash = {
               kind = "failed",
               detail = _.common.localizeParseError(err, _.editor_str) or
@@ -88,7 +108,7 @@ local function run(ctx)
       end
     elseif (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
       ctx.editorLeavePrompt = nil
-      ctx.state = "select_config"
+      ctx.state = getEditorBackState(ctx)
       ctx.currentPath = nil
       ctx.lines = nil
       ctx.optList = nil
@@ -112,10 +132,13 @@ local function run(ctx)
     return
   end
 
-  local isCategorizedFile = (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini")
+  local isCategorizedFile = (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "freemcboot_cnf" or
+      ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini")
   local categories = {}
   if ctx.fileType == "osdmenu_cnf" then
     categories = _.config_options.osdmenu_cnf_categories or {}
+  elseif ctx.fileType == "freemcboot_cnf" then
+    categories = _.config_options.freemcboot_cnf_categories or _.config_options.osdmenu_cnf_categories or {}
   elseif ctx.fileType == "ps2bbl_ini" then
     categories = _.config_options.ps2bbl_ini_categories or {}
   elseif ctx.fileType == "psxbbl_ini" then
@@ -138,7 +161,7 @@ local function run(ctx)
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.optScroll - 1) * _.ROW_H
       local col = (i == ctx.optSel) and _.SELECTED_ENTRY or _.WHITE
       local catLabel = cat.name or _.common_str.empty
-      if ctx.fileType == "osdmenu_cnf" then
+      if ctx.fileType == "osdmenu_cnf" or ctx.fileType == "freemcboot_cnf" then
         catLabel = (_.strings.categories and _.strings.categories[i]) or catLabel
       end
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel,
@@ -189,7 +212,7 @@ local function run(ctx)
       if ctx.configModified then
         ctx.editorLeavePrompt = true
       else
-        ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0
+        ctx.state = getEditorBackState(ctx); ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0
       end
     end
   elseif ctx.optList and #ctx.optList > 0 then
@@ -228,7 +251,11 @@ local function run(ctx)
             nil
         if slot and slot.used then
           local p = (slot.path ~= "" and slot.path) or _.common_str.not_set
-          valDisplay = p .. " " .. formatArgCount(slot.argCount)
+          if ctx.fileType == "freemcboot_cnf" then
+            valDisplay = p
+          else
+            valDisplay = p .. " " .. formatArgCount(slot.argCount)
+          end
         else
           valDisplay = _.common_str.not_set
         end
@@ -265,8 +292,12 @@ local function run(ctx)
         local slotIdx = tonumber(o.bblEntrySlot) or 0
         local slot = _.config_parse.getBblHotkeySlot and _.config_parse.getBblHotkeySlot(ctx.lines, "AUTO", slotIdx) or nil
         local pathDisp = (slot and slot.path and slot.path ~= "") and slot.path or _.common_str.not_set
-        local argCount = (slot and slot.argCount) or 0
-        lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp .. " " .. formatArgCount(argCount)
+        if ctx.fileType == "freemcboot_cnf" then
+          lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp
+        else
+          local argCount = (slot and slot.argCount) or 0
+          lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp .. " " .. formatArgCount(argCount)
+        end
         valDisplay = ""
       end
       if inlineAutoRow then
@@ -510,10 +541,16 @@ local function run(ctx)
         ctx.state = "path_picker"
       end
     end
-    if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and ctx.optList and #ctx.optList > 0 and ctx.fileType == "osdmenu_cnf" then
+    if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and ctx.optList and #ctx.optList > 0 and
+        (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "freemcboot_cnf") then
       local o = ctx.optList[ctx.optSel]
       if o and o.key and o.key:sub(1, 1) ~= "_" and o.optType ~= "header" then
-        local def = _.config_options.getOsdmenuDefault and _.config_options.getOsdmenuDefault(o.key)
+        local def = nil
+        if ctx.fileType == "freemcboot_cnf" then
+          def = _.config_options.getFreemcbootDefault and _.config_options.getFreemcbootDefault(o.key)
+        else
+          def = _.config_options.getOsdmenuDefault and _.config_options.getOsdmenuDefault(o.key)
+        end
         if def ~= nil then
           _.config_parse.set(ctx.lines, o.key, def); ctx.configModified = true
         end
@@ -568,7 +605,7 @@ local function run(ctx)
       if ctx.configModified then
         ctx.editorLeavePrompt = true
       else
-        ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0; ctx.saveSplash = nil
+        ctx.state = getEditorBackState(ctx); ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0; ctx.saveSplash = nil
       end
     end
   end

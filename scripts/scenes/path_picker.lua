@@ -235,9 +235,11 @@ end
 
 local function getSelectedBblName(ctx)
   local ft = ctx and ctx.fileType or nil
+  if ft == "freemcboot_cnf" then return "FreeMCBoot" end
   if ft == "psxbbl_ini" then return "PSXBBL" end
   if ft == "ps2bbl_ini" then return "PS2BBL" end
   local c = ctx and ctx.context or nil
+  if c == "freemcboot" then return "FreeMCBoot" end
   if c == "psxbbl" then return "PSXBBL" end
   return "PS2BBL"
 end

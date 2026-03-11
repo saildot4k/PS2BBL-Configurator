@@ -98,6 +98,11 @@ local function mainLoop()
   ctx.main = {
     (strings.main.main_ps2bbl_mc or "PS2BBL"),
     (strings.main.main_psxbbl_mc or "PSXBBL"),
+    (strings.main.main_osdmenu or "OSDMenu"),
+    (strings.main.main_osdmenu_mbr or "OSDMenu MBR"),
+    (strings.main.main_hosdmenu or "HOSDMenu"),
+    (strings.main.main_egsm or "eGSM"),
+    (strings.main.main_freemcboot or "FreeMCBoot"),
   }
 
   local mainSel = 1

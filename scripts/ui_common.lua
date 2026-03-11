@@ -282,16 +282,25 @@ function common.saveConfig(ctx, path, lines, createDir)
   local saveDir = createDir
   local mounted = nil
 
-  local part, rest = tostring(path or ""):match("^(hdd%d:[^:]+):pfs:(.*)$")
-  if part and rest then
+  local function splitHddPartitionPath(p)
+    local s = tostring(p or "")
+    local part, rest = s:match("^(hdd%d:[^:]+):pfs:(.*)$")
+    if not part then
+      -- Accept FMCB-style partition path (hdd0:__sysconf/dir/file) in addition to :pfs: form.
+      part, rest = s:match("^(hdd%d:[^/:]+)(/.*)$")
+    end
+    if not part then return nil, nil end
     if rest == "" then rest = "/" end
     if rest:sub(1, 1) ~= "/" then rest = "/" .. rest end
+    return part, rest
+  end
+
+  local part, rest = splitHddPartitionPath(path)
+  if part and rest then
     savePath = "pfs0:" .. rest
     if saveDir and saveDir ~= "" then
-      local dPart, dRest = tostring(saveDir):match("^(hdd%d:[^:]+):pfs:(.*)$")
+      local dPart, dRest = splitHddPartitionPath(saveDir)
       if dPart and dPart == part and dRest then
-        if dRest == "" then dRest = "/" end
-        if dRest:sub(1, 1) ~= "/" then dRest = "/" .. dRest end
         saveDir = "pfs0:" .. dRest
       end
     end
@@ -615,9 +624,11 @@ function common.drawSaveSplash(ctx)
   sp.framesLeft = sp.framesLeft - 1
   if sp.framesLeft <= 0 then
     ctx.saveSplash = nil
-    if sp.kind == "saved" and ctx.returnToSelectConfigAfterSaveFlash then
+    if sp.kind == "saved" and (ctx.returnToSelectConfigAfterSaveFlash or ctx.returnStateAfterSaveFlash) then
+      local targetState = ctx.returnStateAfterSaveFlash or "select_config"
+      ctx.returnStateAfterSaveFlash = nil
       ctx.returnToSelectConfigAfterSaveFlash = nil
-      ctx.state = "select_config"
+      ctx.state = targetState
       ctx.currentPath = nil
       ctx.lines = nil
       ctx.optList = nil

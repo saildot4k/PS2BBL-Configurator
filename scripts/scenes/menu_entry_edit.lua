@@ -9,6 +9,7 @@ local function run(ctx)
   local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.entryIdx)
   local args = _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
   local hasOsdOrShutdown = false
+  local allowArgs = (ctx.fileType ~= "freemcboot_cnf")
   for _, p in ipairs(paths) do
     local pv = type(p) == "table" and p.value or p
     if (pv or ""):upper() == "OSDSYS" or (pv or ""):upper() == "POWEROFF" then
@@ -23,11 +24,12 @@ local function run(ctx)
       hasCdrom = true; break
     end
   end
-  if hasCdrom then table.insert(subOpts, _.menu_str.launch_disc_options) end
-  if not (hasOsdOrShutdown or hasCdrom) then table.insert(subOpts, _.menu_str.arguments) end
+  if allowArgs and hasCdrom then table.insert(subOpts, _.menu_str.launch_disc_options) end
+  if allowArgs and not (hasOsdOrShutdown or hasCdrom) then table.insert(subOpts, _.menu_str.arguments) end
   local pathsStr = _.menu_str.paths .. (#paths == 0 and _.menu_str.none or #paths .. _.menu_str.path_s)
   local argsStr = _.menu_str.args ..
-      ((hasOsdOrShutdown or hasCdrom) and _.menu_str.none or (#args == 0 and _.menu_str.none or #args .. _.menu_str.arg_s))
+      ((not allowArgs or hasOsdOrShutdown or hasCdrom) and _.menu_str.none or
+      (#args == 0 and _.menu_str.none or #args .. _.menu_str.arg_s))
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.entry_index .. ctx.entryIdx, _.WHITE)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.8,
     _.menu_str.name .. (name == "" and _.common_str.empty or name:sub(1, 40)), _.DIM)

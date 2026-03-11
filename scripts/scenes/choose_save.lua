@@ -41,6 +41,9 @@ local function run(ctx)
       ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
       ctx.configModified = false
       if ctx.returnToSelectConfigAfterSave then
+        if type(ctx.returnToSelectConfigAfterSave) == "string" then
+          ctx.returnStateAfterSaveFlash = ctx.returnToSelectConfigAfterSave
+        end
         ctx.returnToSelectConfigAfterSave = nil
         ctx.returnToSelectConfigAfterSaveFlash = true
       end
@@ -68,6 +71,7 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     ctx.returnToSelectConfigAfterSave = nil
+    ctx.returnStateAfterSaveFlash = nil
     if ctx.returnToMenuEntriesAfterSave then
       ctx.returnToMenuEntriesAfterSave = nil
       ctx.state = "menu_entries"

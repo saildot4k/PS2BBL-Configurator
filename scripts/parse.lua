@@ -839,11 +839,37 @@ end
 
 local SEPARATOR = "#----------------------------------"
 
+local function appendFreemcbootLaunchKeys(out, lines, maxEntries)
+  local keys = { "AUTO" }
+  for _, k in ipairs(config_parse.getBblHotkeys() or {}) do
+    keys[#keys + 1] = k
+  end
+  for _, keyId in ipairs(keys) do
+    local added = false
+    for slot = 1, maxEntries do
+      local path, disabled = config_parse.getBblHotkeyPath(lines, keyId, slot)
+      if path ~= nil then
+        out[#out + 1] = {
+          key = "LK_" .. tostring(keyId) .. "_E" .. tostring(slot),
+          value = path or "",
+          comment = disabled and true or nil
+        }
+        added = true
+      end
+    end
+    if added then
+      out[#out + 1] = { comment = SEPARATOR }
+    end
+  end
+end
+
 -- Regenerate OSDMENU lines from in-memory state. Optional categories: list of { name, options = { { key }, ... } }
 -- so globals are output by category with a separator after each category; then each menu entry block with a separator after each. No unknown keys.
 -- When categories is nil, globals are output in original order with no separators.
-function config_parse.regenerateLines(lines, categories)
+-- includeArgs=false skips arg_OSDSYS_ITEM_* lines. maxEntries / maxPathsPerEntry apply per output order when provided.
+function config_parse.regenerateLines(lines, categories, includeArgs, maxEntries, maxPathsPerEntry)
   local out = {}
+  local allowArgs = includeArgs ~= false
   local function addSep()
     table.insert(out, { comment = SEPARATOR })
   end
@@ -871,13 +897,21 @@ function config_parse.regenerateLines(lines, categories)
   end
 
   local entries = config_parse.getMenuEntryIndices(lines)
-  for _, ent in ipairs(entries) do
+  for entPos, ent in ipairs(entries) do
+    if type(maxEntries) == "number" and maxEntries >= 0 and entPos > maxEntries then
+      break
+    end
     local idx = ent.idx
     local disabled = ent.disabled
     local name = config_parse.getMenuEntryName(lines, idx) or ""
     table.insert(out, { key = "name_OSDSYS_ITEM_" .. tostring(idx), value = name, comment = disabled })
     local paths = config_parse.getMenuEntryPaths(lines, idx)
-    for i, p in ipairs(paths) do
+    local pathLimit = #paths
+    if type(maxPathsPerEntry) == "number" and maxPathsPerEntry >= 0 then
+      pathLimit = math.min(pathLimit, maxPathsPerEntry)
+    end
+    for i = 1, pathLimit do
+      local p = paths[i]
       local pv = type(p) == "table" and p.value or p
       local pc = type(p) == "table" and p.comment or nil
       -- ## only when entry disabled AND path was individually disabled (comment == 2); else # or nil
@@ -885,12 +919,14 @@ function config_parse.regenerateLines(lines, categories)
       table.insert(out,
         { key = "path" .. tostring(i) .. "_OSDSYS_ITEM_" .. tostring(idx), value = pv, comment = pcomment })
     end
-    local args = config_parse.getMenuEntryArgs(lines, idx)
-    for _, a in ipairs(args) do
-      local av = type(a) == "table" and a.value or a
-      local ac = type(a) == "table" and a.comment or nil
-      local acomment = disabled and (ac == 2 and 2 or true) or (ac and true or nil)
-      table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = av, comment = acomment })
+    if allowArgs then
+      local args = config_parse.getMenuEntryArgs(lines, idx)
+      for _, a in ipairs(args) do
+        local av = type(a) == "table" and a.value or a
+        local ac = type(a) == "table" and a.comment or nil
+        local acomment = disabled and (ac == 2 and 2 or true) or (ac and true or nil)
+        table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = av, comment = acomment })
+      end
     end
     addSep()
   end
@@ -952,6 +988,15 @@ function config_parse.regenerateForSave(lines, fileType, options)
   local opt = options or {}
   if fileType == "osdmenu_cnf" then
     return config_parse.regenerateLines(lines, opt.osdmenu_cnf_categories or {})
+  end
+  if fileType == "freemcboot_cnf" then
+    local cats = opt.freemcboot_cnf_categories or opt.osdmenu_cnf_categories or {}
+    local maxEntries = (type(opt.FMCB_MAX_ENTRIES) == "number" and opt.FMCB_MAX_ENTRIES) or 99
+    local maxPathsPerEntry = (type(opt.FMCB_MAX_PATHS_PER_ENTRY) == "number" and opt.FMCB_MAX_PATHS_PER_ENTRY) or 3
+    local out = config_parse.regenerateLines(lines, cats, false, maxEntries, maxPathsPerEntry)
+    local maxLaunchKeyEntries = (type(opt.FMCB_BBL_MAX_ENTRIES) == "number" and opt.FMCB_BBL_MAX_ENTRIES) or 3
+    appendFreemcbootLaunchKeys(out, lines, maxLaunchKeyEntries)
+    return out
   end
   if fileType == "osdmbr_cnf" then
     return config_parse.regenerateLinesMBR(lines, opt.osdmbr_cnf or {})

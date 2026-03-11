@@ -8,11 +8,13 @@ local function findFirstFreeSlot(_, ctx, keyId, maxEntries)
   return nil
 end
 
-local function buildRows(_, ctx, keyId, maxEntries)
+local function buildRows(_, ctx, keyId, maxEntries, includeNameRow)
   local rows = {}
   local usedCount = 0
-  local nameVal = _.config_parse.getBblHotkeyName(ctx.lines, keyId) or ""
-  rows[#rows + 1] = { kind = "name", nameVal = nameVal }
+  if includeNameRow then
+    local nameVal = _.config_parse.getBblHotkeyName(ctx.lines, keyId) or ""
+    rows[#rows + 1] = { kind = "name", nameVal = nameVal }
+  end
   for i = 1, maxEntries do
     local slot = _.config_parse.getBblHotkeySlot(ctx.lines, keyId, i)
     if slot.used then
@@ -46,8 +48,11 @@ local function run(ctx)
     return
   end
 
-  local maxEntries = (_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10
-  local rows = buildRows(_, ctx, keyId, maxEntries)
+  local isFmcb = (ctx.fileType == "freemcboot_cnf")
+  local maxEntries = isFmcb and ((_.config_options and _.config_options.FMCB_BBL_MAX_ENTRIES) or 3) or
+      ((_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10)
+  local includeNameRow = not isFmcb
+  local rows = buildRows(_, ctx, keyId, maxEntries, includeNameRow)
   if #rows == 0 then
     ctx.state = "bbl_hotkeys"
     return
@@ -107,7 +112,11 @@ local function run(ctx)
     elseif row.kind == "entry" then
       local slot = row.data
       local p = (slot.path ~= "" and slot.path) or _.common_str.not_set
-      text = "E" .. tostring(row.slot) .. ": " .. p .. " " .. formatArgCount(slot.argCount)
+      if isFmcb then
+        text = "E" .. tostring(row.slot) .. ": " .. p
+      else
+        text = "E" .. tostring(row.slot) .. ": " .. p .. " " .. formatArgCount(slot.argCount)
+      end
       if slot.disabled then
         col = (i == ctx.bblEntrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)
       end
