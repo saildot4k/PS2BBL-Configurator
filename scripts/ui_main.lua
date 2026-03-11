@@ -103,18 +103,14 @@ local function getOpenParentState(s)
   if isBblContext(s.context) then
     return "select_config"
   end
-  if s.context == "osdmenu" then
-    if s.fileType == "osdmenu_cnf" or s.fileType == "osdgsm_cnf" then
+  if s.context == "freemcboot" or s.context == "freehddboot" then
+    if s.fileType == "freemcboot_cnf" then
       return "select_config"
     end
   end
-  if s.context == "freemcboot" then
-    if s.fileType == "freemcboot_cnf" then
-      local slots = (common.getPresentMcSlots and common.getPresentMcSlots()) or {}
-      if type(slots) == "table" and #slots > 1 then
-        return "choose_mc"
-      end
-      return "main"
+  if s.context == "osdmenu" then
+    if s.fileType == "osdmenu_cnf" or s.fileType == "osdgsm_cnf" then
+      return "select_config"
     end
   end
   return "main"
@@ -365,7 +361,7 @@ local function runMain(s, pad)
       s.chosenMcSlot = nil
       clearLoadChoiceState(s)
       clearPathPickerState(s)
-      s.state = "choose_mc"
+      s.state = "select_config"
     elseif s.mainSel == 2 then
       s.mainOverlayLogoKey = "freehdboot"
       s.context = "freehddboot"
@@ -373,7 +369,7 @@ local function runMain(s, pad)
       s.chosenMcSlot = nil
       clearLoadChoiceState(s)
       clearPathPickerState(s)
-      s.state = "open"
+      s.state = "select_config"
     elseif s.mainSel == 3 then
       s.mainOverlayLogoKey = "osdmenu"
       s.context = "osdmenu"
@@ -527,6 +523,30 @@ local function buildBblSourceOptions(iniFileType)
   return out
 end
 
+local function buildFreemcbootSourceOptions(context)
+  local dev_str = (C.strings and C.strings.devices) or {}
+  local out = {}
+  local fileName = (context == "freehddboot") and "FREEHDB.CNF" or "FREEMCB.CNF"
+
+  local function add(label, path, deviceType)
+    out[#out + 1] = {
+      label = label,
+      action = "known_paths",
+      paths = { path },
+      browseDeviceType = deviceType,
+    }
+  end
+
+  if context == "freehddboot" then
+    add(dev_str.hdd or "APA-formatted HDD", "hdd0:__sysconf/FMCB/FREEHDB.CNF", "hdd")
+  end
+  add(dev_str.memory_card_1 or "Memory Card 1", "mc0:/SYS-CONF/" .. fileName, "mc")
+  add(dev_str.memory_card_2 or "Memory Card 2", "mc1:/SYS-CONF/" .. fileName, "mc")
+  add(dev_str.usb_storage_0 or "USB Mass Storage 1", "mass:/" .. fileName, "usb")
+  add(dev_str.usb_storage_1 or "USB Mass Storage 2", "mass1:/" .. fileName, "usb")
+  return out
+end
+
 local function pickUsesHdd(pick)
   if not pick then return false end
   if pick.browseDeviceType == "hdd" then return true end
@@ -540,8 +560,10 @@ local function pickUsesHdd(pick)
   return false
 end
 
-local function applyKnownPathPick(s, pick, main_str)
+local function applyKnownPathPick(s, pick, main_str, opts)
   if not pick or pick.action ~= "known_paths" then return false end
+  opts = opts or {}
+  local includeBrowseIni = (opts.includeBrowseIni == true)
   s.loadChoices = {}
   s.loadPathExists = {}
   local paths = pick.paths or {}
@@ -550,14 +572,16 @@ local function applyKnownPathPick(s, pick, main_str)
     s.loadChoices[#s.loadChoices + 1] = p
     s.loadPathExists[#s.loadPathExists + 1] = pathExists(p)
   end
-  s.loadChoices[#s.loadChoices + 1] = {
-    kind = "browse_ini",
-    label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
-    browseDeviceName = pick.browseDeviceName,
-    browseDeviceId = pick.browseDeviceId,
-    browseDeviceType = pick.browseDeviceType,
-  }
-  s.loadPathExists[#s.loadPathExists + 1] = false
+  if includeBrowseIni then
+    s.loadChoices[#s.loadChoices + 1] = {
+      kind = "browse_ini",
+      label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
+      browseDeviceName = pick.browseDeviceName,
+      browseDeviceId = pick.browseDeviceId,
+      browseDeviceType = pick.browseDeviceType,
+    }
+    s.loadPathExists[#s.loadPathExists + 1] = false
+  end
   s.loadAllowCreate = true
   s.loadSel = 1
   s.loadReturnState = "select_config"
@@ -625,6 +649,54 @@ local function runSelectConfig(s, pad)
     return
   end
 
+  if s.context == "freemcboot" or s.context == "freehddboot" then
+    local options = buildFreemcbootSourceOptions(s.context)
+    if s.pendingKnownPathPick then
+      local pendingPick = s.pendingKnownPathPick
+      s.pendingKnownPathPick = nil
+      if applyKnownPathPick(s, pendingPick, main_str) then
+        return
+      end
+    end
+    local sel = getSelectConfigSel(s)
+    if sel < 1 then sel = 1 end
+    if sel > #options then sel = #options end
+    setSelectConfigSel(s, sel)
+
+    dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
+    common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM)
+    for i, opt in ipairs(options) do
+      local y = MY + sc(50) + (i - 1) * L
+      local col = (i == sel) and SE or common.GRAY
+      dlr(M + 20, y, i == sel, opt.label or "", col)
+    end
+    if (pad & PAD_UP) ~= 0 and sel > 1 then sel = sel - 1 end
+    if (pad & PAD_DOWN) ~= 0 and sel < #options then sel = sel + 1 end
+    setSelectConfigSel(s, sel)
+
+    if (pad & PAD_CROSS) ~= 0 then
+      local pick = options[sel]
+      s.fileType = "freemcboot_cnf"
+      clearPathPickerState(s)
+      if pick and pick.action == "known_paths" then
+        if pickUsesHdd(pick) and not s.hddReady then
+          s.pendingKnownPathPick = pick
+          s.initHddSuccessState = "select_config"
+          s.initHddCancelState = "select_config"
+          s.state = "initHdd"
+          s.initHddPhase = "load"
+          return
+        end
+        applyKnownPathPick(s, pick, main_str)
+      end
+    end
+
+    if (pad & PAD_CIRCLE) ~= 0 then
+      s.state = "main"
+    end
+    return
+  end
+
   local iniFileType = resolveIniFileType(s)
   if iniFileType ~= "ps2bbl_ini" and iniFileType ~= "psxbbl_ini" then
     s.state = "open"
@@ -635,7 +707,7 @@ local function runSelectConfig(s, pad)
   if s.pendingKnownPathPick then
     local pendingPick = s.pendingKnownPathPick
     s.pendingKnownPathPick = nil
-    if applyKnownPathPick(s, pendingPick, main_str) then
+    if applyKnownPathPick(s, pendingPick, main_str, { includeBrowseIni = true }) then
       return
     end
   end
@@ -676,7 +748,7 @@ local function runSelectConfig(s, pad)
         s.initHddPhase = "load"
         return
       end
-      applyKnownPathPick(s, pick, main_str)
+      applyKnownPathPick(s, pick, main_str, { includeBrowseIni = true })
     end
   end
 

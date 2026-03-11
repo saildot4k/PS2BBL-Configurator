@@ -103,6 +103,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
           "hdd0:__sysconf/FMCB/FREEHDB.CNF",
           "mc0:/SYS-CONF/FREEHDB.CNF",
           "mass:/FREEHDB.CNF",
+          "mass1:/FREEHDB.CNF",
         }
       end
       if chosenMcSlot == 1 then
@@ -110,6 +111,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
           "hdd0:__sysconf/FMCB/FREEHDB.CNF",
           "mc1:/SYS-CONF/FREEHDB.CNF",
           "mass:/FREEHDB.CNF",
+          "mass1:/FREEHDB.CNF",
         }
       end
       return {
@@ -117,24 +119,28 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
         "mc0:/SYS-CONF/FREEHDB.CNF",
         "mc1:/SYS-CONF/FREEHDB.CNF",
         "mass:/FREEHDB.CNF",
+        "mass1:/FREEHDB.CNF",
       }
     end
     if chosenMcSlot == 0 then
       return {
         "mc0:/SYS-CONF/FREEMCB.CNF",
         "mass:/FREEMCB.CNF",
+        "mass1:/FREEMCB.CNF",
       }
     end
     if chosenMcSlot == 1 then
       return {
         "mc1:/SYS-CONF/FREEMCB.CNF",
         "mass:/FREEMCB.CNF",
+        "mass1:/FREEMCB.CNF",
       }
     end
     return {
       "mc0:/SYS-CONF/FREEMCB.CNF",
       "mc1:/SYS-CONF/FREEMCB.CNF",
       "mass:/FREEMCB.CNF",
+      "mass1:/FREEMCB.CNF",
     }
   end
   if fileType == "osdmenu_cnf" then
