@@ -88,8 +88,13 @@ local function resolveNextOsdItemKey(lines)
 end
 
 local overlayLogoCache = {}
-local OVERLAY_LOGO_OPACITY = 0.85 -- visible overlay above background
-local OVERLAY_LOGO_COLOR = Color.new(0x80, 0x80, 0x80, math.floor(0x80 * OVERLAY_LOGO_OPACITY + 0.5))
+local OVERLAY_LOGO_OPACITY = 0.15 -- 85% transparent
+local OVERLAY_LOGO_OPACITY_R3 = 1.0 -- keep splash/title logo fully visible if selected
+
+local function getOverlayLogoColor(key)
+  local opacity = (key == "r3configurat3r") and OVERLAY_LOGO_OPACITY_R3 or OVERLAY_LOGO_OPACITY
+  return Color.new(0x80, 0x80, 0x80, math.floor(0x80 * opacity + 0.5))
+end
 
 local function getSelectionOverlayLogoTexture(key)
   if not key or key == "" then return nil end
@@ -112,11 +117,6 @@ end
 
 local function drawSelectionOverlayLogo(ctx)
   if not ctx then return end
-  if ctx.state == "main" then
-    -- Returning to first screen clears active selection logo until next selection.
-    ctx.mainOverlayLogoKey = nil
-    return
-  end
   local key = ctx.mainOverlayLogoKey
   if not key or key == "" then return end
   local tex = getSelectionOverlayLogoTexture(key)
@@ -137,9 +137,9 @@ local function drawSelectionOverlayLogo(ctx)
   local y = math.floor((sh - dh) / 2)
 
   if Graphics.drawScaleImage then
-    Graphics.drawScaleImage(tex, x, y, dw, dh, OVERLAY_LOGO_COLOR)
+    Graphics.drawScaleImage(tex, x, y, dw, dh, getOverlayLogoColor(key))
   else
-    Graphics.drawImage(tex, x, y, OVERLAY_LOGO_COLOR)
+    Graphics.drawImage(tex, x, y, getOverlayLogoColor(key))
   end
 end
 

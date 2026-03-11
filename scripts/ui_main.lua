@@ -280,6 +280,17 @@ local function runMain(s, pad)
   local egsmIndex = egsmEnabled and 6 or nil
   local ps2bblIndex = egsmEnabled and 7 or 6
   local psxbblIndex = egsmEnabled and 8 or 7
+  local function getMainOverlayLogoKey(sel)
+    if sel == 1 then return "freemcboot" end
+    if sel == 2 then return "freehdboot" end
+    if sel == 3 then return "osdmenu" end
+    if sel == 4 then return "osdmenu_mbr" end
+    if sel == 5 then return "hosdmenu" end
+    if egsmEnabled and sel == egsmIndex then return "osdmenu" end
+    if sel == ps2bblIndex then return "ps2bbl" end
+    if sel == psxbblIndex then return "psxbbl" end
+    return nil
+  end
 
   if type(s.main) ~= "table" or #s.main ~= expectedMainCount then
     s.main = buildMainChoices(main_str)
@@ -316,6 +327,7 @@ local function runMain(s, pad)
   if (pad & PAD_DOWN) ~= 0 and s.mainSel < #s.main then
     s.mainSel = s.mainSel + 1
   end
+  s.mainOverlayLogoKey = getMainOverlayLogoKey(s.mainSel)
   if (pad & PAD_START) ~= 0 and not s.mainExitPrompt then s.mainExitPrompt = true end
   if s.mainExitPrompt then
     local msg = main_str.main_exit_prompt or main_str.main_exit
@@ -425,6 +437,12 @@ local function runChooseMc(s, pad)
   local SE = common.SELECTED_ENTRY
   local slots = common.getPresentMcSlots()
   if #slots == 0 then
+    if s.context == "freemcboot" and s.fileType == "freemcboot_cnf" then
+      -- FreeMCBoot can still be loaded/created on mass:/ even when no MC is inserted.
+      s.chosenMcSlot = nil
+      s.state = "open"
+      return
+    end
     dt(s.font, s.drawMode, M, MY, 1.1, main_str.no_memory_card, common.WHITE)
     dt(s.font, s.drawMode, M, MY + sc(30), 0.8, main_str.insert_mc, common.GRAY)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.circle_back_items, nil, common.DIM)
@@ -509,6 +527,44 @@ local function buildBblSourceOptions(iniFileType)
   return out
 end
 
+local function pickUsesHdd(pick)
+  if not pick then return false end
+  if pick.browseDeviceType == "hdd" then return true end
+  local paths = pick.paths or {}
+  for i = 1, #paths do
+    local p = tostring(paths[i] or "")
+    if p:match("^hdd%d:") or p:match("^pfs%d:/") then
+      return true
+    end
+  end
+  return false
+end
+
+local function applyKnownPathPick(s, pick, main_str)
+  if not pick or pick.action ~= "known_paths" then return false end
+  s.loadChoices = {}
+  s.loadPathExists = {}
+  local paths = pick.paths or {}
+  for i = 1, #paths do
+    local p = paths[i]
+    s.loadChoices[#s.loadChoices + 1] = p
+    s.loadPathExists[#s.loadPathExists + 1] = pathExists(p)
+  end
+  s.loadChoices[#s.loadChoices + 1] = {
+    kind = "browse_ini",
+    label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
+    browseDeviceName = pick.browseDeviceName,
+    browseDeviceId = pick.browseDeviceId,
+    browseDeviceType = pick.browseDeviceType,
+  }
+  s.loadPathExists[#s.loadPathExists + 1] = false
+  s.loadAllowCreate = true
+  s.loadSel = 1
+  s.loadReturnState = "select_config"
+  s.state = "choose_load"
+  return true
+end
+
 local function runSelectConfig(s, pad)
   local main_str = (C.strings and C.strings.main) or {}
   local path_str = (C.strings and C.strings.path_picker) or {}
@@ -576,6 +632,13 @@ local function runSelectConfig(s, pad)
   end
 
   local options = buildBblSourceOptions(iniFileType)
+  if s.pendingKnownPathPick then
+    local pendingPick = s.pendingKnownPathPick
+    s.pendingKnownPathPick = nil
+    if applyKnownPathPick(s, pendingPick, main_str) then
+      return
+    end
+  end
   local sel = getSelectConfigSel(s)
   if sel < 1 then sel = 1 end
   if sel > #options then sel = #options end
@@ -605,26 +668,15 @@ local function runSelectConfig(s, pad)
     s.fileType = iniFileType
     clearPathPickerState(s)
     if pick and pick.action == "known_paths" then
-      s.loadChoices = {}
-      s.loadPathExists = {}
-      local paths = pick.paths or {}
-      for i = 1, #paths do
-        local p = paths[i]
-        s.loadChoices[#s.loadChoices + 1] = p
-        s.loadPathExists[#s.loadPathExists + 1] = pathExists(p)
+      if pickUsesHdd(pick) and not s.hddReady then
+        s.pendingKnownPathPick = pick
+        s.initHddSuccessState = "select_config"
+        s.initHddCancelState = "select_config"
+        s.state = "initHdd"
+        s.initHddPhase = "load"
+        return
       end
-      s.loadChoices[#s.loadChoices + 1] = {
-        kind = "browse_ini",
-        label = main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)",
-        browseDeviceName = pick.browseDeviceName,
-        browseDeviceId = pick.browseDeviceId,
-        browseDeviceType = pick.browseDeviceType,
-      }
-      s.loadPathExists[#s.loadPathExists + 1] = false
-      s.loadAllowCreate = true
-      s.loadSel = 1
-      s.loadReturnState = "select_config"
-      s.state = "choose_load"
+      applyKnownPathPick(s, pick, main_str)
     end
   end
 
@@ -673,9 +725,11 @@ local function runInitHdd(s, pad)
       if common.isHddPresent() then
         s.hddReady = true
         s.hddNotFound = nil
-        s.state = "open"
+        s.state = s.initHddSuccessState or "open"
         s.initHddPhase = nil
         s.initHddFrames = nil
+        s.initHddSuccessState = nil
+        s.initHddCancelState = nil
         return
       end
     end
@@ -712,8 +766,11 @@ local function runInitHdd(s, pad)
     dt(s.font, s.drawMode, math.max(M, cx), cy, 1.1, msg, common.WHITE)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.circle_back_items, nil, common.DIM)
     if (pad & PAD_CIRCLE) ~= 0 then
-      s.state = "main"
+      s.state = s.initHddCancelState or "main"
       s.initHddPhase = nil
+      s.initHddSuccessState = nil
+      s.initHddCancelState = nil
+      s.pendingKnownPathPick = nil
     end
   end
 end
@@ -723,6 +780,9 @@ local function runOpen(s, pad)
   if (s.context == "hosdmenu" or s.context == "mbr") and not s.hddReady then
     s.state = "initHdd"
     s.initHddPhase = "load"
+    s.initHddSuccessState = "open"
+    s.initHddCancelState = "main"
+    s.pendingKnownPathPick = nil
     return
   end
   local dt = common.drawText
@@ -757,6 +817,36 @@ local function runOpen(s, pad)
     return
   end
   local locations = C.config_options.getLocations(s.context, s.fileType, s.chosenMcSlot)
+  if s.fileType == "freemcboot_cnf" and (s.context == "freemcboot" or s.context == "freehddboot") and
+      type(locations) == "table" and #locations > 0 then
+    local prevPath = nil
+    if s.loadChoices and s.loadSel and s.loadChoices[s.loadSel] then
+      prevPath = s.loadChoices[s.loadSel]
+    end
+    s.loadChoices = {}
+    s.loadPathExists = {}
+    for i = 1, #locations do
+      local p = locations[i]
+      s.loadChoices[#s.loadChoices + 1] = p
+      s.loadPathExists[#s.loadPathExists + 1] = pathExists(p)
+    end
+    if prevPath then
+      local foundIdx = nil
+      for i = 1, #s.loadChoices do
+        if s.loadChoices[i] == prevPath then
+          foundIdx = i
+          break
+        end
+      end
+      s.loadSel = foundIdx or s.loadSel or 1
+    else
+      s.loadSel = s.loadSel or 1
+    end
+    s.loadAllowCreate = true
+    s.loadReturnState = getOpenParentState(s)
+    s.state = "choose_load"
+    return
+  end
   local existing = findExistingPathsWithDeviceAccess(locations)
   if #existing == 0 then
     if C.config_options and C.config_options.getDefaultLocation then

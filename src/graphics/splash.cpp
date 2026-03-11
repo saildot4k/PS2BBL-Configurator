@@ -24,14 +24,14 @@ void showSplashScreen(void) {
     float th = (float)tex_title->Height;
     float cx = (float)w * 0.5f;
     float cy = (float)h * 0.5f - 30.0f;
-    drawImage(tex_title, cx - tw / 2, cy - th / 2, tw, th, 0.0f, 0.0f, tw, th, GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80));
+    drawImage(tex_title, cx - tw / 2, cy - th / 2, tw, th, 0.0f, 0.0f, tw, th, GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x80));
   }
   if (tex_loading) {
     float lw = (float)tex_loading->Width;
     float lh = (float)tex_loading->Height;
     float cx = (float)w * 0.5f;
     float cy = (float)(h - 100);
-    drawImage(tex_loading, cx - lw / 2, cy - lh / 2, lw, lh, 0.0f, 0.0f, lw, lh, GS_SETREG_RGBA(0x80, 0x80, 0x80, 0x80));
+    drawImage(tex_loading, cx - lw / 2, cy - lh / 2, lw, lh, 0.0f, 0.0f, lw, lh, GS_SETREG_RGBA(0xFF, 0xFF, 0xFF, 0x80));
   }
 
   flipScreen();
