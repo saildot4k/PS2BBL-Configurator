@@ -224,8 +224,8 @@ local function buildBblIniAutoOptions()
       max = 600000,
       intPadDeltas = { left = -100, L1 = -1000, L2 = -10000, R2 = 10000, R1 = 1000, right = 100 },
       intPadLabels = { left = "-0.1s", L1 = "-1s", L2 = "-10s", R2 = "+10s", R1 = "+1s", right = "+0.1s" },
-      label = "TIMER",
-      desc = "Seconds to wait for key input before AUTO launch (saved as milliseconds).",
+      label = "Timer:",
+      desc = "Seconds until this list is executed.",
     },
     {
       key = "NAME_AUTO",

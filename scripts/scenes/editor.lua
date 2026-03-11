@@ -1,14 +1,20 @@
 --[[ Editor state: config option list and category list (OSDMENU). ]]
 
-local function formatTimerSeconds(msText)
+local function formatTimerSeconds(msText, unitSingular, unitPlural)
   local ms = tonumber(msText or "")
   if not ms then return msText end
-  if ms <= 0 then return "0" end
+  local singular = unitSingular or "second"
+  local plural = unitPlural or "seconds"
+  if ms <= 0 then return "0 " .. plural end
   local sec10 = math.floor((ms + 50) / 100)
+  local secText
   if sec10 % 10 == 0 then
-    return tostring(math.floor(sec10 / 10))
+    secText = tostring(math.floor(sec10 / 10))
+  else
+    secText = string.format("%.1f", sec10 / 10)
   end
-  return string.format("%.1f", sec10 / 10)
+  local unit = (secText == "1") and singular or plural
+  return secText .. " " .. unit
 end
 
 local function formatArgCount(n)
@@ -242,7 +248,10 @@ local function run(ctx)
         end
       end
       if o.key == "KEY_READ_WAIT_TIME" and valDisplay and valDisplay ~= "" then
-        valDisplay = formatTimerSeconds(valDisplay)
+        local commonStrings = _.common_str or {}
+        local unitSingular = commonStrings.second or "second"
+        local unitPlural = commonStrings.seconds or "seconds"
+        valDisplay = formatTimerSeconds(valDisplay, unitSingular, unitPlural)
       end
       local inlineAutoRow = false
       if o.key == "NAME_AUTO" then

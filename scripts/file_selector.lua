@@ -96,6 +96,60 @@ local function getBblPathDeviceVisibility()
   return nil
 end
 
+local function nextNaturalChunk(s, idx)
+  local first = s:sub(idx, idx)
+  if first == "" then return "", idx, false end
+  local isDigit = (first:match("%d") ~= nil)
+  local j = idx
+  while j <= #s do
+    local d = (s:sub(j, j):match("%d") ~= nil)
+    if d ~= isDigit then break end
+    j = j + 1
+  end
+  return s:sub(idx, j - 1), j, isDigit
+end
+
+local function naturalLessText(a, b)
+  local sa = tostring(a or "")
+  local sb = tostring(b or "")
+  local la = sa:lower()
+  local lb = sb:lower()
+  local ia, ib = 1, 1
+
+  while ia <= #la and ib <= #lb do
+    local ca, na, da = nextNaturalChunk(la, ia)
+    local cb, nb, db = nextNaturalChunk(lb, ib)
+    if da and db then
+      local ta = ca:gsub("^0+", "")
+      local tb = cb:gsub("^0+", "")
+      if ta == "" then ta = "0" end
+      if tb == "" then tb = "0" end
+      if #ta ~= #tb then return #ta < #tb end
+      if ta ~= tb then return ta < tb end
+      if #ca ~= #cb then return #ca < #cb end
+    else
+      if ca ~= cb then return ca < cb end
+    end
+    ia, ib = na, nb
+  end
+
+  if #la ~= #lb then return #la < #lb end
+  return sa < sb
+end
+
+local function sortEntriesByName(entries, directoriesFirst)
+  if type(entries) ~= "table" or #entries < 2 then return entries end
+  table.sort(entries, function(a, b)
+    local ad = not not (a and a.directory)
+    local bd = not not (b and b.directory)
+    if directoriesFirst and ad ~= bd then
+      return ad and not bd
+    end
+    return naturalLessText(a and a.name, b and b.name)
+  end)
+  return entries
+end
+
 local function isVisible(visibility, key)
   if not visibility or not key then return true end
   local v = visibility[key]
@@ -217,6 +271,7 @@ function file_selector.getHddPartitions(hddNum)
       table.insert(out, { name = name, full = full })
     end
   end
+  sortEntriesByName(out, false)
   return out
 end
 
@@ -239,6 +294,7 @@ function file_selector.listDirectory(path)
     table.insert(out, { name = name, full = full, directory = isDir })
     ::continue::
   end
+  sortEntriesByName(out, true)
   return out
 end
 
