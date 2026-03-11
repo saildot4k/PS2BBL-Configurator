@@ -88,7 +88,7 @@ local function resolveNextOsdItemKey(lines)
 end
 
 local overlayLogoCache = {}
-local OVERLAY_LOGO_OPACITY = 0.15 -- 85% transparency
+local OVERLAY_LOGO_OPACITY = 0.85 -- visible overlay above background
 local OVERLAY_LOGO_COLOR = Color.new(0x80, 0x80, 0x80, math.floor(0x80 * OVERLAY_LOGO_OPACITY + 0.5))
 
 local function getSelectionOverlayLogoTexture(key)
@@ -98,10 +98,6 @@ local function getSelectionOverlayLogoTexture(key)
     return (cached ~= false) and cached or nil
   end
   local path = "res/logo_" .. tostring(key) .. ".png"
-  if not common.tryOpen(path) then
-    overlayLogoCache[key] = false
-    return nil
-  end
   local ok, img = pcall(Graphics.loadImage, path)
   if ok and img then
     if Graphics.setImageFilters and LINEAR then

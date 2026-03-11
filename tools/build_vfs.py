@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Build a virtual filesystem binary from all files under scripts/.
+Build a virtual filesystem binary from:
+  - all files under scripts/
+  - all res/logo_*.png files
 
 Binary format (all multi-byte values little-endian):
 
@@ -42,22 +44,37 @@ def main():
         sys.stderr.write("No scripts directory under %s\n" % root)
         sys.exit(1)
 
+    source_paths = []
+    for dirpath, _dirnames, filenames in os.walk(scripts_dir):
+        for name in sorted(filenames):
+            source_paths.append(os.path.join(dirpath, name))
+
+    res_dir = os.path.join(root, "res")
+    if os.path.isdir(res_dir):
+        for name in sorted(os.listdir(res_dir)):
+            lower = name.lower()
+            if not (lower.startswith("logo_") and lower.endswith(".png")):
+                continue
+            path = os.path.join(res_dir, name)
+            if os.path.isfile(path):
+                source_paths.append(path)
+
+    source_paths.sort(key=lambda p: os.path.relpath(p, root).replace("\\", "/"))
+
     entries = []  # (path_bytes, size)
     data_chunks = []
 
-    for dirpath, _dirnames, filenames in os.walk(scripts_dir):
-        for name in sorted(filenames):
-            path = os.path.join(dirpath, name)
-            rel = os.path.relpath(path, root).replace("\\", "/")
-            with open(path, "rb") as f:
-                content = f.read()
-            size = len(content)
-            path_bytes = rel.encode("utf-8") + b"\0"
-            if len(path_bytes) > 0x7FFFFFFF:
-                sys.stderr.write("Path too long: %s\n" % rel)
-                sys.exit(1)
-            entries.append((path_bytes, size))
-            data_chunks.append(content)
+    for path in source_paths:
+        rel = os.path.relpath(path, root).replace("\\", "/")
+        with open(path, "rb") as f:
+            content = f.read()
+        size = len(content)
+        path_bytes = rel.encode("utf-8") + b"\0"
+        if len(path_bytes) > 0x7FFFFFFF:
+            sys.stderr.write("Path too long: %s\n" % rel)
+            sys.exit(1)
+        entries.append((path_bytes, size))
+        data_chunks.append(content)
 
     # Header: path is null-terminated C string, path_len = storage size (multiple of 4)
     path_align = 4
