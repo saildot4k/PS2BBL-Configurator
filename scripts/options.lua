@@ -73,6 +73,21 @@ local function buildPsxBblIniLocations()
   return out
 end
 
+local function appendOsdMcPaths(out, slot, fileName)
+  appendUnique(out, "mc" .. tostring(slot) .. ":/SYS-CONF/" .. fileName)
+end
+
+local function buildOsdMcLocations(chosenMcSlot, fileName)
+  local out = {}
+  if chosenMcSlot == 0 or chosenMcSlot == 1 then
+    appendOsdMcPaths(out, chosenMcSlot, fileName)
+    return out
+  end
+  appendOsdMcPaths(out, 0, fileName)
+  appendOsdMcPaths(out, 1, fileName)
+  return out
+end
+
 -- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
 function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "ps2bbl_ini" then
@@ -124,9 +139,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
   end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then
-      if chosenMcSlot == 0 then return { "mc0:/osdmenu/OSDMENU.CNF" } end
-      if chosenMcSlot == 1 then return { "mc1:/osdmenu/OSDMENU.CNF" } end
-      return { "mc0:/osdmenu/OSDMENU.CNF", "mc1:/osdmenu/OSDMENU.CNF" }
+      return buildOsdMcLocations(chosenMcSlot, "OSDMENU.CNF")
     end
     if context == "hosdmenu" then return { "pfs0:/osdmenu/OSDMENU.CNF" } end
     return {}
@@ -143,9 +156,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
       return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF", "pfs0:/osdmenu/OSDGSM.CNF" }
     end
     if context == "osdmenu" then
-      if chosenMcSlot == 0 then return { "mc0:/osdmenu/OSDGSM.CNF" } end
-      if chosenMcSlot == 1 then return { "mc1:/osdmenu/OSDGSM.CNF" } end
-      return { "mc0:/osdmenu/OSDGSM.CNF", "mc1:/osdmenu/OSDGSM.CNF" }
+      return buildOsdMcLocations(chosenMcSlot, "OSDGSM.CNF")
     end
     if context == "hosdmenu" or context == "mbr" then
       return { "pfs0:/osdmenu/OSDGSM.CNF" }
