@@ -96,6 +96,17 @@ local function getOverlayLogoColor(key)
   return Color.new(0x80, 0x80, 0x80, math.floor(0x80 * opacity + 0.5))
 end
 
+local function logoFileExists(path)
+  if type(doesFileExist) == "function" then
+    local ok, exists = pcall(doesFileExist, path)
+    if ok then return exists == true end
+  end
+  if common and common.tryOpen then
+    return common.tryOpen(path)
+  end
+  return false
+end
+
 local function getSelectionOverlayLogoTexture(key)
   if not key or key == "" then return nil end
   local cached = overlayLogoCache[key]
@@ -103,6 +114,10 @@ local function getSelectionOverlayLogoTexture(key)
     return (cached ~= false) and cached or nil
   end
   local path = "res/logo_" .. tostring(key) .. ".png"
+  if not logoFileExists(path) then
+    overlayLogoCache[key] = false
+    return nil
+  end
   local ok, img = pcall(Graphics.loadImage, path)
   if ok and img then
     if Graphics.setImageFilters and LINEAR then
