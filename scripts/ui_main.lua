@@ -75,15 +75,16 @@ end
 
 local function buildMainChoices(main_str)
   local out = {
-    main_str.main_ps2bbl_mc or "PS2BBL",
-    main_str.main_psxbbl_mc or "PSXBBL",
+    main_str.main_freemcboot or "FreeMCBoot",
+    main_str.main_freehddboot or "FreeHDBoot",
     main_str.main_osdmenu or "OSDMenu",
     main_str.main_osdmenu_mbr or "OSDMenu MBR",
     main_str.main_hosdmenu or "HOSDMenu",
-    main_str.main_freemcboot or "FreeMCBoot",
+    main_str.main_ps2bbl_mc or "PS2BBL",
+    main_str.main_psxbbl_mc or "PSXBBL",
   }
   if C.config_options and C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled() then
-    table.insert(out, #out, main_str.main_egsm or "eGSM")
+    table.insert(out, 6, main_str.main_egsm or "eGSM")
   end
   return out
 end
@@ -275,9 +276,10 @@ local function runMain(s, pad)
 
   local egsmEnabled = (C.config_options and C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled()) or
       false
-  local expectedMainCount = egsmEnabled and 7 or 6
+  local expectedMainCount = egsmEnabled and 8 or 7
   local egsmIndex = egsmEnabled and 6 or nil
-  local freemcbootIndex = egsmEnabled and 7 or 6
+  local ps2bblIndex = egsmEnabled and 7 or 6
+  local psxbblIndex = egsmEnabled and 8 or 7
 
   if type(s.main) ~= "table" or #s.main ~= expectedMainCount then
     s.main = buildMainChoices(main_str)
@@ -345,19 +347,19 @@ local function runMain(s, pad)
   end
   if (pad & PAD_CROSS) ~= 0 then
     if s.mainSel == 1 then
-      s.context = "ps2bbl"
-      s.fileType = "ps2bbl_ini"
+      s.context = "freemcboot"
+      s.fileType = "freemcboot_cnf"
       s.chosenMcSlot = nil
       clearLoadChoiceState(s)
       clearPathPickerState(s)
-      s.state = "select_config"
+      s.state = "choose_mc"
     elseif s.mainSel == 2 then
-      s.context = "psxbbl"
-      s.fileType = "psxbbl_ini"
+      s.context = "freehddboot"
+      s.fileType = "freemcboot_cnf"
       s.chosenMcSlot = nil
       clearLoadChoiceState(s)
       clearPathPickerState(s)
-      s.state = "select_config"
+      s.state = "open"
     elseif s.mainSel == 3 then
       s.context = "osdmenu"
       s.fileType = "osdmenu_cnf"
@@ -386,13 +388,20 @@ local function runMain(s, pad)
       clearLoadChoiceState(s)
       clearPathPickerState(s)
       s.state = "choose_mc"
-    elseif s.mainSel == freemcbootIndex then
-      s.context = "freemcboot"
-      s.fileType = "freemcboot_cnf"
+    elseif s.mainSel == ps2bblIndex then
+      s.context = "ps2bbl"
+      s.fileType = "ps2bbl_ini"
       s.chosenMcSlot = nil
       clearLoadChoiceState(s)
       clearPathPickerState(s)
-      s.state = "choose_mc"
+      s.state = "select_config"
+    elseif s.mainSel == psxbblIndex then
+      s.context = "psxbbl"
+      s.fileType = "psxbbl_ini"
+      s.chosenMcSlot = nil
+      clearLoadChoiceState(s)
+      clearPathPickerState(s)
+      s.state = "select_config"
     end
   end
 end

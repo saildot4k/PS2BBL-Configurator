@@ -82,25 +82,44 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
     return buildPsxBblIniLocations()
   end
   if fileType == "freemcboot_cnf" then
+    if context == "freehddboot" then
+      if chosenMcSlot == 0 then
+        return {
+          "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+          "mc0:/SYS-CONF/FREEHDB.CNF",
+          "mass:/FREEHDB.CNF",
+        }
+      end
+      if chosenMcSlot == 1 then
+        return {
+          "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+          "mc1:/SYS-CONF/FREEHDB.CNF",
+          "mass:/FREEHDB.CNF",
+        }
+      end
+      return {
+        "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+        "mc0:/SYS-CONF/FREEHDB.CNF",
+        "mc1:/SYS-CONF/FREEHDB.CNF",
+        "mass:/FREEHDB.CNF",
+      }
+    end
     if chosenMcSlot == 0 then
       return {
         "mc0:/SYS-CONF/FREEMCB.CNF",
         "mass:/FREEMCB.CNF",
-        "hdd0:__sysconf/FMCB/FREEHDB.CNF",
       }
     end
     if chosenMcSlot == 1 then
       return {
         "mc1:/SYS-CONF/FREEMCB.CNF",
         "mass:/FREEMCB.CNF",
-        "hdd0:__sysconf/FMCB/FREEHDB.CNF",
       }
     end
     return {
       "mc0:/SYS-CONF/FREEMCB.CNF",
       "mc1:/SYS-CONF/FREEMCB.CNF",
       "mass:/FREEMCB.CNF",
-      "hdd0:__sysconf/FMCB/FREEHDB.CNF",
     }
   end
   if fileType == "osdmenu_cnf" then
@@ -145,6 +164,9 @@ function config_options.getDefaultLocation(context, fileType, chosenMcSlot)
     return buildBblDefaultMcPath("PSXBBL.INI", chosenMcSlot)
   end
   if fileType == "freemcboot_cnf" then
+    if context == "freehddboot" then
+      return "hdd0:__sysconf/FMCB/FREEHDB.CNF"
+    end
     return buildBblDefaultMcPath("FREEMCB.CNF", chosenMcSlot)
   end
   local loc = config_options.getLocations(context, fileType, chosenMcSlot)

@@ -96,15 +96,16 @@ local function mainLoop()
   local ctx = scene_module.initContext()
   ctx.font, ctx.drawMode, ctx.drawListRow = font, drawMode, drawListRow
   ctx.main = {
-    (strings.main.main_ps2bbl_mc or "PS2BBL"),
-    (strings.main.main_psxbbl_mc or "PSXBBL"),
+    (strings.main.main_freemcboot or "FreeMCBoot"),
+    (strings.main.main_freehddboot or "FreeHDBoot"),
     (strings.main.main_osdmenu or "OSDMenu"),
     (strings.main.main_osdmenu_mbr or "OSDMenu MBR"),
     (strings.main.main_hosdmenu or "HOSDMenu"),
-    (strings.main.main_freemcboot or "FreeMCBoot"),
+    (strings.main.main_ps2bbl_mc or "PS2BBL"),
+    (strings.main.main_psxbbl_mc or "PSXBBL"),
   }
   if config_options.isEgsmUiEnabled and config_options.isEgsmUiEnabled() then
-    table.insert(ctx.main, #ctx.main, (strings.main.main_egsm or "eGSM"))
+    table.insert(ctx.main, 6, (strings.main.main_egsm or "eGSM"))
   end
 
   local mainSel = 1

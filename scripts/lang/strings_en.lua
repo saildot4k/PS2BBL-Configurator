@@ -8,7 +8,7 @@ local strings = {}
 
 -- Main flow (main, choose_mc, select_config, initHdd, open, choose_load)
 strings.main = {
-  main_title = "PS2BBL Configurator",
+  main_title = "R3CONFIGURAT3R",
   main_sub = "Pick one of the options below",
   version_unknown = "unknown",
   main_hint_items = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "start", label = "Exit", row = 2 } },
@@ -20,6 +20,7 @@ strings.main = {
   main_hosdmenu = "HOSDMenu",
   main_egsm = "eGSM",
   main_freemcboot = "FreeMCBoot",
+  main_freehddboot = "FreeHDBoot",
   main_exit = "Exit to browser",
   main_exit_prompt = "Exit to browser?",
   main_exit_hint_items = { { pad = "cross", label = "Yes" }, { pad = "circle", label = "No" } },
