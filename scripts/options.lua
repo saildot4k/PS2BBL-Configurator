@@ -7,7 +7,7 @@ local config_options = {}
 
 -- UI feature toggles. Keep eGSM code present but hidden until enabled.
 config_options.FEATURES = {
-  egsm_ui = true,
+  egsm_ui = false,
 }
 
 -- Device visibility for PS2BBL/PSXBBL path picker (path_only context).
@@ -105,9 +105,9 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
   end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then
-      if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDMENU.CNF" } end
-      if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/OSDMENU.CNF" } end
-      return { "mc0:/SYS-CONF/OSDMENU.CNF", "mc1:/SYS-CONF/OSDMENU.CNF" }
+      if chosenMcSlot == 0 then return { "mc0:/osdmenu/OSDMENU.CNF" } end
+      if chosenMcSlot == 1 then return { "mc1:/osdmenu/OSDMENU.CNF" } end
+      return { "mc0:/osdmenu/OSDMENU.CNF", "mc1:/osdmenu/OSDMENU.CNF" }
     end
     if context == "hosdmenu" then return { "pfs0:/osdmenu/OSDMENU.CNF" } end
     return {}
@@ -124,9 +124,9 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
       return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF", "pfs0:/osdmenu/OSDGSM.CNF" }
     end
     if context == "osdmenu" then
-      if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDGSM.CNF" } end
-      if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/OSDGSM.CNF" } end
-      return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF" }
+      if chosenMcSlot == 0 then return { "mc0:/osdmenu/OSDGSM.CNF" } end
+      if chosenMcSlot == 1 then return { "mc1:/osdmenu/OSDGSM.CNF" } end
+      return { "mc0:/osdmenu/OSDGSM.CNF", "mc1:/osdmenu/OSDGSM.CNF" }
     end
     if context == "hosdmenu" or context == "mbr" then
       return { "pfs0:/osdmenu/OSDGSM.CNF" }

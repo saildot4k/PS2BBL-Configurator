@@ -101,9 +101,11 @@ local function mainLoop()
     (strings.main.main_osdmenu or "OSDMenu"),
     (strings.main.main_osdmenu_mbr or "OSDMenu MBR"),
     (strings.main.main_hosdmenu or "HOSDMenu"),
-    (strings.main.main_egsm or "eGSM"),
     (strings.main.main_freemcboot or "FreeMCBoot"),
   }
+  if config_options.isEgsmUiEnabled and config_options.isEgsmUiEnabled() then
+    table.insert(ctx.main, #ctx.main, (strings.main.main_egsm or "eGSM"))
+  end
 
   local mainSel = 1
   local context, fileType, currentPath, lines = "ps2bbl", nil, nil, nil

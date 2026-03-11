@@ -74,15 +74,18 @@ local function clearLoadChoiceState(s)
 end
 
 local function buildMainChoices(main_str)
-  return {
+  local out = {
     main_str.main_ps2bbl_mc or "PS2BBL",
     main_str.main_psxbbl_mc or "PSXBBL",
     main_str.main_osdmenu or "OSDMenu",
     main_str.main_osdmenu_mbr or "OSDMenu MBR",
     main_str.main_hosdmenu or "HOSDMenu",
-    main_str.main_egsm or "eGSM",
     main_str.main_freemcboot or "FreeMCBoot",
   }
+  if C.config_options and C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled() then
+    table.insert(out, #out, main_str.main_egsm or "eGSM")
+  end
+  return out
 end
 
 local function isBblContext(context)
@@ -263,7 +266,13 @@ local function runMain(s, pad)
   local sc = s.scaleY or function(y) return y end
   local SE = common.SELECTED_ENTRY
 
-  if type(s.main) ~= "table" or #s.main < 7 then
+  local egsmEnabled = (C.config_options and C.config_options.isEgsmUiEnabled and C.config_options.isEgsmUiEnabled()) or
+      false
+  local expectedMainCount = egsmEnabled and 7 or 6
+  local egsmIndex = egsmEnabled and 6 or nil
+  local freemcbootIndex = egsmEnabled and 7 or 6
+
+  if type(s.main) ~= "table" or #s.main ~= expectedMainCount then
     s.main = buildMainChoices(main_str)
   end
   if s.mainSel < 1 then s.mainSel = 1 end
@@ -363,14 +372,14 @@ local function runMain(s, pad)
       clearLoadChoiceState(s)
       clearPathPickerState(s)
       s.state = "open"
-    elseif s.mainSel == 6 then
+    elseif egsmEnabled and s.mainSel == egsmIndex then
       s.context = "osdmenu"
       s.fileType = "osdgsm_cnf"
       s.chosenMcSlot = nil
       clearLoadChoiceState(s)
       clearPathPickerState(s)
       s.state = "choose_mc"
-    elseif s.mainSel == 7 then
+    elseif s.mainSel == freemcbootIndex then
       s.context = "freemcboot"
       s.fileType = "freemcboot_cnf"
       s.chosenMcSlot = nil
