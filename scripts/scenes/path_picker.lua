@@ -460,14 +460,21 @@ local function run(ctx)
         end
       end
       if ctx.pathPickerLoading and ctx.pathPickerLoadingFrames >= LOAD_TIMEOUT_FRAMES then
+        local timeoutDevice = load.deviceId or (load.staticHdd and "hdd0") or load.deviceType or "device"
         ctx.pathPickerLoading = nil
         ctx.pathPickerLoadingFrames = nil
         ctx.pathPickerModulesLoaded = nil
-        ctx.pathPickerLoadingTimeoutMsg = true
+        ctx.pathPickerLoadingTimeoutMsg = tostring(timeoutDevice)
       end
     else
       if ctx.pathPickerLoadingTimeoutMsg then
+        local timeoutDevice = tostring(ctx.pathPickerLoadingTimeoutMsg)
         local msg = _.path_str.device_timeout
+        if type(msg) == "string" and msg:find("%%DEVICE%%") then
+          msg = msg:gsub("%%DEVICE%%", function() return timeoutDevice end)
+        else
+          msg = timeoutDevice .. " not found"
+        end
         local tw = _.common.calcTextWidth(_.font, msg, _.FONT_SCALE)
         local cx = _.common.centerX(_, tw)
         local cy = math.floor((_.MARGIN_Y + _.HINT_Y) / 2) - math.floor(_.LINE_H / 2)

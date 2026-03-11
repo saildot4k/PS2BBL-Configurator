@@ -138,7 +138,7 @@ strings.path_picker = {
   no_devices = "No hay dispositivos",
   waiting_for_device_drivers = "Esperando dispositivo...",
   circle_back_items = { { pad = "circle", label = "Atrás" } },
-  device_timeout = "Tiempo de espera del dispositivo agotado",
+  device_timeout = "No se encontró %DEVICE%",
   wildcard_confirm_title = "¿Usar ruta como comodín?",
   wildcard_confirm_hint = { { pad = "cross", label = "Sí" }, { pad = "circle", label = "No" } },
 }

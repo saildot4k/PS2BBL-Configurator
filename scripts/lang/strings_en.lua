@@ -138,7 +138,7 @@ strings.path_picker = {
   no_devices = "No devices",
   waiting_for_device_drivers = "Waiting for device...",
   circle_back_items = { { pad = "circle", label = "Back" } },
-  device_timeout = "Device timeout",
+  device_timeout = "%DEVICE% not found",
   wildcard_confirm_title = "Use path as wildcard?",
   wildcard_confirm_hint = { { pad = "cross", label = "Yes" }, { pad = "circle", label = "No" } },
 }
