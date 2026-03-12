@@ -30,12 +30,29 @@ The app scans in order and uses the first existing file.
 
 ### FreeMcBoot (`FREEMCB.CNF`)
 
-- Search Order: `mc0:/SYS-CONF/FREEMCB.CNF` -> `mc1:/SYS-CONF/FREEMCB.CNF` -> `mass:/FREEMCB.CNF`
-
+- `mc0:/SYS-CONF/FREEMCB.CNF` -> `mc1:/SYS-CONF/FREEMCB.CNF` -> `mass:/FREEMCB.CNF`
 
 ### Free HDBoot (`FREEHDB.CNF`)
 
-- Search Order: `hdd0:__sysconf/FMCB/FREEHDB.CNF` -> `mc0:/SYS-CONF/FREEHDB.CNF` -> `mc1:/SYS-CONF/FREEHDB.CNF` -> `mass:/FREEHDB.CNF`
+- `hdd0:__sysconf/FMCB/FREEHDB.CNF` -> `mc0:/SYS-CONF/FREEHDB.CNF` -> `mc1:/SYS-CONF/FREEHDB.CNF` -> `mass:/FREEHDB.CNF`
+
+### OSDMenu (`OSDMENU.CNF`, `OSDGSM.CSM`)
+
+- `mc0:/SYS-CONF/OSDMENU.CNF` -> `mc1:/SYS-CONF/OSDMENU.CNF`
+
+- `mc0:/SYS-CONF/OSDGSM.CNF` -> `mc1:/SYS-CONF/OSDGSM.CNF`
+
+### HOSDMenu (`OSDMENU.CNF, OSDGSM.CNF`)
+
+- `pfs0:/osdmenu/OSDMENU.CNF`
+
+- `pfs0:/osdmenu/OSDGSM.CNF`
+
+### OSDMenu MBR (`OSDMBR.CNF`, `OSDGSM.CNF`)
+
+- `pfs0:/osdmenu/OSDMBR.CNF`
+
+- `pfs0:/osdmenu/OSDGSM.CNF`
 
 ### PS2BBL Extended (`PS2BBL.INI` / `CONFIG.INI`)
 
@@ -56,32 +73,6 @@ The app scans in order and uses the first existing file.
 5. `hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI`
 6. `massX:/PS2BBL/CONFIG.INI`
 7. `mass:/PS2BBL/CONFIG.INI`
-
-### OSDMenu (`OSDMENU.CNF`)
-
-- Auto: `mc0:/SYS-CONF/OSDMENU.CNF` -> `mc1:/SYS-CONF/OSDMENU.CNF`
-
-- Memory Card slot 0 selected: `mc0:/SYS-CONF/OSDMENU.CNF`
-
-- Memory Card slot 1 selected: `mc1:/SYS-CONF/OSDMENU.CNF`
-
-- Auto: `mc0:/SYS-CONF/OSDGSM.CNF` -> `mc1:/SYS-CONF/OSDGSM.CNF`
-
-- Memory Card slot 0 selected: `mc0:/SYS-CONF/OSDGSM.CNF`
-
-- Memory Card slot 1 selected: `mc1:/SYS-CONF/OSDGSM.CNF`
-
-### HOSDMenu (`OSDMENU.CNF, OSDGSM.CNF`)
-
-- `pfs0:/osdmenu/OSDMENU.CNF`
-
-- `pfs0:/osdmenu/OSDGSM.CNF`
-
-### OSDMenu MBR (`OSDMBR.CNF`, `OSDGSM.CNF`)
-
-- `pfs0:/osdmenu/OSDMBR.CNF`
-
-- `pfs0:/osdmenu/OSDGSM.CNF`
 
 
 ## Config types
