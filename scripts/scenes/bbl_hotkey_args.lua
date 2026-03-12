@@ -1,7 +1,12 @@
 --[[ Argument editor for one BBL hotkey slot (ARG_<HOTKEY>_E#). ]]
 
 local arg_presets = dofile("scripts/scenes/arg_presets.lua")
+local arg_profiles = dofile("scripts/scenes/arg_profiles.lua")
 local arg_add_menu = dofile("scripts/scenes/arg_add_menu.lua")
+
+local function buildScopeKey(keyId, slot)
+  return "bbl_hotkey_args:" .. tostring(keyId or "") .. ":" .. tostring(slot or "")
+end
 
 local function run(ctx)
   local _ = ctx._
@@ -65,8 +70,16 @@ local function run(ctx)
   local entryPath = _.config_parse.getBblHotkeyPath(ctx.lines, keyId, slot)
   local isNhddlElfPath = arg_presets.isNhddlElfPath(entryPath)
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
-
-  local presetRows = arg_presets.buildBblRows(isNhddlElfPath)
+  local profileScopeKey = buildScopeKey(keyId, slot)
+  local profileOverrideId = arg_presets.getProfileOverride(ctx, profileScopeKey)
+  local profileState = arg_profiles.resolve({
+    surface = "bbl_hotkey",
+    context = ctx.context,
+    fileType = ctx.fileType,
+    hasNhddlPath = isNhddlElfPath,
+  }, profileOverrideId)
+  local presetRows = arg_profiles.buildAddRows(profileState)
+  local removeNhddlPair = true
 
   if ctx.bblArgAddMenu and total >= maxArgs then
     ctx.bblArgAddMenu = nil
@@ -84,8 +97,33 @@ local function run(ctx)
         ctx.state = "bbl_hotkey_args"
       end)
     end
-    local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ")"
-    if isNhddlElfPath then titleAdd = titleAdd .. " [NHDDL]" end
+    local function openTitleIdInput()
+      openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
+        local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if titleId ~= "" then
+          addArgValue("-titleid=" .. titleId)
+        end
+        ctx.state = "bbl_hotkey_args"
+      end)
+    end
+    local function openGsmInput()
+      openNewArgumentInput("eGSM value (example: fp2:1)", 31, function(val)
+        local gsm = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if gsm ~= "" then
+          addArgValue("-gsm=" .. gsm)
+        end
+        ctx.state = "bbl_hotkey_args"
+      end)
+    end
+    local function cycleProfileOverride()
+      local nextOverride = arg_profiles.nextOverrideId(profileState)
+      arg_presets.setProfileOverride(ctx, profileScopeKey, nextOverride)
+      ctx.bblArgAddMenu = true
+      ctx.bblArgAddSel = 1
+      ctx.bblArgAddScroll = 0
+    end
+    local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ") [" ..
+        arg_profiles.getMenuTag(profileState) .. "]"
     if arg_add_menu.run(ctx, {
           menuOpenKey = "bblArgAddMenu",
           selKey = "bblArgAddSel",
@@ -98,20 +136,18 @@ local function run(ctx)
             return arg_presets.rowDisabled(row, usedKnown, usedModes, total, maxArgs)
           end,
           onSelect = function(row)
-            if row.kind == "manual" then
+            if row.kind == "profile" then
+              cycleProfileOverride()
+            elseif row.kind == "manual" then
               openNewArgumentInput(_.menu_str.new_argument_prompt or "New argument", 255, function(val)
                 local v = val or ""
                 if v ~= "" then addArgValue(v) end
                 ctx.state = "bbl_hotkey_args"
               end)
             elseif row.kind == "titleid" then
-              openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
-                local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                if titleId ~= "" then
-                  addArgValue("-titleid=" .. titleId)
-                end
-                ctx.state = "bbl_hotkey_args"
-              end)
+              openTitleIdInput()
+            elseif row.kind == "gsm" then
+              openGsmInput()
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
@@ -210,7 +246,7 @@ local function run(ctx)
   end
 
   if total > 0 and (_.padEffective & _.PAD_SQUARE) ~= 0 then
-    local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.bblArgSel, true)
+    local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.bblArgSel, removeNhddlPair)
     setArgs(args2)
     ctx.bblArgSel = _.common.clampListSelection(ctx.bblArgSel, #args2)
   end

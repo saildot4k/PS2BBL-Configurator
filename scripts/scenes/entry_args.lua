@@ -1,7 +1,15 @@
 --[[ Arguments list for a menu entry or MBR boot key (when ctx.bootKey is set and we're in MBR). ]]
 
 local arg_presets = dofile("scripts/scenes/arg_presets.lua")
+local arg_profiles = dofile("scripts/scenes/arg_profiles.lua")
 local arg_add_menu = dofile("scripts/scenes/arg_add_menu.lua")
+
+local function buildScopeKey(ctx, isBoot)
+  if isBoot then
+    return "entry_args:boot:" .. tostring(ctx.context or "") .. ":" .. tostring(ctx.bootKey or "")
+  end
+  return "entry_args:entry:" .. tostring(ctx.context or "") .. ":" .. tostring(ctx.entryIdx or "")
+end
 
 local function run(ctx)
   local _ = ctx._
@@ -31,7 +39,7 @@ local function run(ctx)
 
   local hasCdrom = false
   for _, p in ipairs(paths or {}) do
-    if arg_presets.pathValue(p) == "cdrom" then
+    if arg_presets.pathValue(p):lower() == "cdrom" then
       hasCdrom = true
       break
     end
@@ -96,11 +104,19 @@ local function run(ctx)
   local args = getArgs()
   local total = #args
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
+  local profileScopeKey = buildScopeKey(ctx, isBoot)
+  local profileOverrideId = arg_presets.getProfileOverride(ctx, profileScopeKey)
+  local profileState = arg_profiles.resolve({
+    surface = "entry_args",
+    context = ctx.context,
+    fileType = ctx.fileType,
+    isBoot = isBoot,
+    hasNhddlPath = hasNhddlElfPath,
+  }, profileOverrideId)
+  local addRows = arg_profiles.buildAddRows(profileState)
+  local removeNhddlPair = arg_profiles.profileUsesNhddl(profileState.activeProfileId)
 
-  local nhddlPresetRows = nil
-  if hasNhddlElfPath then
-    nhddlPresetRows = arg_presets.buildEntryNhddlRows()
-  else
+  if hasCdrom and not isBoot then
     ctx.entryArgAddMenu = nil
     ctx.entryArgAddSel = nil
     ctx.entryArgAddScroll = nil
@@ -114,25 +130,59 @@ local function run(ctx)
     end)
   end
 
-  if ctx.entryArgAddMenu and nhddlPresetRows then
+  local function openTitleIdInput()
+    openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
+      local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if titleId ~= "" then
+        addArgValue("-titleid=" .. titleId)
+      end
+      ctx.state = "entry_args"
+    end)
+  end
+
+  local function openGsmInput()
+    openNewArgumentInput("eGSM value (example: fp2:1)", 31, function(val)
+      local gsm = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if gsm ~= "" then
+        addArgValue("-gsm=" .. gsm)
+      end
+      ctx.state = "entry_args"
+    end)
+  end
+
+  local function cycleProfileOverride()
+    local nextOverride = arg_profiles.nextOverrideId(profileState)
+    arg_presets.setProfileOverride(ctx, profileScopeKey, nextOverride)
+    ctx.entryArgAddMenu = true
+    ctx.entryArgAddSel = 1
+    ctx.entryArgAddScroll = 0
+  end
+
+  if ctx.entryArgAddMenu and #addRows > 0 then
     if arg_add_menu.run(ctx, {
           menuOpenKey = "entryArgAddMenu",
           selKey = "entryArgAddSel",
           scrollKey = "entryArgAddScroll",
-          rows = nhddlPresetRows,
-          title = "Add argument [NHDDL]",
+          rows = addRows,
+          title = "Add argument [" .. arg_profiles.getMenuTag(profileState) .. "]",
           descDefault = "Enter any custom argument manually.",
           rowStateKeyPrefix = "entry_args_add_row_",
           rowDisabledReason = function(row)
             return arg_presets.rowDisabled(row, usedKnown, usedModes, total)
           end,
           onSelect = function(row)
-            if row.kind == "manual" then
+            if row.kind == "profile" then
+              cycleProfileOverride()
+            elseif row.kind == "manual" then
               openNewArgumentInput(_.menu_str.new_argument_prompt, 79, function(val)
                 local v = val or ""
                 if v ~= "" then addArgValue(v) end
                 ctx.state = "entry_args"
               end)
+            elseif row.kind == "titleid" then
+              openTitleIdInput()
+            elseif row.kind == "gsm" then
+              openGsmInput()
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
@@ -142,7 +192,7 @@ local function run(ctx)
             end
           end,
         }) then
-      return
+        return
     end
   end
 
@@ -238,19 +288,10 @@ local function run(ctx)
     end
   end
 
-  if (_.padEffective & _.PAD_SELECT) ~= 0 and not hasCdrom then
-    if hasNhddlElfPath and nhddlPresetRows then
-      ctx.entryArgAddMenu = true
-      ctx.entryArgAddSel = ctx.entryArgAddSel or 1
-      ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
-    else
-      openNewArgumentInput(_.menu_str.new_argument_prompt, 79, function(val)
-        if (val or "") ~= "" then
-          local args2 = getArgs(); table.insert(args2, { value = val, disabled = false }); setArgs(args2)
-        end
-        ctx.state = "entry_args"
-      end)
-    end
+  if (_.padEffective & _.PAD_SELECT) ~= 0 and (isBoot or not hasCdrom) then
+    ctx.entryArgAddMenu = true
+    ctx.entryArgAddSel = ctx.entryArgAddSel or 1
+    ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
   end
 
   if (_.padEffective & _.PAD_L1) ~= 0 then
@@ -270,7 +311,7 @@ local function run(ctx)
 
   if (_.padEffective & _.PAD_SQUARE) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total then
-      local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.entryArgSel, hasNhddlElfPath)
+      local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.entryArgSel, removeNhddlPair)
       setArgs(args2)
       ctx.entryArgSel = _.common.clampListSelection(ctx.entryArgSel, #args2)
     end
