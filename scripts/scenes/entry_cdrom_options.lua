@@ -27,6 +27,7 @@ local function run(ctx)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.launch_disc_options_title, _.WHITE)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.8, _.menu_str.launch_disc_options_sub, _.DIM)
   local startY = _.MARGIN_Y + _.scaleY(50)
+  local maxLabelW = (_.VALUE_X or 360) - (_.MARGIN_X + 20) - 14
   local cdromStrings = _.strings.cdrom_options or {}
   local function cdromStringKey(argKey) return (argKey and argKey:gsub("^-", "")) or argKey end
   for i = 1, #opts do
@@ -36,6 +37,12 @@ local function run(ctx)
     local col = (i == ctx.cdromOptSel) and _.SELECTED_ENTRY or _.WHITE
     local coSt = cdromStrings[cdromStringKey(o.key)]
     local rowLabel = (coSt and coSt.label) or o.key
+    if _.common.fitListRowText then
+      rowLabel = _.common.fitListRowText(ctx, "entry_cdrom_row_" .. tostring(i), _.font, rowLabel, maxLabelW, _.FONT_SCALE,
+        i == ctx.cdromOptSel)
+    elseif _.common.truncateTextToWidth then
+      rowLabel = _.common.truncateTextToWidth(_.font, rowLabel, maxLabelW, _.FONT_SCALE)
+    end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.cdromOptSel, rowLabel, col)
     _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, on and _.common_str.on or _.common_str.off,
       on and _.WHITE or _.DIM)

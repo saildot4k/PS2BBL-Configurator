@@ -36,10 +36,18 @@ local function run(ctx)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(44), 0.8, pathsStr .. ", " .. argsStr, _.DIM)
   if ctx.entryEditSub < 1 then ctx.entryEditSub = 1 end
   if ctx.entryEditSub > #subOpts then ctx.entryEditSub = #subOpts end
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
   for i = 1, #subOpts do
     local y = _.MARGIN_Y + _.scaleY(90) + (i - 1) * _.LINE_H
     local col = (i == ctx.entryEditSub) and _.SELECTED_ENTRY or _.WHITE
-    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryEditSub, subOpts[i], col)
+    local label = subOpts[i]
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "menu_entry_edit_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.entryEditSub)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+    end
+    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryEditSub, label, col)
   end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.menu_str.cross_select_circle_back_items, nil,
     _.DIM, _.w - 2 * _.MARGIN_X)

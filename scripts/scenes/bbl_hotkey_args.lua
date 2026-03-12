@@ -309,7 +309,10 @@ local function run(ctx)
           text = text .. " (in use)"
         end
       end
-      if _.common.truncateTextToWidth then
+      if _.common.fitListRowText then
+        text = _.common.fitListRowText(ctx, "bbl_hotkey_args_add_row_" .. tostring(i), _.font, text, maxLabelW,
+          _.FONT_SCALE, i == ctx.bblArgAddSel)
+      elseif _.common.truncateTextToWidth then
         text = _.common.truncateTextToWidth(_.font, text, maxLabelW, _.FONT_SCALE)
       end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.bblArgAddScroll - 1) * _.LINE_H

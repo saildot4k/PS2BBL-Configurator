@@ -24,6 +24,7 @@ local function run(ctx)
   else
     ctx.entryScroll = 0
   end
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
   for i = ctx.entryScroll + 1, math.min(ctx.entryScroll + maxVis, total) do
     local ent = ctx.entryList[i]
     local idx = ent.idx
@@ -35,6 +36,12 @@ local function run(ctx)
     if ent.disabled then
       col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
           (_.DIM_ENTRY or _.DIM)
+    end
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "menu_entries_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.entrySel)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
     end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entrySel, label, col)
   end

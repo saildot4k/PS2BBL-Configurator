@@ -560,6 +560,7 @@ local function run(ctx)
         else
           ctx.pathPickerScroll = 0
         end
+        local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
         for i = 1, math.min(maxVis, totalCount - ctx.pathPickerScroll) do
           local listIdx = ctx.pathPickerScroll + i
           local displayName
@@ -574,6 +575,12 @@ local function run(ctx)
           end
           local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
           local col = greyed and _.DIM or ((listIdx == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY)
+          if _.common.fitListRowText then
+            displayName = _.common.fitListRowText(ctx, "path_picker_device_row_" .. tostring(listIdx), _.font,
+              displayName, maxLabelW, _.FONT_SCALE, listIdx == ctx.pathPickerSel)
+          elseif _.common.truncateTextToWidth then
+            displayName = _.common.truncateTextToWidth(_.font, displayName or "", maxLabelW, _.FONT_SCALE)
+          end
           _.drawListRow(_.MARGIN_X + 20, y, listIdx == ctx.pathPickerSel, displayName, col)
         end
         if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -751,12 +758,20 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #parts,
         _.DIM)
     end
+    local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
     for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + maxVis, #parts) do
       local p = parts[i]
       if not p then break end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.pathPickerScroll - 1) * _.LINE_H
       local col = (i == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY
-      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, p.name or _.common_str.empty, col)
+      local label = p.name or _.common_str.empty
+      if _.common.fitListRowText then
+        label = _.common.fitListRowText(ctx, "path_picker_part_row_" .. tostring(i), _.font, label, maxLabelW,
+          _.FONT_SCALE, i == ctx.pathPickerSel)
+      elseif _.common.truncateTextToWidth then
+        label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+      end
+      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, label, col)
     end
     if #parts == 0 then
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(60), _.FONT_SCALE, _.path_str.no_partitions, _
@@ -867,6 +882,7 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #show,
         _.DIM)
     end
+    local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
     for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + maxVis, #show) do
       local e = show[i]
       if not e then break end
@@ -874,6 +890,12 @@ local function run(ctx)
       local label = e.name or _.common_str.empty
       if e.directory and label ~= "" then label = label .. "/" end
       local col = (i == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY
+      if _.common.fitListRowText then
+        label = _.common.fitListRowText(ctx, "path_picker_browse_row_" .. tostring(i), _.font, label, maxLabelW,
+          _.FONT_SCALE, i == ctx.pathPickerSel)
+      elseif _.common.truncateTextToWidth then
+        label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+      end
       _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, label, col)
     end
     if #show == 0 then

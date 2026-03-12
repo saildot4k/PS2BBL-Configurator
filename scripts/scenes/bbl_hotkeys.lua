@@ -45,7 +45,10 @@ local function run(ctx)
     local disp = isFmcb and tostring(keyId or "") or ((nameVal ~= "" and nameVal) or _.common_str.empty)
     local line = disp
     local lineMaxW = maxLabelW - iconW - iconGap
-    if _.common.truncateTextToWidth then
+    if _.common.fitListRowText then
+      line = _.common.fitListRowText(ctx, "bbl_hotkeys_row_" .. tostring(i), _.font, line, lineMaxW, _.FONT_SCALE,
+        i == ctx.bblHotkeySel)
+    elseif _.common.truncateTextToWidth then
       line = _.common.truncateTextToWidth(_.font, line, lineMaxW, _.FONT_SCALE)
     end
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.bblHotkeyScroll - 1) * _.LINE_H

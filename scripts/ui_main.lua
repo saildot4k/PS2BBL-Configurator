@@ -513,14 +513,14 @@ local function buildBblSourceOptions(iniFileType)
       browseDeviceType = browseDeviceType,
     }
   end
-  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" }, "mmce1:", nil, "mmce")
+  addDevice("mc", dev_str.memory_card_1 or "Memory Card 1", { "mc0:/SYS-CONF/" .. iniName }, "mc0:")
+  addDevice("mc", dev_str.memory_card_2 or "Memory Card 2", { "mc1:/SYS-CONF/" .. iniName }, "mc1:")
   addDevice("mmce", dev_str.mmce_0 or "MMCE in slot 1", { "mmce0:/PS2BBL/PS2BBL.INI" }, "mmce0:", nil, "mmce")
+  addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/PS2BBL.INI" }, "mmce1:", nil, "mmce")
   addDevice("hdd", dev_str.hdd or "APA-formatted HDD", { "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI" }, "hdd0:", nil, "hdd")
-  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" }, nil, "mx4sio", "mx4sio")
   addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" }, nil, "usb0", "usb")
   addDevice("usb", dev_str.usb_storage_1 or "USB Mass Storage 2", { "mass1:/PS2BBL/CONFIG.INI" }, nil, "usb1", "usb")
-  addDevice("mc", dev_str.memory_card_2 or "Memory Card 2", { "mc1:/SYS-CONF/" .. iniName }, "mc1:")
-  addDevice("mc", dev_str.memory_card_1 or "Memory Card 1", { "mc0:/SYS-CONF/" .. iniName }, "mc0:")
+  addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "massX:/PS2BBL/CONFIG.INI" }, nil, "mx4sio", "mx4sio")
   return out
 end
 
@@ -988,6 +988,7 @@ local function runChooseLoad(s, pad)
   if s.loadSel > #choices then s.loadSel = #choices end
   local maxVis = common.MAX_VISIBLE
   local total = #choices
+  local maxLabelW = (s.w or 640) - (M + 24) - M
   local scroll = 0
   if total > maxVis then
     scroll = s.loadSel - math.floor(maxVis / 2)
@@ -1002,18 +1003,9 @@ local function runChooseLoad(s, pad)
     if isBrowseIni then
       label = choice.label or (main_str.select_config_browse_ini or "Browse CONFIG.INI (CWD)")
     elseif allowCreate then
-      local raw = p
-      if common.truncateTextToWidth then
-        label = common.truncateTextToWidth(s.font, raw, (s.w or 640) - (M + 24), common.FONT_SCALE)
-      else
-        label = raw:sub(1, 60)
-      end
+      label = p
     elseif s.fileType == "freemcboot_cnf" then
-      if common.truncateTextToWidth then
-        label = common.truncateTextToWidth(s.font, p, (s.w or 640) - (M + 24), common.FONT_SCALE)
-      else
-        label = p:sub(1, 60)
-      end
+      label = p
     else
       label = (p:match("^mc0:") and dev_str.memory_card_1) or (p:match("^mc1:") and dev_str.memory_card_2) or
           (p:match("^massX:") and dev_str.mx4sio_sd) or
@@ -1023,6 +1015,12 @@ local function runChooseLoad(s, pad)
           (p:match("^hdd0:") and dev_str.hdd) or
           (p:match("^pfs0:") and dev_str.hdd) or
           p:sub(1, 40)
+    end
+    if common.fitListRowText then
+      label = common.fitListRowText(s, "choose_load_row_" .. tostring(i), s.font, label, maxLabelW, common.FONT_SCALE,
+        idx == s.loadSel)
+    elseif common.truncateTextToWidth then
+      label = common.truncateTextToWidth(s.font, label or "", maxLabelW, common.FONT_SCALE)
     end
     local y = MY + sc(50) + (i - scroll - 1) * L
     local col = (idx == s.loadSel) and SE or common.WHITE

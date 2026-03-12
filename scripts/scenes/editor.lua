@@ -23,6 +23,15 @@ local function formatArgCount(n)
   return "(" .. tostring(count) .. " args)"
 end
 
+local function getOsdmbrHotkeyPadName(key)
+  if key == "boot_start" then return "start" end
+  if key == "boot_triangle" then return "triangle" end
+  if key == "boot_circle" then return "circle" end
+  if key == "boot_cross" then return "cross" end
+  if key == "boot_square" then return "square" end
+  return nil
+end
+
 local function getCategoryOptSel(ctx, categoryIdx)
   if not categoryIdx or categoryIdx < 1 then return 1 end
   local byFile = ctx.editorCategoryOptSelByFile
@@ -156,6 +165,7 @@ local function run(ctx)
     else
       ctx.optScroll = 0
     end
+    local maxCatLabelW = (_.w or 640) - (_.MARGIN_X + 16) - (_.MARGIN_X + 8)
     for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #cats) do
       local cat = cats[i]
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.optScroll - 1) * _.ROW_H
@@ -165,6 +175,12 @@ local function run(ctx)
         catLabel = (_.strings.categories and _.strings.categories[i]) or catLabel
       elseif ctx.fileType == "freemcboot_cnf" then
         catLabel = (_.strings.categories_freemcboot and _.strings.categories_freemcboot[i]) or catLabel
+      end
+      if _.common.fitListRowText then
+        catLabel = _.common.fitListRowText(ctx, "editor_cat_row_" .. tostring(i), _.font, catLabel, maxCatLabelW,
+          _.FONT_SCALE, i == ctx.optSel)
+      elseif _.common.truncateTextToWidth then
+        catLabel = _.common.truncateTextToWidth(_.font, catLabel, maxCatLabelW, _.FONT_SCALE)
       end
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel,
         catLabel, col)
@@ -283,6 +299,23 @@ local function run(ctx)
         valDisplay = formatTimerSeconds(valDisplay, unitSingular, unitPlural)
       end
       local inlineAutoRow = false
+      local bootHotkeyPad = nil
+      local bootHotkeyIcon = nil
+      local bootHotkeyIconW, bootHotkeyIconH, bootHotkeyIconGap = 0, 0, 0
+      if ctx.fileType == "osdmbr_cnf" and o.optType == "boot_paths" then
+        bootHotkeyPad = getOsdmbrHotkeyPadName(o.key)
+        if bootHotkeyPad then
+          bootHotkeyIcon = _.common.getPadIcon and _.common.getPadIcon(bootHotkeyPad) or nil
+          if bootHotkeyIcon then
+            local baseIconW = _.common.PAD_ICON_W or 26
+            local baseIconH = _.common.PAD_ICON_H or 26
+            local textH = (_.common and _.common.FT_PIXEL_H) or 18
+            bootHotkeyIconH = math.min(baseIconH, textH)
+            bootHotkeyIconW = math.max(1, math.floor((baseIconW * bootHotkeyIconH) / baseIconH + 0.5))
+            bootHotkeyIconGap = 8
+          end
+        end
+      end
       if o.key == "NAME_AUTO" then
         inlineAutoRow = true
         local nameVal = _.config_parse.get(ctx.lines, o.key) or o.default or ""
@@ -317,8 +350,40 @@ local function run(ctx)
         elseif _.common.truncateTextToWidth then
           lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
         end
+      elseif bootHotkeyIcon then
+        local rowTextX = (_.MARGIN_X + 16) + bootHotkeyIconW + bootHotkeyIconGap
+        local maxInlineW = (_.w or 640) - rowTextX - (_.MARGIN_X + 8)
+        if _.common.fitListRowText then
+          lab = _.common.fitListRowText(ctx, "editor_boot_hotkey_row_" .. tostring(i), _.font, lab, maxInlineW, _.FONT_SCALE,
+            i == ctx.optSel)
+        elseif _.common.truncateTextToWidth then
+          lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
+        end
+      else
+        local valueColX = _.VALUE_X or 360
+        local maxInlineW = valueColX - (_.MARGIN_X + 16) - 14
+        if valDisplay == nil then
+          maxInlineW = (_.w or 640) - (_.MARGIN_X + 16) - (_.MARGIN_X + 8)
+        end
+        if _.common.fitListRowText then
+          lab = _.common.fitListRowText(ctx, "editor_opt_row_" .. tostring(i), _.font, lab, maxInlineW, _.FONT_SCALE,
+            i == ctx.optSel)
+        elseif _.common.truncateTextToWidth then
+          lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
+        end
       end
-      _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
+      if bootHotkeyIcon then
+        local rowX = _.MARGIN_X + 16
+        local iconY = y + math.floor(((_.LINE_H or bootHotkeyIconH) - bootHotkeyIconH) / 2)
+        if _.Graphics.drawScaleImage then
+          _.Graphics.drawScaleImage(bootHotkeyIcon, rowX, iconY, bootHotkeyIconW, bootHotkeyIconH)
+        else
+          _.Graphics.drawImage(bootHotkeyIcon, rowX, iconY)
+        end
+        _.drawText(_.font, _.drawMode, rowX + bootHotkeyIconW + bootHotkeyIconGap, y, _.FONT_SCALE, lab, col)
+      else
+        _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
+      end
       if (not inlineAutoRow) and valDisplay == "" and (o.optType == "path" or o.optType == "boot_paths" or o.optType == "text" or o.optType == "enum") then
         valDisplay = _.common_str.not_set
       end
