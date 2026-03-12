@@ -1,6 +1,6 @@
-# OSDMenu Configurator
+# R3CCONFIGURATOR
 
-A PlayStation 2 GUI application for editing [OSDMenu](https://github.com/pcm720/OSDMenu)-related config files from PlayStation 2.
+A PlayStation 2 GUI application for editing FMCB, FHDB, OSDMenu, OSDMenu MBR, HOSDMenu, PS2BBL Extended and PSXBBL Extended.
 
 **This application is based on [Enceladus](https://github.com/DanielSant0s/Enceladus)** by Daniel Santos.  
 Enceladus provides the Lua bindings, graphics, system, and I/O APIs.  
@@ -8,14 +8,95 @@ See the [Enceladus repository](https://github.com/DanielSant0s/Enceladus) for th
 
 ## Usage
 
-Choose `OSDMenu`, `HOSDMenu`, or `OSDMenu MBR` and open the corresponding config.  
-See the [OSDMenu repository](https://github.com/pcm720/OSDMenu) for usage and installation.
+Choose `Free McBoot`, `Free HDBoot`, `OSDMenu`, `HOSDMenu`, `OSDMenu MBR`, `PS2BBL`, `PSXBBL`, and open the corresponding config.
 
-### Config types
+- [OSDMenu repository](https://github.com/pcm720/OSDMenu) for usage and installation.
+
+- [PS2BBL Extended repository](https://github.com/saildot4k/PlayStation2-Basic-BootLoader-Extended) for usage and installation.
+
+### Supported targets
+
+- FreeMcBoot (`FREEMCB.CNF`)
+- Free HDBoot (`FREEHDB.CNF`)
+- PS2BBL Extended (`PS2BBL.INI` / `CONFIG.INI`)
+- PSXBBL Extended (`PSXBBL.INI` + shared PS2BBL `CONFIG.INI` paths)
+- OSDMenu (`OSDMENU.CNF`, `OSDGSM.CNF`)
+- OSDMenu MBR (`OSDMBR.CNF`, `OSDGSM.CNF`)
+- HOSDMenu (`OSDMENU.CNF`, `OSDGSM.CNF`)
+
+## Config lookup order for each application
+
+The app scans in order and uses the first existing file.
+
+### FreeMcBoot (`FREEMCB.CNF`)
+
+- Search Order: `mc0:/SYS-CONF/FREEMCB.CNF` -> `mc1:/SYS-CONF/FREEMCB.CNF` -> `mass:/FREEMCB.CNF`
+
+
+### Free HDBoot (`FREEHDB.CNF`)
+
+- Search Order: `hdd0:__sysconf/FMCB/FREEHDB.CNF` -> `mc0:/SYS-CONF/FREEHDB.CNF` -> `mc1:/SYS-CONF/FREEHDB.CNF` -> `mass:/FREEHDB.CNF`
+
+### PS2BBL Extended (`PS2BBL.INI` / `CONFIG.INI`)
+
+1. `mmce1:/PS2BBL/PS2BBL.INI`
+2. `mmce0:/PS2BBL/PS2BBL.INI`
+3. `hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI`
+4. `massX:/PS2BBL/CONFIG.INI`
+5. `mass:/PS2BBL/CONFIG.INI`
+6. `mc1:/SYS-CONF/PS2BBL.INI`
+7. `mc0:/SYS-CONF/PS2BBL.INI`
+
+### PSXBBL Extended (`PSXBBL.INI` + shared paths)
+
+1. `mc1:/SYS-CONF/PSXBBL.INI`
+2. `mc0:/SYS-CONF/PSXBBL.INI`
+3. `mmce1:/PS2BBL/PS2BBL.INI`
+4. `mmce0:/PS2BBL/PS2BBL.INI`
+5. `hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI`
+6. `massX:/PS2BBL/CONFIG.INI`
+7. `mass:/PS2BBL/CONFIG.INI`
+
+### OSDMenu (`OSDMENU.CNF`)
+
+- Auto: `mc0:/SYS-CONF/OSDMENU.CNF` -> `mc1:/SYS-CONF/OSDMENU.CNF`
+
+- Memory Card slot 0 selected: `mc0:/SYS-CONF/OSDMENU.CNF`
+
+- Memory Card slot 1 selected: `mc1:/SYS-CONF/OSDMENU.CNF`
+
+- Auto: `mc0:/SYS-CONF/OSDGSM.CNF` -> `mc1:/SYS-CONF/OSDGSM.CNF`
+
+- Memory Card slot 0 selected: `mc0:/SYS-CONF/OSDGSM.CNF`
+
+- Memory Card slot 1 selected: `mc1:/SYS-CONF/OSDGSM.CNF`
+
+### HOSDMenu (`OSDMENU.CNF, OSDGSM.CNF`)
+
+- `pfs0:/osdmenu/OSDMENU.CNF`
+
+- `pfs0:/osdmenu/OSDGSM.CNF`
+
+### OSDMenu MBR (`OSDMBR.CNF`, `OSDGSM.CNF`)
+
+- `pfs0:/osdmenu/OSDMBR.CNF`
+
+- `pfs0:/osdmenu/OSDGSM.CNF`
+
+
+## Config types
+
+- FREEMCB.CNF -  Free McBoot global, autolaunch and hotkeys
+
+- FREEHDB.CNF -  Free HDBoot global, autolaunch and hotkeys
 
 - [`OSDMENU.CNF`](https://github.com/pcm720/OSDMenu/blob/main/patcher/README.md#osdmenucnf) — OSDMenu/HOSDMenu global options and menu entries (including names, paths and arguments).
+
 - [`OSDMBR.CNF`](https://github.com/pcm720/OSDMenu/blob/main/mbr/README.md) — OSDMenu MBR options
+
 - [`OSDGSM.CNF`](https://github.com/pcm720/OSDMenu/blob/main/utils/loader/README.md#eGSM) — eGSM options with default settings and per–title ID overrides
+
+- [PS2BBL Extended repository](https://github.com/saildot4k/PlayStation2-Basic-BootLoader-Extended)
 
 The config is saved to the same location the config was loaded from
 
