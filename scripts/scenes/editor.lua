@@ -156,15 +156,9 @@ local function run(ctx)
 
   if isCategorizedFile and ctx.editorCategoryIdx == 0 then
     local cats = categories
-    if ctx.optSel < 1 then ctx.optSel = 1 end
-    if ctx.optSel > #cats then ctx.optSel = #cats end
     local maxVis = _.MAX_VISIBLE
-    if #cats > maxVis then
-      ctx.optScroll = ctx.optSel - math.floor(maxVis / 2)
-      ctx.optScroll = math.max(0, math.min(ctx.optScroll, #cats - maxVis))
-    else
-      ctx.optScroll = 0
-    end
+    ctx.optSel = _.common.clampListSelection(ctx.optSel or 1, #cats)
+    ctx.optScroll = _.common.centeredListScroll(ctx.optSel, #cats, maxVis)
     local maxCatLabelW = (_.w or 640) - (_.MARGIN_X + 16) - (_.MARGIN_X + 8)
     for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #cats) do
       local cat = cats[i]
@@ -188,10 +182,10 @@ local function run(ctx)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.editor_str.cross_open_circle_back_items, nil,
       _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.optSel = ctx.optSel - 1; if ctx.optSel < 1 then ctx.optSel = #cats end
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, -1)
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.optSel = ctx.optSel + 1; if ctx.optSel > #cats then ctx.optSel = 1 end
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, 1)
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 and #cats > 0 then
       local cat = cats[ctx.optSel]
@@ -236,12 +230,8 @@ local function run(ctx)
   elseif ctx.optList and #ctx.optList > 0 then
     local startY = _.MARGIN_Y + _.scaleY(58)
     local maxVis = _.MAX_VISIBLE
-    if #ctx.optList > maxVis then
-      ctx.optScroll = ctx.optSel - math.floor(maxVis / 2)
-      ctx.optScroll = math.max(0, math.min(ctx.optScroll, #ctx.optList - maxVis))
-    else
-      ctx.optScroll = 0
-    end
+    ctx.optSel = _.common.clampListSelection(ctx.optSel or 1, #ctx.optList)
+    ctx.optScroll = _.common.centeredListScroll(ctx.optSel, #ctx.optList, maxVis)
     for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #ctx.optList) do
       local o = ctx.optList[i]
       local y = startY + (i - ctx.optScroll - 1) * _.ROW_H
@@ -392,56 +382,18 @@ local function run(ctx)
           local valCol = (valDisplay == _.common_str.off or valDisplay == _.common_str.not_set) and _.DIM or
               ((i == ctx.optSel) and _.WHITE or _.GRAY)
           local valueAreaWidth = (_.w or 640) - 72 - _.VALUE_X
-          local textW = (_.common.calcTextWidth and _.common.calcTextWidth(_.font, valDisplay, _.FONT_SCALE)) or
-              (#valDisplay * 10)
-          local drawVal = valDisplay
-          if i == ctx.optSel and textW > valueAreaWidth then
-            -- Autoscroll long value (e.g. DKWDRV path): hold at start, scroll slowly, hold at end then repeat
-            ctx.editorValueScrollTicks = (ctx.editorValueScrollTicks or 0) + 1
-            local ticks = ctx.editorValueScrollTicks
-            local visibleChars = 1
-            if _.common.calcTextWidth then
-              for n = 1, #valDisplay do
-                if _.common.calcTextWidth(_.font, valDisplay:sub(1, n), _.FONT_SCALE) > valueAreaWidth then
-                  visibleChars = n - 1
-                  break
-                end
-                visibleChars = n
-              end
-            else
-              visibleChars = math.max(1, math.floor(valueAreaWidth / 10))
-            end
-            visibleChars = math.min(visibleChars, #valDisplay)
-            local totalSteps = math.max(0, #valDisplay - visibleChars)
-            local HOLD_START, FRAMES_PER_STEP, HOLD_END = 50, 18, 70
-            local cycleLen = HOLD_START + totalSteps * FRAMES_PER_STEP + HOLD_END
-            if ticks >= cycleLen then
-              ctx.editorValueScrollTicks = 0
-              ticks = 0
-            end
-            local scrollStart
-            if ticks < HOLD_START then
-              scrollStart = 1
-            elseif ticks < HOLD_START + totalSteps * FRAMES_PER_STEP then
-              scrollStart = 1 + math.floor((ticks - HOLD_START) / FRAMES_PER_STEP)
-            else
-              scrollStart = totalSteps + 1
-            end
-            drawVal = valDisplay:sub(scrollStart, scrollStart + visibleChars - 1)
-          elseif i ~= ctx.optSel then
-            -- Truncate to fit within value area (screen margin)
-            if textW > valueAreaWidth and _.common.calcTextWidth then
-              for n = 1, #valDisplay do
-                if _.common.calcTextWidth(_.font, valDisplay:sub(1, n) .. "...", _.FONT_SCALE) > valueAreaWidth then
-                  drawVal = (n > 1 and (valDisplay:sub(1, n - 1) .. "...") or "...")
-                  break
-                end
-                drawVal = valDisplay
-              end
-            elseif textW > valueAreaWidth then
-              local maxLen = math.max(1, math.floor(valueAreaWidth / 10) - 3)
-              drawVal = valDisplay:sub(1, maxLen) .. "..."
-            end
+          local drawVal
+          if _.common.fitValueText then
+            drawVal = _.common.fitValueText(ctx, "editor_value_row_" .. tostring(i), _.font, valDisplay, valueAreaWidth,
+              _.FONT_SCALE, i == ctx.optSel, { holdStart = 50, stepFrames = 18, holdEnd = 70 })
+          elseif _.common.fitListRowText then
+            drawVal = _.common.fitListRowText(ctx, "editor_value_row_" .. tostring(i), _.font, valDisplay, valueAreaWidth,
+              _.FONT_SCALE, i == ctx.optSel, { holdStart = 50, stepFrames = 18, holdEnd = 70 })
+          elseif _.common.truncateTextToWidth then
+            drawVal = (i == ctx.optSel) and valDisplay or
+                _.common.truncateTextToWidth(_.font, valDisplay, valueAreaWidth, _.FONT_SCALE)
+          else
+            drawVal = valDisplay
           end
           _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, drawVal, valCol)
         end
@@ -474,12 +426,10 @@ local function run(ctx)
       { left = _.common_str.hint_prev, right = _.common_str.hint_next })
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintItems, nil, _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      if ctx.optSel > 1 then ctx.optSel = ctx.optSel - 1 else ctx.optSel = #ctx.optList end
-      ctx.editorValueScrollTicks = nil
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #ctx.optList, -1)
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      if ctx.optSel < #ctx.optList then ctx.optSel = ctx.optSel + 1 else ctx.optSel = 1 end
-      ctx.editorValueScrollTicks = nil
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #ctx.optList, 1)
     end
     if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_L1 | _.PAD_R1 | _.PAD_L2 | _.PAD_R2)) ~= 0 then
       local o = ctx.optList[ctx.optSel]

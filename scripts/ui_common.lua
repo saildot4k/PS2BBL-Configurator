@@ -435,6 +435,28 @@ function common.loadCustomFont()
   error("Failed to load font")
 end
 
+-- Open text input scene with consistent defaults.
+-- opts: { prompt, value, maxLen, callback, returnState, titleIdMode, gridSel, cursor, scroll, clearArgEditIdx, argEditIdx }
+function common.beginTextInput(ctx, opts)
+  if not ctx or type(opts) ~= "table" then return end
+  if opts.clearArgEditIdx then
+    ctx.argEditIdx = nil
+  end
+  if opts.argEditIdx ~= nil then
+    ctx.argEditIdx = opts.argEditIdx
+  end
+  ctx.textInputTitleIdMode = opts.titleIdMode
+  ctx.textInputPrompt = opts.prompt or ""
+  ctx.textInputValue = tostring(opts.value or "")
+  ctx.textInputMaxLen = math.max(1, math.floor(tonumber(opts.maxLen) or 79))
+  ctx.textInputCallback = opts.callback
+  ctx.textInputReturnState = opts.returnState or ctx.state or "main"
+  ctx.textInputGridSel = math.max(1, math.floor(tonumber(opts.gridSel) or 1))
+  ctx.textInputCursor = math.max(1, math.floor(tonumber(opts.cursor) or (#ctx.textInputValue + 1)))
+  ctx.textInputScroll = math.max(1, math.floor(tonumber(opts.scroll) or 1))
+  ctx.state = opts.state or "text_input"
+end
+
 -- Approximate width of text for centering. Uses Font.ftCalcDimensions when available (ftPrint).
 function common.calcTextWidth(font, text, scale)
   if not text or text == "" then return 0 end
@@ -463,6 +485,42 @@ function common.truncateTextToWidth(font, text, maxPixels, scale)
     n = n - 1
   end
   return ellipsis
+end
+
+-- Clamp list selection to [1..total]. Empty lists always return 1.
+function common.clampListSelection(sel, total)
+  local n = math.floor(tonumber(sel) or 1)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  if count <= 0 then return 1 end
+  if n < 1 then n = 1 end
+  if n > count then n = count end
+  return n
+end
+
+-- Wrap selection by step for cyclic lists. Empty lists always return 1.
+function common.wrapListSelection(sel, total, step)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  if count <= 0 then return 1 end
+  local idx = common.clampListSelection(sel, count)
+  local delta = math.floor(tonumber(step) or 0)
+  if delta == 0 then return idx end
+  idx = idx + delta
+  while idx < 1 do idx = idx + count end
+  while idx > count do idx = idx - count end
+  return idx
+end
+
+-- Centered list scroll start for rendering [scroll+1 .. scroll+maxVisible].
+function common.centeredListScroll(sel, total, maxVisible)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  local maxVis = math.max(1, math.floor(tonumber(maxVisible) or 1))
+  if count <= maxVis then return 0 end
+  local idx = common.clampListSelection(sel, count)
+  local scroll = idx - math.floor(maxVis / 2)
+  if scroll < 0 then scroll = 0 end
+  local maxScroll = count - maxVis
+  if scroll > maxScroll then scroll = maxScroll end
+  return scroll
 end
 
 -- Return row text fitted to maxPixels. Selected rows use delayed horizontal marquee
@@ -546,6 +604,16 @@ function common.fitListRowText(ctx, stateKey, font, text, maxPixels, scale, sele
   end
 
   return raw:sub(startIdx, startIdx + st.visibleChars - 1)
+end
+
+-- Value-column marquee/truncation helper with slower defaults than list rows.
+function common.fitValueText(ctx, stateKey, font, text, maxPixels, scale, selected, opts)
+  local cfg = {
+    holdStart = (opts and tonumber(opts.holdStart)) or 50,
+    stepFrames = (opts and tonumber(opts.stepFrames)) or 18,
+    holdEnd = (opts and tonumber(opts.holdEnd)) or 70,
+  }
+  return common.fitListRowText(ctx, stateKey, font, text, maxPixels, scale, selected, cfg)
 end
 
 function common.drawText(font, mode, x, y, scale, text, color, drawHeight)
