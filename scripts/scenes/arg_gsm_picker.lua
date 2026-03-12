@@ -104,14 +104,14 @@ function arg_gsm_picker.run(ctx, opts)
   local compatOpts = (_.config_parse and _.config_parse.getEgsmCompatOptions and _.config_parse.getEgsmCompatOptions()) or {}
 
   local total = NUM_VIDEO_OPTS + NUM_COMPAT_OPTS
-  local sel = math.floor(tonumber(ctx[keys.selKey]) or 1)
-  if sel < 1 then sel = 1 end
-  if sel > total then sel = total end
-  ctx[keys.selKey] = sel
-
   local videoIdx = normalizeVideoIdx(ctx[keys.videoKey])
   local compatIdx = normalizeCompatIdx(ctx[keys.compatKey])
   local hasVideo = (videoIdx ~= nil)
+  local selectableTotal = hasVideo and total or NUM_VIDEO_OPTS
+  local sel = math.floor(tonumber(ctx[keys.selKey]) or 1)
+  if sel < 1 then sel = 1 end
+  if sel > selectableTotal then sel = selectableTotal end
+  ctx[keys.selKey] = sel
   if keys.lastVideoKey and sel >= 1 and sel <= NUM_VIDEO_OPTS then
     ctx[keys.lastVideoKey] = sel + 1
   end
@@ -171,7 +171,7 @@ function arg_gsm_picker.run(ctx, opts)
 
   if (_.padEffective & _.PAD_UP) ~= 0 then
     sel = sel - 1
-    if sel < 1 then sel = total end
+    if sel < 1 then sel = selectableTotal end
     ctx[keys.selKey] = sel
     if keys.lastVideoKey and sel >= 1 and sel <= NUM_VIDEO_OPTS then
       ctx[keys.lastVideoKey] = sel + 1
@@ -179,7 +179,7 @@ function arg_gsm_picker.run(ctx, opts)
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     sel = sel + 1
-    if sel > total then sel = 1 end
+    if sel > selectableTotal then sel = 1 end
     ctx[keys.selKey] = sel
     if keys.lastVideoKey and sel >= 1 and sel <= NUM_VIDEO_OPTS then
       ctx[keys.lastVideoKey] = sel + 1
