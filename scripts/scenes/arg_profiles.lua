@@ -104,11 +104,6 @@ local rowsDev9Patinfo = {
     { uniqueKey = "patinfo" }),
 }
 
-local rowsLauncherBootHints = {
-  makeRow("-osd", "-osd", "Launcher flag: request OSDSYS-style boot path.", { uniqueKey = "osd" }),
-  makeRow("-hosd", "-hosd", "Launcher flag: request HOSDSYS-style boot path.", { uniqueKey = "hosd" }),
-}
-
 local rowsMbrOnly = {
   makeRow("-noflags", "-noflags", "OSDMenu MBR: disable configured flags for this path (keep last).",
     { uniqueKey = "noflags" }),
@@ -166,7 +161,6 @@ profiles.osdmenu_global = {
 appendRows(profiles.osdmenu_global.rows, rowsTitleApp)
 appendEgsmRows(profiles.osdmenu_global.rows, "osdmenu")
 appendRows(profiles.osdmenu_global.rows, rowsDev9Patinfo)
-appendRows(profiles.osdmenu_global.rows, rowsLauncherBootHints)
 
 profiles.osdmenu_nhddl = {
   id = "osdmenu_nhddl",
@@ -179,7 +173,6 @@ appendRows(profiles.osdmenu_nhddl.rows, rowsNhddl)
 appendRows(profiles.osdmenu_nhddl.rows, rowsTitleApp)
 appendEgsmRows(profiles.osdmenu_nhddl.rows, "osdmenu")
 appendRows(profiles.osdmenu_nhddl.rows, rowsDev9Patinfo)
-appendRows(profiles.osdmenu_nhddl.rows, rowsLauncherBootHints)
 
 profiles.hosdmenu_global = cloneProfile(profiles.osdmenu_global)
 profiles.hosdmenu_global.id = "hosdmenu_global"
