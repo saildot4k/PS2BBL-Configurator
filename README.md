@@ -30,11 +30,11 @@ The app scans in order and uses the first existing file.
 
 ### FreeMcBoot (`FREEMCB.CNF`)
 
-- `mc0:/SYS-CONF/FREEMCB.CNF` -> `mc1:/SYS-CONF/FREEMCB.CNF` -> `mass:/FREEMCB.CNF`
+-  `mass:/FREEMCB.CNF` -> `mc0:/SYS-CONF/FREEMCB.CNF` -> `mc1:/SYS-CONF/FREEMCB.CNF`
 
 ### Free HDBoot (`FREEHDB.CNF`)
 
-- `hdd0:__sysconf/FMCB/FREEHDB.CNF` -> `mc0:/SYS-CONF/FREEHDB.CNF` -> `mc1:/SYS-CONF/FREEHDB.CNF` -> `mass:/FREEHDB.CNF`
+- `mass:/FREEHDB.CNF` -> `hdd0:__sysconf/FMCB/FREEHDB.CNF` -> `mc0:/SYS-CONF/FREEHDB.CNF` -> `mc1:/SYS-CONF/FREEHDB.CNF`
 
 ### OSDMenu (`OSDMENU.CNF`, `OSDGSM.CSM`)
 
