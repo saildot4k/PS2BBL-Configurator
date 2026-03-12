@@ -22,6 +22,10 @@ local function makeRow(label, value, desc, extra)
   return row
 end
 
+local function trimText(s)
+  return tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
 local function cloneProfile(base)
   local out = {}
   for k, v in pairs(base or {}) do
@@ -44,9 +48,54 @@ local rowsTitleApp = {
     { kind = "titleid", uniqueKey = "titleid" }),
 }
 
-local rowsGsm = {
-  makeRow("-gsm=<mode[:compat]>", nil, "Set eGSM value (example: fp2:1).", { kind = "gsm", uniqueKey = "gsm" }),
+local EGSM_ARG_KEY = {
+  -- Keep per-app eGSM argument keys isolated so support can diverge over time.
+  ps2bbl = "-gsm",
+  osdmenu = "-gsm",
+  hosdmenu = "-gsm",
+  osdmbr = "-gsm",
 }
+
+local EGSM_PROFILE_SUPPORT = {
+  -- PS2BBL/PSXBBL parser support exists in source, but current distributed builds
+  -- are not compiled with working eGSM runtime support.
+  ps2bbl = false,
+  osdmenu = true,
+  hosdmenu = true,
+  osdmbr = true,
+}
+
+local function egsmRowLabel(argKey)
+  local key = trimText(argKey)
+  if key == "" then key = "-gsm" end
+  return key .. "=<mode[:compat]>"
+end
+
+local function buildEgsmRows(argKey)
+  local key = trimText(argKey)
+  if key == "" then key = "-gsm" end
+  return {
+    makeRow(egsmRowLabel(key), nil, "Choose eGSM video mode and compatibility.",
+      { kind = "egsm", uniqueKey = "egsm", egsmArgKey = key }),
+  }
+end
+
+local function rewriteEgsmRows(rows, argKey)
+  local key = trimText(argKey)
+  if key == "" then return end
+  for i = 1, #(rows or {}) do
+    local row = rows[i]
+    if row and row.kind == "egsm" then
+      row.egsmArgKey = key
+      row.label = egsmRowLabel(key)
+    end
+  end
+end
+
+local function appendEgsmRows(dst, appKey)
+  if not EGSM_PROFILE_SUPPORT[appKey] then return end
+  appendRows(dst, buildEgsmRows(EGSM_ARG_KEY[appKey]))
+end
 
 local rowsDev9Patinfo = {
   makeRow("-dev9=NICHDD", "-dev9=NICHDD", "Keep both DEV9 and HDD powered/on.", { uniqueKey = "dev9" }),
@@ -92,7 +141,7 @@ profiles.ps2bbl_generic = {
   rows = {},
 }
 appendRows(profiles.ps2bbl_generic.rows, rowsTitleApp)
-appendRows(profiles.ps2bbl_generic.rows, rowsGsm)
+appendEgsmRows(profiles.ps2bbl_generic.rows, "ps2bbl")
 appendRows(profiles.ps2bbl_generic.rows, rowsDev9Patinfo)
 
 profiles.ps2bbl_nhddl = {
@@ -104,7 +153,7 @@ profiles.ps2bbl_nhddl = {
 }
 appendRows(profiles.ps2bbl_nhddl.rows, rowsNhddl)
 appendRows(profiles.ps2bbl_nhddl.rows, rowsTitleApp)
-appendRows(profiles.ps2bbl_nhddl.rows, rowsGsm)
+appendEgsmRows(profiles.ps2bbl_nhddl.rows, "ps2bbl")
 appendRows(profiles.ps2bbl_nhddl.rows, rowsDev9Patinfo)
 
 profiles.osdmenu_global = {
@@ -115,7 +164,7 @@ profiles.osdmenu_global = {
   rows = {},
 }
 appendRows(profiles.osdmenu_global.rows, rowsTitleApp)
-appendRows(profiles.osdmenu_global.rows, rowsGsm)
+appendEgsmRows(profiles.osdmenu_global.rows, "osdmenu")
 appendRows(profiles.osdmenu_global.rows, rowsDev9Patinfo)
 appendRows(profiles.osdmenu_global.rows, rowsLauncherBootHints)
 
@@ -128,7 +177,7 @@ profiles.osdmenu_nhddl = {
 }
 appendRows(profiles.osdmenu_nhddl.rows, rowsNhddl)
 appendRows(profiles.osdmenu_nhddl.rows, rowsTitleApp)
-appendRows(profiles.osdmenu_nhddl.rows, rowsGsm)
+appendEgsmRows(profiles.osdmenu_nhddl.rows, "osdmenu")
 appendRows(profiles.osdmenu_nhddl.rows, rowsDev9Patinfo)
 appendRows(profiles.osdmenu_nhddl.rows, rowsLauncherBootHints)
 
@@ -136,11 +185,17 @@ profiles.hosdmenu_global = cloneProfile(profiles.osdmenu_global)
 profiles.hosdmenu_global.id = "hosdmenu_global"
 profiles.hosdmenu_global.label = "HOSDMenu Launcher"
 profiles.hosdmenu_global.menuTag = "HOSDMenu"
+if EGSM_PROFILE_SUPPORT.hosdmenu then
+  rewriteEgsmRows(profiles.hosdmenu_global.rows, EGSM_ARG_KEY.hosdmenu)
+end
 
 profiles.hosdmenu_nhddl = cloneProfile(profiles.osdmenu_nhddl)
 profiles.hosdmenu_nhddl.id = "hosdmenu_nhddl"
 profiles.hosdmenu_nhddl.label = "HOSDMenu + NHDDL"
 profiles.hosdmenu_nhddl.menuTag = "NHDDL"
+if EGSM_PROFILE_SUPPORT.hosdmenu then
+  rewriteEgsmRows(profiles.hosdmenu_nhddl.rows, EGSM_ARG_KEY.hosdmenu)
+end
 
 profiles.osdmbr_global = {
   id = "osdmbr_global",
@@ -149,6 +204,7 @@ profiles.osdmbr_global = {
   usesNhddlArgs = false,
   rows = {},
 }
+appendEgsmRows(profiles.osdmbr_global.rows, "osdmbr")
 appendRows(profiles.osdmbr_global.rows, rowsMbrOnly)
 
 profiles.osdmbr_nhddl = {
@@ -159,6 +215,7 @@ profiles.osdmbr_nhddl = {
   rows = {},
 }
 appendRows(profiles.osdmbr_nhddl.rows, rowsNhddl)
+appendEgsmRows(profiles.osdmbr_nhddl.rows, "osdmbr")
 appendRows(profiles.osdmbr_nhddl.rows, rowsMbrOnly)
 
 local appProfileIds = {
@@ -282,19 +339,6 @@ end
 
 function arg_profiles.buildAddRows(state)
   local rows = {}
-  local autoLabel = (state and state.autoProfile and state.autoProfile.label) or "None"
-  local currentLabel
-  if state and state.overrideProfileId and state.overrideProfileId ~= "auto" and state.activeProfile then
-    currentLabel = state.activeProfile.label
-  else
-    currentLabel = "Auto -> " .. autoLabel
-  end
-
-  rows[#rows + 1] = {
-    label = "Profile: " .. currentLabel,
-    kind = "profile",
-    desc = "Press Cross to cycle profile preset.",
-  }
   rows[#rows + 1] = cloneRow(rowManual)
 
   local active = state and state.activeProfile

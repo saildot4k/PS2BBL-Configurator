@@ -71,6 +71,7 @@ function arg_presets.collectUsedArgs(args)
     patinfo = false,
     video = false,
     udpbd_ip = false,
+    egsm = false,
     gsm = false,
     osd = false,
     hosd = false,
@@ -92,6 +93,7 @@ function arg_presets.collectUsedArgs(args)
     elseif a:match("^%-udpbd_ip%s*=") then
       usedKnown.udpbd_ip = true
     elseif a:match("^%-gsm%s*=") then
+      usedKnown.egsm = true
       usedKnown.gsm = true
     elseif a == "-osd" then
       usedKnown.osd = true

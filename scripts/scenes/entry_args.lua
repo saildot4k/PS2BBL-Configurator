@@ -2,14 +2,8 @@
 
 local arg_presets = dofile("scripts/scenes/arg_presets.lua")
 local arg_profiles = dofile("scripts/scenes/arg_profiles.lua")
+local arg_gsm_picker = dofile("scripts/scenes/arg_gsm_picker.lua")
 local arg_add_menu = dofile("scripts/scenes/arg_add_menu.lua")
-
-local function buildScopeKey(ctx, isBoot)
-  if isBoot then
-    return "entry_args:boot:" .. tostring(ctx.context or "") .. ":" .. tostring(ctx.bootKey or "")
-  end
-  return "entry_args:entry:" .. tostring(ctx.context or "") .. ":" .. tostring(ctx.entryIdx or "")
-end
 
 local function run(ctx)
   local _ = ctx._
@@ -104,22 +98,46 @@ local function run(ctx)
   local args = getArgs()
   local total = #args
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
-  local profileScopeKey = buildScopeKey(ctx, isBoot)
-  local profileOverrideId = arg_presets.getProfileOverride(ctx, profileScopeKey)
   local profileState = arg_profiles.resolve({
     surface = "entry_args",
     context = ctx.context,
     fileType = ctx.fileType,
     isBoot = isBoot,
     hasNhddlPath = hasNhddlElfPath,
-  }, profileOverrideId)
+  })
   local addRows = arg_profiles.buildAddRows(profileState)
   local removeNhddlPair = arg_profiles.profileUsesNhddl(profileState.activeProfileId)
+
+  local function clearGsmMenus()
+    ctx.entryArgGsmVideoMenu = nil
+    ctx.entryArgGsmVideoSel = nil
+    ctx.entryArgGsmVideoScroll = nil
+    ctx.entryArgGsmCompatMenu = nil
+    ctx.entryArgGsmCompatSel = nil
+    ctx.entryArgGsmCompatScroll = nil
+    ctx.entryArgGsmVideoIdx = nil
+    ctx.entryArgGsmArgKey = nil
+  end
+
+  local function reopenAddMenu()
+    ctx.entryArgAddMenu = true
+    ctx.entryArgAddSel = ctx.entryArgAddSel or 1
+    ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
+  end
+
+  local function openGsmPicker(row)
+    clearGsmMenus()
+    ctx.entryArgGsmArgKey = (row and row.egsmArgKey) or "-gsm"
+    ctx.entryArgGsmVideoMenu = true
+    ctx.entryArgGsmVideoSel = ctx.entryArgGsmVideoSel or 1
+    ctx.entryArgGsmVideoScroll = ctx.entryArgGsmVideoScroll or 0
+  end
 
   if hasCdrom and not isBoot then
     ctx.entryArgAddMenu = nil
     ctx.entryArgAddSel = nil
     ctx.entryArgAddScroll = nil
+    clearGsmMenus()
   end
 
   local function openUdpbdIpInput()
@@ -140,22 +158,65 @@ local function run(ctx)
     end)
   end
 
-  local function openGsmInput()
-    openNewArgumentInput("eGSM value (example: fp2:1)", 31, function(val)
-      local gsm = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
-      if gsm ~= "" then
-        addArgValue("-gsm=" .. gsm)
-      end
-      ctx.state = "entry_args"
-    end)
+  if ctx.entryArgGsmCompatMenu then
+    local compatRows = arg_gsm_picker.buildCompatRows(_)
+    if #compatRows == 0 then
+      clearGsmMenus()
+      reopenAddMenu()
+    elseif arg_add_menu.run(ctx, {
+          menuOpenKey = "entryArgGsmCompatMenu",
+          selKey = "entryArgGsmCompatSel",
+          scrollKey = "entryArgGsmCompatScroll",
+          rows = compatRows,
+          title = arg_gsm_picker.compatTitle(_, ctx.entryArgGsmVideoIdx),
+          descDefault = "Select compatibility mode.",
+          rowStateKeyPrefix = "entry_args_gsm_compat_row_",
+          onSelect = function(row)
+            local arg = arg_gsm_picker.buildArg(_, ctx.entryArgGsmArgKey, ctx.entryArgGsmVideoIdx, row.compatIdx)
+            clearGsmMenus()
+            if arg and arg ~= "" then
+              addArgValue(arg)
+            end
+          end,
+          onCancel = function()
+            ctx.entryArgGsmCompatMenu = nil
+            ctx.entryArgGsmCompatSel = nil
+            ctx.entryArgGsmCompatScroll = nil
+            ctx.entryArgGsmVideoMenu = true
+            ctx.entryArgGsmVideoSel = ctx.entryArgGsmVideoSel or 1
+            ctx.entryArgGsmVideoScroll = ctx.entryArgGsmVideoScroll or 0
+          end,
+        }) then
+      return
+    end
   end
 
-  local function cycleProfileOverride()
-    local nextOverride = arg_profiles.nextOverrideId(profileState)
-    arg_presets.setProfileOverride(ctx, profileScopeKey, nextOverride)
-    ctx.entryArgAddMenu = true
-    ctx.entryArgAddSel = 1
-    ctx.entryArgAddScroll = 0
+  if ctx.entryArgGsmVideoMenu then
+    local videoRows = arg_gsm_picker.buildVideoRows(_)
+    if #videoRows == 0 then
+      clearGsmMenus()
+      reopenAddMenu()
+    elseif arg_add_menu.run(ctx, {
+          menuOpenKey = "entryArgGsmVideoMenu",
+          selKey = "entryArgGsmVideoSel",
+          scrollKey = "entryArgGsmVideoScroll",
+          rows = videoRows,
+          title = arg_gsm_picker.videoTitle(_),
+          descDefault = "Select eGSM video mode.",
+          rowStateKeyPrefix = "entry_args_gsm_video_row_",
+          onSelect = function(row)
+            ctx.entryArgGsmVideoIdx = row.videoIdx
+            ctx.entryArgGsmCompatMenu = true
+            ctx.entryArgGsmCompatSel = ctx.entryArgGsmCompatSel or 1
+            ctx.entryArgGsmCompatScroll = ctx.entryArgGsmCompatScroll or 0
+          end,
+          onCancel = function()
+            clearGsmMenus()
+            reopenAddMenu()
+          end,
+        }) then
+      return
+    end
   end
 
   if ctx.entryArgAddMenu and #addRows > 0 then
@@ -171,9 +232,7 @@ local function run(ctx)
             return arg_presets.rowDisabled(row, usedKnown, usedModes, total)
           end,
           onSelect = function(row)
-            if row.kind == "profile" then
-              cycleProfileOverride()
-            elseif row.kind == "manual" then
+            if row.kind == "manual" then
               openNewArgumentInput(_.menu_str.new_argument_prompt, 79, function(val)
                 local v = val or ""
                 if v ~= "" then addArgValue(v) end
@@ -181,8 +240,8 @@ local function run(ctx)
               end)
             elseif row.kind == "titleid" then
               openTitleIdInput()
-            elseif row.kind == "gsm" then
-              openGsmInput()
+            elseif row.kind == "egsm" or row.kind == "gsm" then
+              openGsmPicker(row)
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
