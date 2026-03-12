@@ -282,16 +282,25 @@ function common.saveConfig(ctx, path, lines, createDir)
   local saveDir = createDir
   local mounted = nil
 
-  local part, rest = tostring(path or ""):match("^(hdd%d:[^:]+):pfs:(.*)$")
-  if part and rest then
+  local function splitHddPartitionPath(p)
+    local s = tostring(p or "")
+    local part, rest = s:match("^(hdd%d:[^:]+):pfs:(.*)$")
+    if not part then
+      -- Accept FMCB-style partition path (hdd0:__sysconf/dir/file) in addition to :pfs: form.
+      part, rest = s:match("^(hdd%d:[^/:]+)(/.*)$")
+    end
+    if not part then return nil, nil end
     if rest == "" then rest = "/" end
     if rest:sub(1, 1) ~= "/" then rest = "/" .. rest end
+    return part, rest
+  end
+
+  local part, rest = splitHddPartitionPath(path)
+  if part and rest then
     savePath = "pfs0:" .. rest
     if saveDir and saveDir ~= "" then
-      local dPart, dRest = tostring(saveDir):match("^(hdd%d:[^:]+):pfs:(.*)$")
+      local dPart, dRest = splitHddPartitionPath(saveDir)
       if dPart and dPart == part and dRest then
-        if dRest == "" then dRest = "/" end
-        if dRest:sub(1, 1) ~= "/" then dRest = "/" .. dRest end
         saveDir = "pfs0:" .. dRest
       end
     end
@@ -358,6 +367,8 @@ function common.runLayout(ctx)
   local h = (vmode and vmode.height) or common.DEFAULT_H
   local sy = h / common.DEFAULT_H
   if ctx then
+    ctx.w = w
+    ctx.h = h
     ctx.sy = sy
     ctx.MARGIN_Y = math.floor(common.MARGIN_Y * sy)
     ctx.LINE_H = common.LINE_H
@@ -373,6 +384,9 @@ function common.runSceneLoop(ctx, sceneName, runHandler)
   while true do
     Screen.clear(common.BGCOLOR)
     common.runLayout(ctx)
+    if ctx and ctx.drawBackgroundLayer then
+      ctx.drawBackgroundLayer(ctx)
+    end
     local padEffective = common.getPadEffective(ctx)
     runHandler(ctx, padEffective)
     if ctx.state ~= sceneName then
@@ -421,6 +435,28 @@ function common.loadCustomFont()
   error("Failed to load font")
 end
 
+-- Open text input scene with consistent defaults.
+-- opts: { prompt, value, maxLen, callback, returnState, titleIdMode, gridSel, cursor, scroll, clearArgEditIdx, argEditIdx }
+function common.beginTextInput(ctx, opts)
+  if not ctx or type(opts) ~= "table" then return end
+  if opts.clearArgEditIdx then
+    ctx.argEditIdx = nil
+  end
+  if opts.argEditIdx ~= nil then
+    ctx.argEditIdx = opts.argEditIdx
+  end
+  ctx.textInputTitleIdMode = opts.titleIdMode
+  ctx.textInputPrompt = opts.prompt or ""
+  ctx.textInputValue = tostring(opts.value or "")
+  ctx.textInputMaxLen = math.max(1, math.floor(tonumber(opts.maxLen) or 79))
+  ctx.textInputCallback = opts.callback
+  ctx.textInputReturnState = opts.returnState or ctx.state or "main"
+  ctx.textInputGridSel = math.max(1, math.floor(tonumber(opts.gridSel) or 1))
+  ctx.textInputCursor = math.max(1, math.floor(tonumber(opts.cursor) or (#ctx.textInputValue + 1)))
+  ctx.textInputScroll = math.max(1, math.floor(tonumber(opts.scroll) or 1))
+  ctx.state = opts.state or "text_input"
+end
+
 -- Approximate width of text for centering. Uses Font.ftCalcDimensions when available (ftPrint).
 function common.calcTextWidth(font, text, scale)
   if not text or text == "" then return 0 end
@@ -449,6 +485,42 @@ function common.truncateTextToWidth(font, text, maxPixels, scale)
     n = n - 1
   end
   return ellipsis
+end
+
+-- Clamp list selection to [1..total]. Empty lists always return 1.
+function common.clampListSelection(sel, total)
+  local n = math.floor(tonumber(sel) or 1)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  if count <= 0 then return 1 end
+  if n < 1 then n = 1 end
+  if n > count then n = count end
+  return n
+end
+
+-- Wrap selection by step for cyclic lists. Empty lists always return 1.
+function common.wrapListSelection(sel, total, step)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  if count <= 0 then return 1 end
+  local idx = common.clampListSelection(sel, count)
+  local delta = math.floor(tonumber(step) or 0)
+  if delta == 0 then return idx end
+  idx = idx + delta
+  while idx < 1 do idx = idx + count end
+  while idx > count do idx = idx - count end
+  return idx
+end
+
+-- Centered list scroll start for rendering [scroll+1 .. scroll+maxVisible].
+function common.centeredListScroll(sel, total, maxVisible)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  local maxVis = math.max(1, math.floor(tonumber(maxVisible) or 1))
+  if count <= maxVis then return 0 end
+  local idx = common.clampListSelection(sel, count)
+  local scroll = idx - math.floor(maxVis / 2)
+  if scroll < 0 then scroll = 0 end
+  local maxScroll = count - maxVis
+  if scroll > maxScroll then scroll = maxScroll end
+  return scroll
 end
 
 -- Return row text fitted to maxPixels. Selected rows use delayed horizontal marquee
@@ -534,6 +606,16 @@ function common.fitListRowText(ctx, stateKey, font, text, maxPixels, scale, sele
   return raw:sub(startIdx, startIdx + st.visibleChars - 1)
 end
 
+-- Value-column marquee/truncation helper with slower defaults than list rows.
+function common.fitValueText(ctx, stateKey, font, text, maxPixels, scale, selected, opts)
+  local cfg = {
+    holdStart = (opts and tonumber(opts.holdStart)) or 50,
+    stepFrames = (opts and tonumber(opts.stepFrames)) or 18,
+    holdEnd = (opts and tonumber(opts.holdEnd)) or 70,
+  }
+  return common.fitListRowText(ctx, stateKey, font, text, maxPixels, scale, selected, cfg)
+end
+
 function common.drawText(font, mode, x, y, scale, text, color, drawHeight)
   local c = color or common.WHITE
   local ix, iy = math.floor(tonumber(x) or 0), math.floor(tonumber(y) or 0)
@@ -615,9 +697,11 @@ function common.drawSaveSplash(ctx)
   sp.framesLeft = sp.framesLeft - 1
   if sp.framesLeft <= 0 then
     ctx.saveSplash = nil
-    if sp.kind == "saved" and ctx.returnToSelectConfigAfterSaveFlash then
+    if sp.kind == "saved" and (ctx.returnToSelectConfigAfterSaveFlash or ctx.returnStateAfterSaveFlash) then
+      local targetState = ctx.returnStateAfterSaveFlash or "select_config"
+      ctx.returnStateAfterSaveFlash = nil
       ctx.returnToSelectConfigAfterSaveFlash = nil
-      ctx.state = "select_config"
+      ctx.state = targetState
       ctx.currentPath = nil
       ctx.lines = nil
       ctx.optList = nil

@@ -1,9 +1,25 @@
 --[[ eGSM single-screen editor: default + title overrides + Add. Title ID = 4 letters + 5 digits. ]]
 
+local function getEgsmBackState(ctx)
+  local context = ctx and ctx.context or nil
+  if context == "ps2bbl" or context == "psxbbl" then
+    return "select_config"
+  end
+  if context == "osdmenu" or context == "freemcboot" then
+    local common = ctx and ctx._ and ctx._.common or nil
+    local slots = (common and common.getPresentMcSlots and common.getPresentMcSlots()) or {}
+    if type(slots) == "table" and #slots > 1 then
+      return "choose_mc"
+    end
+    return "main"
+  end
+  return "main"
+end
+
 local function run(ctx)
   local _ = ctx._
   if not ctx.lines then
-    ctx.state = "select_config"; ctx.currentPath = nil; return
+    ctx.state = getEgsmBackState(ctx); ctx.currentPath = nil; return
   end
 
   -- Leave-save prompt when going back to config select with unsaved changes
@@ -16,7 +32,7 @@ local function run(ctx)
       ctx.saveSplash = nil
       local locations = _.getLocations(ctx.context, "osdgsm_cnf", ctx.chosenMcSlot)
       if #locations >= 2 then
-        ctx.returnToSelectConfigAfterSave = true
+        ctx.returnToSelectConfigAfterSave = getEgsmBackState(ctx)
         ctx.saveChoices = locations
         ctx.saveSel = ctx.saveSel or 1
         ctx.state = "choose_save"
@@ -30,6 +46,7 @@ local function run(ctx)
             ctx.currentPath = path
             ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
             ctx.configModified = false
+            ctx.returnStateAfterSaveFlash = getEgsmBackState(ctx)
             ctx.returnToSelectConfigAfterSaveFlash = true
           else
             ctx.saveSplash = { kind = "failed", detail = _.common.localizeParseError(err, _.editor_str) or
@@ -41,7 +58,7 @@ local function run(ctx)
       end
     elseif (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
       ctx.editorLeavePrompt = nil
-      ctx.state = "select_config"
+      ctx.state = getEgsmBackState(ctx)
       ctx.currentPath = nil
       ctx.lines = nil
       ctx.saveSplash = nil
@@ -209,7 +226,7 @@ local function run(ctx)
     if ctx.configModified then
       ctx.editorLeavePrompt = true
     else
-      ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.saveSplash = nil
+      ctx.state = getEgsmBackState(ctx); ctx.currentPath = nil; ctx.lines = nil; ctx.saveSplash = nil
     end
   end
 end

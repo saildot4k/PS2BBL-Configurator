@@ -1,7 +1,7 @@
 # Embedded resources: paths relative to source dir
 set(EMBED_FILES
     res/boot.lua
-    res/logo_ps2bble.png
+    res/title.png
     res/loading.png
 )
 
@@ -25,15 +25,17 @@ endforeach()
 if(EMBED_VFS)
     set(BUILD_VFS ${CMAKE_CURRENT_SOURCE_DIR}/tools/build_vfs.py)
     set(SCRIPT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/scripts)
-    file(GLOB_RECURSE VFS_FILES "${SCRIPT_DIR}/*")
+    set(RES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/res)
+    file(GLOB_RECURSE VFS_SCRIPT_FILES "${SCRIPT_DIR}/*")
+    file(GLOB VFS_LOGO_FILES "${RES_DIR}/logo_*.png")
     add_custom_command(
         OUTPUT ${EMBED_BINDIR}/vfs.bin
         COMMAND ${CMAKE_COMMAND} -E env PYTHONIOENCODING=utf-8
                 python3 ${BUILD_VFS}
                 ${CMAKE_CURRENT_SOURCE_DIR}
                 ${EMBED_BINDIR}/vfs.bin
-        DEPENDS ${BUILD_VFS} ${VFS_FILES}
-        COMMENT "Building VFS from scripts/"
+        DEPENDS ${BUILD_VFS} ${VFS_SCRIPT_FILES} ${VFS_LOGO_FILES}
+        COMMENT "Building VFS from scripts/ and res/logo_*.png"
     )
     add_custom_command(
         OUTPUT ${EMBED_BINDIR}/vfs.c

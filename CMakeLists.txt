@@ -5,8 +5,8 @@ include($ENV{PS2SDK}/ps2dev.cmake)
 project(osdmenu-configurator)
 
 # Executable names
-set(EE_BIN "osdmenu-configurator_unc.elf")
-set(EE_BIN_PKD "osdmenu-configurator.elf")
+set(EE_BIN "r3configurator_unc.elf")
+set(EE_BIN_PKD "r3configurator.elf")
 
 # Output directory
 set(OUTDIR "release" CACHE STRING "Release directory")

@@ -11,6 +11,7 @@ local function initContext()
     lines = nil,
     chosenMcSlot = nil,
     state = "main",
+    mainOverlayLogoKey = nil,
     mcSel = 1,
     hddReady = false,
     prevPad = 0,
@@ -81,6 +82,7 @@ local function initContext()
     editorLeavePrompt = nil,
     returnToSelectConfigAfterSave = nil,
     returnToSelectConfigAfterSaveFlash = nil,
+    returnStateAfterSaveFlash = nil,
     openExplicitPath = nil,
   }
 end

@@ -1,5 +1,8 @@
 --[[ Arguments list for a menu entry or MBR boot key (when ctx.bootKey is set and we're in MBR). ]]
 
+local arg_presets = dofile("scripts/scenes/arg_presets.lua")
+local arg_add_menu = dofile("scripts/scenes/arg_add_menu.lua")
+
 local function run(ctx)
   local _ = ctx._
   local isBoot = not not (ctx.bootKey and (ctx.context == "mbr" or ctx.fileType == "osdmbr_cnf"))
@@ -12,6 +15,7 @@ local function run(ctx)
   if isBoot and not ctx.bootKey then
     ctx.state = "editor"; return
   end
+
   local paths = isBoot and (_.config_parse.getBootPaths(ctx.lines, ctx.bootKey) or {}) or
       _.config_parse.getMenuEntryPaths(ctx.lines, ctx.entryIdx)
   local hasOsdOrShutdown = false
@@ -24,28 +28,127 @@ local function run(ctx)
   if not isBoot and hasOsdOrShutdown then
     ctx.state = "menu_entry_edit"; return
   end
-  local args = isBoot and (function()
-    local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
-    local t = {}
-    for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
-    return t
-  end)() or (_.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {})
+
   local hasCdrom = false
   for _, p in ipairs(paths or {}) do
-    local pv = type(p) == "table" and p.value or p
-    if pv == "cdrom" then
-      hasCdrom = true; break
+    if arg_presets.pathValue(p) == "cdrom" then
+      hasCdrom = true
+      break
     end
   end
-  local total = #args
-  if ctx.entryArgSel < 1 then ctx.entryArgSel = 1 end
-  if ctx.entryArgSel > total then ctx.entryArgSel = (total > 0) and total or 1 end
-  if total > _.MAX_VISIBLE_LIST then
-    ctx.entryArgScroll = ctx.entryArgSel - math.floor(_.MAX_VISIBLE_LIST / 2)
-    ctx.entryArgScroll = math.max(0, math.min(ctx.entryArgScroll, total - _.MAX_VISIBLE_LIST))
-  else
-    ctx.entryArgScroll = 0
+  local hasNhddlElfPath = arg_presets.hasNhddlElfPath(paths)
+
+  local function getArgs()
+    if isBoot then
+      local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
+      local t = {}
+      for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
+      return t
+    end
+    return _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {}
   end
+
+  local function setArgs(a)
+    if isBoot then
+      local v = {}
+      for _, item in ipairs(a or {}) do table.insert(v, type(item) == "table" and item.value or item) end
+      _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
+      ctx.configModified = true
+    else
+      _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, a)
+      ctx.configModified = true
+    end
+  end
+
+  local function addArgValue(v)
+    local value = tostring(v or "")
+    if value == "" then return end
+    local args2 = getArgs()
+    table.insert(args2, { value = value, disabled = false })
+    setArgs(args2)
+    ctx.entryArgSel = #args2
+  end
+
+  local function openNewArgumentInput(prompt, maxLen, callback)
+    _.common.beginTextInput(ctx, {
+      clearArgEditIdx = true,
+      titleIdMode = nil,
+      prompt = prompt,
+      value = "",
+      maxLen = maxLen,
+      callback = callback,
+      returnState = "entry_args",
+      gridSel = 1,
+      cursor = 1,
+      scroll = 1,
+      state = "text_input",
+    })
+  end
+
+  local function addUdpbdPair(ipValue)
+    local args2, ok = arg_presets.addUdpbdPair(getArgs(), ipValue)
+    if not ok then return false end
+    setArgs(args2)
+    ctx.entryArgSel = #args2
+    return true
+  end
+
+  local args = getArgs()
+  local total = #args
+  local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
+
+  local nhddlPresetRows = nil
+  if hasNhddlElfPath then
+    nhddlPresetRows = arg_presets.buildEntryNhddlRows()
+  else
+    ctx.entryArgAddMenu = nil
+    ctx.entryArgAddSel = nil
+    ctx.entryArgAddScroll = nil
+  end
+
+  local function openUdpbdIpInput()
+    openNewArgumentInput("UDPBD IP (x.x.x.x)", 15, function(val)
+      local ip = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if ip ~= "" then addUdpbdPair(ip) end
+      ctx.state = "entry_args"
+    end)
+  end
+
+  if ctx.entryArgAddMenu and nhddlPresetRows then
+    if arg_add_menu.run(ctx, {
+          menuOpenKey = "entryArgAddMenu",
+          selKey = "entryArgAddSel",
+          scrollKey = "entryArgAddScroll",
+          rows = nhddlPresetRows,
+          title = "Add argument [NHDDL]",
+          descDefault = "Enter any custom argument manually.",
+          rowStateKeyPrefix = "entry_args_add_row_",
+          rowDisabledReason = function(row)
+            return arg_presets.rowDisabled(row, usedKnown, usedModes, total)
+          end,
+          onSelect = function(row)
+            if row.kind == "manual" then
+              openNewArgumentInput(_.menu_str.new_argument_prompt, 79, function(val)
+                local v = val or ""
+                if v ~= "" then addArgValue(v) end
+                ctx.state = "entry_args"
+              end)
+            elseif row.kind == "udpbd_ip" then
+              openUdpbdIpInput()
+            elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
+              openUdpbdIpInput()
+            else
+              addArgValue(row.value or "")
+            end
+          end,
+        }) then
+      return
+    end
+  end
+
+  ctx.entryArgSel = _.common.clampListSelection(ctx.entryArgSel or 1, total)
+  ctx.entryArgScroll = _.common.centeredListScroll(ctx.entryArgSel, total, _.MAX_VISIBLE_LIST)
+
   local titleStr
   if isBoot then
     titleStr = ((_.strings.options and _.strings.options[ctx.bootKey] and _.strings.options[ctx.bootKey].label) or ctx.bootKey) ..
@@ -65,9 +168,9 @@ local function run(ctx)
   end
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, titleStr, _.WHITE)
   if not isBoot and hasCdrom then
-    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.75,
-      _.menu_str.cdrom_hint, _.DIM)
+    _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.75, _.menu_str.cdrom_hint, _.DIM)
   end
+
   local maxLabelW = (_.w or 640) - (_.MARGIN_X + 24) - _.MARGIN_X
   for i = ctx.entryArgScroll + 1, math.min(ctx.entryArgScroll + _.MAX_VISIBLE_LIST, total) do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.entryArgScroll - 1) * _.LINE_H
@@ -86,86 +189,70 @@ local function run(ctx)
     end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryArgSel, label, col)
   end
+
   local argHints = _.menu_str.args_hint_items
   if not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and type(args[ctx.entryArgSel]) == "table" then
     argHints = args[ctx.entryArgSel].disabled and (_.menu_str.args_hint_items_with_enable or argHints)
         or (_.menu_str.args_hint_items_with_disable or argHints)
   end
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, argHints, nil, _.DIM,
-    _.w - 2 * _.MARGIN_X)
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, argHints, nil, _.DIM, _.w - 2 * _.MARGIN_X)
+
   if (_.padEffective & _.PAD_UP) ~= 0 then
-    ctx.entryArgSel = ctx.entryArgSel - 1; if ctx.entryArgSel < 1 then ctx.entryArgSel = total end
+    ctx.entryArgSel = _.common.wrapListSelection(ctx.entryArgSel, total, -1)
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
-    ctx.entryArgSel = ctx.entryArgSel + 1; if ctx.entryArgSel > total then ctx.entryArgSel = 1 end
+    ctx.entryArgSel = _.common.wrapListSelection(ctx.entryArgSel, total, 1)
   end
-  local function getArgs()
-    if isBoot then
-      local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
-      local t = {}
-      for _, v in ipairs(a) do table.insert(t, { value = v, disabled = false }) end
-      return t
-    end
-    return _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {}
-  end
-  local function setArgs(a)
-    if isBoot then
-      local v = {}
-      for _, item in ipairs(a or {}) do table.insert(v, type(item) == "table" and item.value or item) end
-      _.config_parse.setBootArgs(ctx.lines, ctx.bootKey, v)
-      ctx.configModified = true
-    else
-      _.config_parse.setMenuEntryArgs(ctx.lines, ctx.entryIdx, a)
-      ctx.configModified = true
-    end
-  end
-  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and type(args[ctx.entryArgSel]) == "table" then
+
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and
+      type(args[ctx.entryArgSel]) == "table" then
     _.config_parse.setArgDisabled(ctx.lines, ctx.entryIdx, ctx.entryArgSel, not args[ctx.entryArgSel].disabled)
     ctx.configModified = true
   end
+
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
-      ctx.argEditIdx = ctx.entryArgSel
-      ctx.textInputTitleIdMode = nil
-      ctx.textInputPrompt = _.menu_str.edit_argument_prompt
-      ctx.textInputValue = type(args[ctx.entryArgSel]) == "table" and args[ctx.entryArgSel].value or
-          args[ctx.entryArgSel]
-      ctx.textInputMaxLen = 79
-      ctx.textInputCallback = function(val)
-        local args2 = getArgs()
-        if type(args2[ctx.argEditIdx]) == "table" then
-          args2[ctx.argEditIdx].value = val or ""
-        else
-          args2[ctx.argEditIdx] = { value = val or "", disabled = false }
-        end
-        setArgs(args2)
-        ctx.state = "entry_args"
-      end
-      ctx.textInputReturnState = "entry_args"
-      ctx.textInputGridSel = 1
-      ctx.textInputCursor = #ctx.textInputValue + 1
-      ctx.textInputScroll = 1
-      ctx.state = "text_input"
+      local editIdx = ctx.entryArgSel
+      local editValue = type(args[editIdx]) == "table" and args[editIdx].value or args[editIdx]
+      _.common.beginTextInput(ctx, {
+        argEditIdx = editIdx,
+        titleIdMode = nil,
+        prompt = _.menu_str.edit_argument_prompt,
+        value = editValue,
+        maxLen = 79,
+        callback = function(val)
+          local args2 = getArgs()
+          if type(args2[ctx.argEditIdx]) == "table" then
+            args2[ctx.argEditIdx].value = val or ""
+          else
+            args2[ctx.argEditIdx] = { value = val or "", disabled = false }
+          end
+          setArgs(args2)
+          ctx.state = "entry_args"
+        end,
+        returnState = "entry_args",
+        gridSel = 1,
+        scroll = 1,
+        state = "text_input",
+      })
     end
   end
+
   if (_.padEffective & _.PAD_SELECT) ~= 0 and not hasCdrom then
-    ctx.argEditIdx = nil
-    ctx.textInputTitleIdMode = nil
-    ctx.textInputPrompt = _.menu_str.new_argument_prompt
-    ctx.textInputValue = ""
-    ctx.textInputMaxLen = 79
-    ctx.textInputCallback = function(val)
-      if (val or "") ~= "" then
-        local args2 = getArgs(); table.insert(args2, { value = val, disabled = false }); setArgs(args2)
-      end
-      ctx.state = "entry_args"
+    if hasNhddlElfPath and nhddlPresetRows then
+      ctx.entryArgAddMenu = true
+      ctx.entryArgAddSel = ctx.entryArgAddSel or 1
+      ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
+    else
+      openNewArgumentInput(_.menu_str.new_argument_prompt, 79, function(val)
+        if (val or "") ~= "" then
+          local args2 = getArgs(); table.insert(args2, { value = val, disabled = false }); setArgs(args2)
+        end
+        ctx.state = "entry_args"
+      end)
     end
-    ctx.textInputReturnState = "entry_args"
-    ctx.textInputGridSel = 1
-    ctx.textInputCursor = 1
-    ctx.textInputScroll = 1
-    ctx.state = "text_input"
   end
+
   if (_.padEffective & _.PAD_L1) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and ctx.entryArgSel > 1 then
       local args2 = getArgs(); args2[ctx.entryArgSel], args2[ctx.entryArgSel - 1] = args2[ctx.entryArgSel - 1],
@@ -180,12 +267,15 @@ local function run(ctx)
       ctx.entryArgSel = ctx.entryArgSel + 1
     end
   end
+
   if (_.padEffective & _.PAD_SQUARE) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total then
-      local args2 = getArgs(); table.remove(args2, ctx.entryArgSel); setArgs(args2)
-      if ctx.entryArgSel > #args2 then ctx.entryArgSel = math.max(1, #args2) end
+      local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.entryArgSel, hasNhddlElfPath)
+      setArgs(args2)
+      ctx.entryArgSel = _.common.clampListSelection(ctx.entryArgSel, #args2)
     end
   end
+
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then ctx.state = isBoot and "entry_paths" or "menu_entry_edit" end
 end
 

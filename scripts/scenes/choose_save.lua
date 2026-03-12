@@ -8,6 +8,7 @@ local function run(ctx)
   if ctx.saveSel > #choices then ctx.saveSel = #choices end
   local maxVis = _.MAX_VISIBLE
   local total = #choices
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
   local scroll = 0
   if total > maxVis then
     scroll = ctx.saveSel - math.floor(maxVis / 2)
@@ -18,6 +19,12 @@ local function run(ctx)
     local label = (p:match("^mc0:") and _.dev_str.memory_card_1) or (p:match("^mc1:") and _.dev_str.memory_card_2) or
         (p:match("^pfs0:") and _.dev_str.hdd) or
         p:sub(1, 40)
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "choose_save_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.saveSel)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+    end
     local y = _.MARGIN_Y + _.scaleY(50) + (i - scroll - 1) * _.LINE_H
     local col = (i == ctx.saveSel) and _.SELECTED_ENTRY or _.WHITE
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.saveSel, label, col)
@@ -41,6 +48,9 @@ local function run(ctx)
       ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
       ctx.configModified = false
       if ctx.returnToSelectConfigAfterSave then
+        if type(ctx.returnToSelectConfigAfterSave) == "string" then
+          ctx.returnStateAfterSaveFlash = ctx.returnToSelectConfigAfterSave
+        end
         ctx.returnToSelectConfigAfterSave = nil
         ctx.returnToSelectConfigAfterSaveFlash = true
       end
@@ -68,6 +78,7 @@ local function run(ctx)
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     ctx.returnToSelectConfigAfterSave = nil
+    ctx.returnStateAfterSaveFlash = nil
     if ctx.returnToMenuEntriesAfterSave then
       ctx.returnToMenuEntriesAfterSave = nil
       ctx.state = "menu_entries"

@@ -15,6 +15,7 @@ local function run(ctx)
   end
 
   local title = "Launch Keys"
+  local isFmcb = (ctx.fileType == "freemcboot_cnf")
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)
 
   ctx.bblHotkeySel = ctx.bblHotkeySel or 1
@@ -41,10 +42,13 @@ local function run(ctx)
     local keyId = hotkeys[i]
     local keyIcon = _.common.getPadIcon(keyId)
     local nameVal = _.config_parse.getBblHotkeyName(ctx.lines, keyId) or ""
-    local disp = (nameVal ~= "" and nameVal) or _.common_str.empty
+    local disp = isFmcb and tostring(keyId or "") or ((nameVal ~= "" and nameVal) or _.common_str.empty)
     local line = disp
     local lineMaxW = maxLabelW - iconW - iconGap
-    if _.common.truncateTextToWidth then
+    if _.common.fitListRowText then
+      line = _.common.fitListRowText(ctx, "bbl_hotkeys_row_" .. tostring(i), _.font, line, lineMaxW, _.FONT_SCALE,
+        i == ctx.bblHotkeySel)
+    elseif _.common.truncateTextToWidth then
       line = _.common.truncateTextToWidth(_.font, line, lineMaxW, _.FONT_SCALE)
     end
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.bblHotkeyScroll - 1) * _.LINE_H

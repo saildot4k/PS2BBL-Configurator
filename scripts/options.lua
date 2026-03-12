@@ -73,6 +73,21 @@ local function buildPsxBblIniLocations()
   return out
 end
 
+local function appendOsdMcPaths(out, slot, fileName)
+  appendUnique(out, "mc" .. tostring(slot) .. ":/SYS-CONF/" .. fileName)
+end
+
+local function buildOsdMcLocations(chosenMcSlot, fileName)
+  local out = {}
+  if chosenMcSlot == 0 or chosenMcSlot == 1 then
+    appendOsdMcPaths(out, chosenMcSlot, fileName)
+    return out
+  end
+  appendOsdMcPaths(out, 0, fileName)
+  appendOsdMcPaths(out, 1, fileName)
+  return out
+end
+
 -- Config file locations by context and file type (ps2bbl_ini, psxbbl_ini, osdmenu_cnf, osdmbr_cnf, osdgsm_cnf).
 function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "ps2bbl_ini" then
@@ -81,11 +96,56 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
   if fileType == "psxbbl_ini" then
     return buildPsxBblIniLocations()
   end
+  if fileType == "freemcboot_cnf" then
+    if context == "freehddboot" then
+      if chosenMcSlot == 0 then
+        return {
+          "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+          "mc0:/SYS-CONF/FREEHDB.CNF",
+          "mass:/FREEHDB.CNF",
+          "mass1:/FREEHDB.CNF",
+        }
+      end
+      if chosenMcSlot == 1 then
+        return {
+          "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+          "mc1:/SYS-CONF/FREEHDB.CNF",
+          "mass:/FREEHDB.CNF",
+          "mass1:/FREEHDB.CNF",
+        }
+      end
+      return {
+        "hdd0:__sysconf/FMCB/FREEHDB.CNF",
+        "mc0:/SYS-CONF/FREEHDB.CNF",
+        "mc1:/SYS-CONF/FREEHDB.CNF",
+        "mass:/FREEHDB.CNF",
+        "mass1:/FREEHDB.CNF",
+      }
+    end
+    if chosenMcSlot == 0 then
+      return {
+        "mc0:/SYS-CONF/FREEMCB.CNF",
+        "mass:/FREEMCB.CNF",
+        "mass1:/FREEMCB.CNF",
+      }
+    end
+    if chosenMcSlot == 1 then
+      return {
+        "mc1:/SYS-CONF/FREEMCB.CNF",
+        "mass:/FREEMCB.CNF",
+        "mass1:/FREEMCB.CNF",
+      }
+    end
+    return {
+      "mc0:/SYS-CONF/FREEMCB.CNF",
+      "mc1:/SYS-CONF/FREEMCB.CNF",
+      "mass:/FREEMCB.CNF",
+      "mass1:/FREEMCB.CNF",
+    }
+  end
   if fileType == "osdmenu_cnf" then
     if context == "osdmenu" then
-      if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDMENU.CNF" } end
-      if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/OSDMENU.CNF" } end
-      return { "mc0:/SYS-CONF/OSDMENU.CNF", "mc1:/SYS-CONF/OSDMENU.CNF" }
+      return buildOsdMcLocations(chosenMcSlot, "OSDMENU.CNF")
     end
     if context == "hosdmenu" then return { "pfs0:/osdmenu/OSDMENU.CNF" } end
     return {}
@@ -102,9 +162,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot)
       return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF", "pfs0:/osdmenu/OSDGSM.CNF" }
     end
     if context == "osdmenu" then
-      if chosenMcSlot == 0 then return { "mc0:/SYS-CONF/OSDGSM.CNF" } end
-      if chosenMcSlot == 1 then return { "mc1:/SYS-CONF/OSDGSM.CNF" } end
-      return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF" }
+      return buildOsdMcLocations(chosenMcSlot, "OSDGSM.CNF")
     end
     if context == "hosdmenu" or context == "mbr" then
       return { "pfs0:/osdmenu/OSDGSM.CNF" }
@@ -122,6 +180,12 @@ function config_options.getDefaultLocation(context, fileType, chosenMcSlot)
   if fileType == "psxbbl_ini" then
     return buildBblDefaultMcPath("PSXBBL.INI", chosenMcSlot)
   end
+  if fileType == "freemcboot_cnf" then
+    if context == "freehddboot" then
+      return "hdd0:__sysconf/FMCB/FREEHDB.CNF"
+    end
+    return buildBblDefaultMcPath("FREEMCB.CNF", chosenMcSlot)
+  end
   local loc = config_options.getLocations(context, fileType, chosenMcSlot)
   return (loc and loc[1]) or nil
 end
@@ -132,6 +196,9 @@ config_options.BBL_HOTKEYS = {
 }
 config_options.BBL_MAX_ENTRIES = 10
 config_options.BBL_MAX_ARGS_PER_ENTRY = 8
+config_options.FMCB_MAX_ENTRIES = 99
+config_options.FMCB_MAX_PATHS_PER_ENTRY = 3
+config_options.FMCB_BBL_MAX_ENTRIES = 3
 
 function config_options.getBblHotkeys()
   return config_options.BBL_HOTKEYS
@@ -249,6 +316,34 @@ local function buildBblIniAutoOptions()
   return out
 end
 
+local function buildFreemcbootAutoOptions()
+  local out = {
+    {
+      key = "pad_delay",
+      optType = "int",
+      default = "0",
+      min = 0,
+      max = 600000,
+      intPadDeltas = { left = -100, L1 = -1000, L2 = -10000, R2 = 10000, R1 = 1000, right = 100 },
+      intPadLabels = { left = "-0.1s", L1 = "-1s", L2 = "-10s", R2 = "+10s", R1 = "+1s", right = "+0.1s" },
+      label = "Pad Delay:",
+      desc = "Delay before AUTOBOOT launch key selection is processed.",
+    },
+  }
+  local maxSlots = (type(config_options.FMCB_BBL_MAX_ENTRIES) == "number" and config_options.FMCB_BBL_MAX_ENTRIES) or 3
+  for i = 1, maxSlots do
+    table.insert(out, {
+      key = "_auto_e" .. tostring(i),
+      optType = "bbl_slot",
+      bblKeyId = "AUTO",
+      bblEntrySlot = i,
+      label = "E" .. tostring(i),
+      desc = "Edit LK_Auto_E" .. tostring(i) .. " (no arguments).",
+    })
+  end
+  return out
+end
+
 config_options.ps2bbl_ini = buildBblIniGlobalOptions()
 config_options.psxbbl_ini = buildBblIniGlobalOptions()
 config_options.ps2bbl_ini_auto = buildBblIniAutoOptions()
@@ -315,6 +410,64 @@ config_options.osdmenu_cnf_categories = {
     },
   },
 }
+config_options.freemcboot_cnf_auto = buildFreemcbootAutoOptions()
+config_options.freemcboot_cnf_categories = {
+  {
+    name = "OSD behavior modifiers",
+    options = {
+      { key = "OSDSYS_video_mode",    optType = "enum", default = "AUTO", enumVals = { "AUTO", "PAL", "NTSC" } },
+      { key = "OSDSYS_Skip_Disc",     optType = "bool", default = "0" },
+      { key = "OSDSYS_Skip_Logo",     optType = "bool", default = "1" },
+      { key = "OSDSYS_Inner_Browser", optType = "bool", default = "0" },
+      { key = "OSDSYS_Skip_MC",       optType = "bool", default = "1" },
+      { key = "OSDSYS_Skip_HDD",      optType = "bool", default = "1" },
+      { key = "Debug_Screen",         optType = "bool", default = "0" },
+    },
+  },
+  {
+    name = "OSD custom menu options",
+    options = {
+      { key = "hacked_OSDSYS",              optType = "bool",  default = "1" },
+      { key = "OSDSYS_scroll_menu",         optType = "bool",  default = "1" },
+      { key = "OSDSYS_menu_x",              optType = "int",   default = "320" },
+      { key = "OSDSYS_menu_y",              optType = "int",   default = "110" },
+      { key = "OSDSYS_enter_x",             optType = "int",   default = "30" },
+      { key = "OSDSYS_enter_y",             optType = "int",   default = "-1" },
+      { key = "OSDSYS_version_x",           optType = "int",   default = "-1" },
+      { key = "OSDSYS_version_y",           optType = "int",   default = "-1" },
+      { key = "OSDSYS_cursor_max_velocity", optType = "int",   default = "1000" },
+      { key = "OSDSYS_cursor_acceleration", optType = "int",   default = "100" },
+      { key = "OSDSYS_left_cursor",         optType = "text",  default = "",                   maxLen = 19 },
+      { key = "OSDSYS_right_cursor",        optType = "text",  default = "",                   maxLen = 19 },
+      { key = "OSDSYS_menu_top_delimiter",  optType = "text",  default = "",                   maxLen = 79 },
+      { key = "OSDSYS_menu_bottom_delimiter", optType = "text", default = "",                  maxLen = 79 },
+      { key = "OSDSYS_num_displayed_items", optType = "int",   default = "7" },
+      { key = "OSDSYS_selected_color",      optType = "color", default = "0x10,0x80,0xE0,0x80" },
+      { key = "OSDSYS_unselected_color",    optType = "color", default = "0x33,0x33,0x33,0x80" },
+    },
+  },
+  {
+    name = "Disc Options",
+    options = {
+      { key = "FastBoot",   optType = "bool", default = "1" },
+      { key = "ESR_Path_E1", optType = "path", default = "mass:/BOOT/ESR.ELF" },
+      { key = "ESR_Path_E2", optType = "path", default = "mc?:/BOOT/ESR.ELF" },
+      { key = "ESR_Path_E3", optType = "path", default = "hdd0:__sysconf:pfs:/FMCB/ESR.ELF" },
+    },
+  },
+  {
+    name = "AUTOBOOT",
+    options = config_options.freemcboot_cnf_auto,
+  },
+  {
+    name = "LAUNCH KEYS",
+    options = { { key = "_bbl_hotkeys", optType = "action", label = "LAUNCH KEYS" } },
+  },
+  {
+    name = "Edit menu entries",
+    options = { { key = "_menu_entries", optType = "action" } },
+  },
+}
 
 -- Get default value for a single key from osdmenu_cnf_categories (nil if no default).
 function config_options.getOsdmenuDefault(key)
@@ -331,6 +484,29 @@ function config_options.getOsdmenuDefaults()
   local out = {}
   for _, cat in ipairs(config_options.osdmenu_cnf_categories) do
     for _, o in ipairs(cat.options) do
+      if o.key and o.default ~= nil and o.key:sub(1, 1) ~= "_" then
+        out[o.key] = o.default
+      end
+    end
+  end
+  return out
+end
+
+function config_options.getFreemcbootDefault(key)
+  for _, cat in ipairs(config_options.freemcboot_cnf_categories or {}) do
+    for _, o in ipairs(cat.options or {}) do
+      if o.key == key and o.default ~= nil then
+        return o.default
+      end
+    end
+  end
+  return nil
+end
+
+function config_options.getFreemcbootDefaults()
+  local out = {}
+  for _, cat in ipairs(config_options.freemcboot_cnf_categories or {}) do
+    for _, o in ipairs(cat.options or {}) do
       if o.key and o.default ~= nil and o.key:sub(1, 1) ~= "_" then
         out[o.key] = o.default
       end

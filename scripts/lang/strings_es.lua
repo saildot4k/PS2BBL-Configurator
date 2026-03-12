@@ -8,13 +8,19 @@ local strings = {}
 
 -- Flujo principal (main, choose_mc, select_config, initHdd, open, choose_load)
 strings.main = {
-  main_title = "Configurador PS2BBL",
+  main_title = "R3CCONFIGURATOR",
   main_sub = "Elige una de las opciones a continuación",
   version_unknown = "desconocido",
   main_hint_items = { { pad = "up", label = "Arriba" }, { pad = "cross", label = "Entrar" }, { pad = "down", label = "Abajo" }, { pad = "start", label = "Salir", row = 2 } },
   main_hint_items_with_lang = { { pad = "up", label = "Arriba" }, { pad = "cross", label = "Entrar" }, { pad = "down", label = "Abajo" }, { pad = "L1", label = "Idioma", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Idioma", row = 2 } },
   main_ps2bbl_mc = "PS2BBL",
   main_psxbbl_mc = "PSXBBL",
+  main_osdmenu = "OSDMenu",
+  main_osdmenu_mbr = "OSDMenu MBR",
+  main_hosdmenu = "HOSDMenu",
+  main_egsm = "eGSM",
+  main_freemcboot = "FreeMCBoot",
+  main_freehddboot = "FreeHDBoot",
   main_exit = "Salir al navegador",
   main_exit_prompt = "¿Salir al navegador?",
   main_exit_hint_items = { { pad = "cross", label = "Sí" }, { pad = "circle", label = "No" } },
@@ -114,6 +120,7 @@ strings.path_picker = {
   bbl_cmd_cdvd = "$CDVD (Lanzar disco)",
   bbl_cmd_cdvd_no_logo = "$CDVD_NO_PS2LOGO (Disco sin logo)",
   bbl_cmd_osdsys = "$OSDSYS (Abrir navegador)",
+  fmcb_cmd_osdsys = "OSDSYS (Abrir navegador)",
   bbl_cmd_credits = "$CREDITS",
   bbl_cmd_hddchecker = "$HDDCHECKER (build HDD)",
   bbl_cmd_runkelf = "$RUNKELF:<ruta>",
@@ -131,7 +138,7 @@ strings.path_picker = {
   no_devices = "No hay dispositivos",
   waiting_for_device_drivers = "Esperando dispositivo...",
   circle_back_items = { { pad = "circle", label = "Atrás" } },
-  device_timeout = "Tiempo de espera del dispositivo agotado",
+  device_timeout = "No se encontró %DEVICE%",
   wildcard_confirm_title = "¿Usar ruta como comodín?",
   wildcard_confirm_hint = { { pad = "cross", label = "Sí" }, { pad = "circle", label = "No" } },
 }
@@ -176,6 +183,15 @@ strings.categories = {
   [4] = "Editar entradas del menú",
 }
 
+strings.categories_freemcboot = {
+  [1] = "Modificadores de comportamiento de OSD",
+  [2] = "Opciones de menú personalizadas de OSD",
+  [3] = "Opciones de disco",
+  [4] = "AUTOBOOT",
+  [5] = "LAUNCH KEYS",
+  [6] = "Editar entradas del menú",
+}
+
 -- Etiquetas y descripciones de opciones de OSDMENU.CNF (por clave de opción)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Forzar modo de video", desc = "Forzar modo de video de OSD" },
@@ -183,6 +199,10 @@ strings.options_osdmenu = {
   OSDSYS_Skip_Disc = { label = "Saltar disco", desc = "Saltar lanzamiento automático de disco" },
   OSDSYS_Skip_Logo = { label = "Saltar intro", desc = "Saltar animación de introducción de SCE" },
   OSDSYS_Inner_Browser = { label = "Navegador interno", desc = "Arrancar en el navegador de la tarjeta de memoria" },
+  OSDSYS_Skip_MC = { label = "Saltar MC", desc = "Saltar comprobación de tarjeta de memoria en el navegador" },
+  OSDSYS_Skip_HDD = { label = "Saltar HDD", desc = "Saltar comprobación de HDD en el navegador" },
+  Debug_Screen = { label = "Pantalla de depuración", desc = "Habilitar salida de pantalla de depuración" },
+  hacked_OSDSYS = { label = "OSD modificado", desc = "Habilitar modo de menú OSD parcheado de FHDB" },
   OSDSYS_custom_menu = { label = "Menú personalizado", desc = "Habilitar menú personalizado" },
   OSDSYS_scroll_menu = { label = "Desplazamiento infinito", desc = "Habilitar desplazamiento infinito" },
   OSDSYS_menu_x = { label = "Menú X", desc = "Posición X del menú personalizado" },
@@ -208,6 +228,11 @@ strings.options_osdmenu = {
   ps1drv_use_ps1vn = { label = "Usar PS1VN", desc = "Usar Negador de Modo de Video de PS1" },
   app_gameid = { label = "ID de juego de aplicación", desc = "Habilitar ID de juego visual para archivos ELF" },
   path_DKWDRV_ELF = { label = "Ruta DKWDRV", desc = "Ruta personalizada a DKWDRV.ELF" },
+  pad_delay = { label = "Retardo de pad", desc = "Retardo antes de procesar la selección de tecla de AUTOBOOT" },
+  FastBoot = { label = "Inicio rápido", desc = "Habilitar manejo de inicio rápido de disco" },
+  ESR_Path_E1 = { label = "Ruta ESR E1", desc = "Ruta ESR primaria" },
+  ESR_Path_E2 = { label = "Ruta ESR E2", desc = "Ruta ESR secundaria" },
+  ESR_Path_E3 = { label = "Ruta ESR E3", desc = "Ruta ESR terciaria" },
   _menu_entries = { label = "Editar entradas del menú", desc = "Editar entradas de menú personalizadas: nombre, rutas, argumentos" },
 }
 

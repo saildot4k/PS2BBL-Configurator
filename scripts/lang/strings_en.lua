@@ -8,13 +8,19 @@ local strings = {}
 
 -- Main flow (main, choose_mc, select_config, initHdd, open, choose_load)
 strings.main = {
-  main_title = "PS2BBL Configurator",
+  main_title = "R3CCONFIGURATOR",
   main_sub = "Pick one of the options below",
   version_unknown = "unknown",
   main_hint_items = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "start", label = "Exit", row = 2 } },
   main_hint_items_with_lang = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "L1", label = "Language", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Language", row = 2 } },
   main_ps2bbl_mc = "PS2BBL",
   main_psxbbl_mc = "PSXBBL",
+  main_osdmenu = "OSDMenu",
+  main_osdmenu_mbr = "OSDMenu MBR",
+  main_hosdmenu = "HOSDMenu",
+  main_egsm = "eGSM",
+  main_freemcboot = "FreeMCBoot",
+  main_freehddboot = "FreeHDBoot",
   main_exit = "Exit to browser",
   main_exit_prompt = "Exit to browser?",
   main_exit_hint_items = { { pad = "cross", label = "Yes" }, { pad = "circle", label = "No" } },
@@ -114,6 +120,7 @@ strings.path_picker = {
   bbl_cmd_cdvd = "$CDVD (Launch disc)",
   bbl_cmd_cdvd_no_logo = "$CDVD_NO_PS2LOGO (Launch disc no logo)",
   bbl_cmd_osdsys = "$OSDSYS (Launch browser)",
+  fmcb_cmd_osdsys = "OSDSYS (Launch browser)",
   bbl_cmd_credits = "$CREDITS",
   bbl_cmd_hddchecker = "$HDDCHECKER (HDD build)",
   bbl_cmd_runkelf = "$RUNKELF:<path>",
@@ -131,7 +138,7 @@ strings.path_picker = {
   no_devices = "No devices",
   waiting_for_device_drivers = "Waiting for device...",
   circle_back_items = { { pad = "circle", label = "Back" } },
-  device_timeout = "Device timeout",
+  device_timeout = "%DEVICE% not found",
   wildcard_confirm_title = "Use path as wildcard?",
   wildcard_confirm_hint = { { pad = "cross", label = "Yes" }, { pad = "circle", label = "No" } },
 }
@@ -176,6 +183,15 @@ strings.categories = {
   [4] = "Edit menu entries",
 }
 
+strings.categories_freemcboot = {
+  [1] = "OSD behavior modifiers",
+  [2] = "OSD custom menu options",
+  [3] = "Disc Options",
+  [4] = "AUTOBOOT",
+  [5] = "LAUNCH KEYS",
+  [6] = "Edit menu entries",
+}
+
 -- OSDMENU.CNF option labels and descriptions (by option key)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Force video mode", desc = "Force OSD video mode" },
@@ -183,6 +199,10 @@ strings.options_osdmenu = {
   OSDSYS_Skip_Disc = { label = "Skip disc", desc = "Skip automatic disc launch" },
   OSDSYS_Skip_Logo = { label = "Skip intro", desc = "Skip SCE intro animation" },
   OSDSYS_Inner_Browser = { label = "Inner browser", desc = "Boot into memory card browser" },
+  OSDSYS_Skip_MC = { label = "Skip MC", desc = "Skip memory card check in browser" },
+  OSDSYS_Skip_HDD = { label = "Skip HDD", desc = "Skip HDD check in browser" },
+  Debug_Screen = { label = "Debug screen", desc = "Enable debug screen output" },
+  hacked_OSDSYS = { label = "Hacked OSD", desc = "Enable FHDB patched OSD menu mode" },
   OSDSYS_custom_menu = { label = "Custom menu", desc = "Enable custom menu" },
   OSDSYS_scroll_menu = { label = "Infinite scrolling", desc = "Enable infinite scrolling" },
   OSDSYS_menu_x = { label = "Menu X", desc = "Custom menu X position" },
@@ -208,6 +228,11 @@ strings.options_osdmenu = {
   ps1drv_use_ps1vn = { label = "Use PS1VN", desc = "Use PS1 Video Mode Negator" },
   app_gameid = { label = "Application Game ID", desc = "Enable visual game ID for ELF files" },
   path_DKWDRV_ELF = { label = "DKWDRV path", desc = "Custom path to DKWDRV.ELF" },
+  pad_delay = { label = "Pad delay", desc = "Delay before AUTOBOOT launch key selection" },
+  FastBoot = { label = "Fast boot", desc = "Enable fast disc boot handling" },
+  ESR_Path_E1 = { label = "ESR path E1", desc = "Primary ESR path" },
+  ESR_Path_E2 = { label = "ESR path E2", desc = "Secondary ESR path" },
+  ESR_Path_E3 = { label = "ESR path E3", desc = "Tertiary ESR path" },
   _menu_entries = { label = "Edit menu entries", desc = "Edit custom menu entries: name, paths, arguments" },
 }
 

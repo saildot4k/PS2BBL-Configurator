@@ -9,6 +9,9 @@ local function run(ctx)
   local startY = _.MARGIN_Y + _.scaleY(50)
   local numEntries = #ctx.entryList
   local total = numEntries
+  local isFmcb = (ctx.fileType == "freemcboot_cnf")
+  local maxEntries = (isFmcb and ((_.config_options and _.config_options.FMCB_MAX_ENTRIES) or 99)) or nil
+  local canAddEntry = (not isFmcb) or (numEntries < maxEntries)
   local counterStr = (numEntries == 0 and "0 / 0") or (tostring(ctx.entrySel) .. " / " .. tostring(numEntries))
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.edit_menu_entries, _.WHITE)
   _.drawText(_.font, _.drawMode, 540, _.MARGIN_Y, 0.9, counterStr, _.DIM)
@@ -21,6 +24,7 @@ local function run(ctx)
   else
     ctx.entryScroll = 0
   end
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
   for i = ctx.entryScroll + 1, math.min(ctx.entryScroll + maxVis, total) do
     local ent = ctx.entryList[i]
     local idx = ent.idx
@@ -32,6 +36,12 @@ local function run(ctx)
     if ent.disabled then
       col = (i == ctx.entrySel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or
           (_.DIM_ENTRY or _.DIM)
+    end
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "menu_entries_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.entrySel)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
     end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entrySel, label, col)
   end
@@ -47,7 +57,7 @@ local function run(ctx)
   if (_.padEffective & _.PAD_RIGHT) ~= 0 then
     ctx.entrySel = math.min(total, ctx.entrySel + maxVis)
   end
-  if (_.padEffective & _.PAD_SELECT) ~= 0 then
+  if (_.padEffective & _.PAD_SELECT) ~= 0 and canAddEntry then
     local belowIdx = (total == 0) and 0 or ctx.entryList[ctx.entrySel].idx
     local newIdx = _.config_parse.insertMenuEntryBelow(ctx.lines, belowIdx, "")
     ctx.configModified = true
@@ -108,6 +118,15 @@ local function run(ctx)
   if ctx.entrySel >= 1 and ctx.entrySel <= #ctx.entryList then
     hints = ctx.entryList[ctx.entrySel].disabled and (_.menu_str.hint_items_with_enable or hints)
         or (_.menu_str.hint_items_with_disable or hints)
+  end
+  if not canAddEntry then
+    local filtered = {}
+    for _, item in ipairs(hints or {}) do
+      if item.pad ~= "select" then
+        filtered[#filtered + 1] = item
+      end
+    end
+    hints = filtered
   end
   local pageStr = tostring(maxVis)
   local hintsAdjusted = {}

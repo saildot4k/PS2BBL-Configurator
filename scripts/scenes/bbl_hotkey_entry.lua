@@ -17,7 +17,8 @@ local function run(ctx)
 
   local maxArgs = (_.config_parse.getBblMaxArgsPerEntry and _.config_parse.getBblMaxArgsPerEntry()) or 8
   local data = _.config_parse.getBblHotkeySlot(ctx.lines, keyId, slot)
-  local rows = { "path", "args" }
+  local allowArgs = (ctx.fileType ~= "freemcboot_cnf")
+  local rows = allowArgs and { "path", "args" } or { "path" }
   ctx.bblEntryDetailSel = ctx.bblEntryDetailSel or 1
   if ctx.bblEntryDetailSel < 1 then ctx.bblEntryDetailSel = 1 end
   if ctx.bblEntryDetailSel > #rows then ctx.bblEntryDetailSel = #rows end
@@ -34,14 +35,14 @@ local function run(ctx)
   for i = 1, #rows do
     local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
     local col = (i == ctx.bblEntryDetailSel) and _.SELECTED_ENTRY or _.WHITE
-    local line = (i == 1) and pathLine or argsLine
+    local line = (rows[i] == "path") and pathLine or argsLine
     if _.common.fitListRowText then
-      local key = (i == 1) and "bbl_hotkey_entry_path" or "bbl_hotkey_entry_args"
+      local key = (rows[i] == "path") and "bbl_hotkey_entry_path" or "bbl_hotkey_entry_args"
       line = _.common.fitListRowText(ctx, key, _.font, line, maxLabelW, _.FONT_SCALE, i == ctx.bblEntryDetailSel)
     elseif _.common.truncateTextToWidth then
       line = _.common.truncateTextToWidth(_.font, line, maxLabelW, _.FONT_SCALE)
     end
-    if i == 1 and data.disabled then
+    if rows[i] == "path" and data.disabled then
       col = (i == ctx.bblEntryDetailSel) and (_.SELECTED_ENTRY_DIM or _.SELECTED_ENTRY) or (_.DIM_ENTRY or _.DIM)
     end
     _.drawListRow(_.MARGIN_X + 20, y, i == ctx.bblEntryDetailSel, line, col)
@@ -91,7 +92,7 @@ local function run(ctx)
       ctx.pathPickerBblHotkeySlot = slot
       ctx.pathPickerBblHotkeyDisabled = data.disabled and true or false
       ctx.state = "path_picker"
-    else
+    elseif allowArgs then
       ctx.bblArgSel = ctx.bblArgSel or 1
       ctx.bblArgScroll = ctx.bblArgScroll or 0
       ctx.state = "bbl_hotkey_args"

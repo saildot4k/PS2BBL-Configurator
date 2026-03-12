@@ -225,12 +225,54 @@ function config_parse.getBblMaxArgsPerEntry()
   return BBL_MAX_ARGS_PER_ENTRY
 end
 
-local function isBblHotkeyId(keyId)
-  if type(keyId) ~= "string" then return false end
+local function canonicalBblHotkeyId(keyId)
+  if type(keyId) ~= "string" then return nil end
+  local upper = keyId:upper()
   for _, k in ipairs(BBL_KEYS_ALL) do
-    if k == keyId then return true end
+    if k == upper then return upper end
   end
-  return false
+  return nil
+end
+
+local function isBblHotkeyId(keyId)
+  return canonicalBblHotkeyId(keyId) ~= nil
+end
+
+local function bblHotkeyIdVariants(keyId)
+  local canonical = canonicalBblHotkeyId(keyId)
+  if not canonical then return {} end
+  local out = { canonical }
+  if canonical:match("^[A-Z]+$") then
+    local title = canonical:sub(1, 1) .. canonical:sub(2):lower()
+    if title ~= canonical then out[#out + 1] = title end
+  end
+  return out
+end
+
+local function removeAllKeys(lines, keys)
+  local keep = {}
+  for i = 1, #keys do keep[keys[i]] = true end
+  local i = 1
+  while i <= #lines do
+    if keep[lines[i].key] then
+      table.remove(lines, i)
+    else
+      i = i + 1
+    end
+  end
+end
+
+local function getWithCommentAnyKey(lines, keys)
+  if not lines or not keys then return nil, nil end
+  local want = {}
+  for i = 1, #keys do want[keys[i]] = true end
+  for _, entry in ipairs(lines) do
+    local k = entry and entry.key
+    if k and want[k] then
+      return entry.value, entry.comment and true or false
+    end
+  end
+  return nil, nil
 end
 
 local function bblNameKey(keyId)
@@ -262,30 +304,45 @@ end
 
 -- BBL hotkey name (NAME_<HOTKEY>). Returns "" when not set.
 function config_parse.getBblHotkeyName(lines, keyId)
-  if not isBblHotkeyId(keyId) then return "" end
-  local val = config_parse.getWithComment(lines, bblNameKey(keyId))
+  local ids = bblHotkeyIdVariants(keyId)
+  if #ids == 0 then return "" end
+  local keys = {}
+  for i = 1, #ids do keys[#keys + 1] = bblNameKey(ids[i]) end
+  local val = getWithCommentAnyKey(lines, keys)
   return val or ""
 end
 
 function config_parse.setBblHotkeyName(lines, keyId, value)
-  if not isBblHotkeyId(keyId) then return false end
-  config_parse.set(lines, bblNameKey(keyId), value or "")
+  local canonical = canonicalBblHotkeyId(keyId)
+  if not canonical then return false end
+  local ids = bblHotkeyIdVariants(canonical)
+  local keys = {}
+  for i = 1, #ids do keys[#keys + 1] = bblNameKey(ids[i]) end
+  removeAllKeys(lines, keys)
+  config_parse.set(lines, bblNameKey(canonical), value or "")
   return true
 end
 
 -- BBL path entry (LK_<HOTKEY>_E#). Returns path (or nil) and disabled state.
 function config_parse.getBblHotkeyPath(lines, keyId, entryIdx)
-  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return nil, false end
-  local value, commented = config_parse.getWithComment(lines, bblPathKey(keyId, entryIdx))
+  if not isValidBblEntryIdx(entryIdx) then return nil, false end
+  local ids = bblHotkeyIdVariants(keyId)
+  if #ids == 0 then return nil, false end
+  local keys = {}
+  for i = 1, #ids do keys[#keys + 1] = bblPathKey(ids[i], entryIdx) end
+  local value, commented = getWithCommentAnyKey(lines, keys)
   return value, (commented and true or false)
 end
 
 function config_parse.setBblHotkeyPath(lines, keyId, entryIdx, value, disabled)
-  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return false end
-  local key = bblPathKey(keyId, entryIdx)
-  removeAllKey(lines, key)
+  local canonical = canonicalBblHotkeyId(keyId)
+  if not canonical or not isValidBblEntryIdx(entryIdx) then return false end
+  local ids = bblHotkeyIdVariants(canonical)
+  local keys = {}
+  for i = 1, #ids do keys[#keys + 1] = bblPathKey(ids[i], entryIdx) end
+  removeAllKeys(lines, keys)
   if value == nil then return true end
-  table.insert(lines, { key = key, value = value or "", comment = disabled and true or nil })
+  table.insert(lines, { key = bblPathKey(canonical, entryIdx), value = value or "", comment = disabled and true or nil })
   return true
 end
 
@@ -298,10 +355,13 @@ end
 -- BBL args for one entry (ARG_<HOTKEY>_E#). Each item = { value, disabled }.
 function config_parse.getBblHotkeyArgs(lines, keyId, entryIdx)
   local out = {}
-  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return out end
-  local key = bblArgKey(keyId, entryIdx)
+  if not isValidBblEntryIdx(entryIdx) then return out end
+  local ids = bblHotkeyIdVariants(keyId)
+  if #ids == 0 then return out end
+  local keySet = {}
+  for i = 1, #ids do keySet[bblArgKey(ids[i], entryIdx)] = true end
   for _, entry in ipairs(lines) do
-    if entry.key and entry.key == key then
+    if entry.key and keySet[entry.key] then
       table.insert(out, { value = entry.value or "", disabled = not not entry.comment, comment = entry.comment })
     end
   end
@@ -309,9 +369,13 @@ function config_parse.getBblHotkeyArgs(lines, keyId, entryIdx)
 end
 
 function config_parse.setBblHotkeyArgs(lines, keyId, entryIdx, args)
-  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return false end
-  local key = bblArgKey(keyId, entryIdx)
-  removeAllKey(lines, key)
+  local canonical = canonicalBblHotkeyId(keyId)
+  if not canonical or not isValidBblEntryIdx(entryIdx) then return false end
+  local ids = bblHotkeyIdVariants(canonical)
+  local keys = {}
+  for i = 1, #ids do keys[#keys + 1] = bblArgKey(ids[i], entryIdx) end
+  removeAllKeys(lines, keys)
+  local key = bblArgKey(canonical, entryIdx)
   local maxArgs = BBL_MAX_ARGS_PER_ENTRY
   local count = 0
   for _, item in ipairs(args or {}) do
@@ -342,9 +406,16 @@ function config_parse.setBblHotkeyArgDisabled(lines, keyId, entryIdx, argIdx, di
 end
 
 function config_parse.removeBblHotkeySlot(lines, keyId, entryIdx)
-  if not isBblHotkeyId(keyId) or not isValidBblEntryIdx(entryIdx) then return false end
-  removeAllKey(lines, bblPathKey(keyId, entryIdx))
-  removeAllKey(lines, bblArgKey(keyId, entryIdx))
+  local canonical = canonicalBblHotkeyId(keyId)
+  if not canonical or not isValidBblEntryIdx(entryIdx) then return false end
+  local ids = bblHotkeyIdVariants(canonical)
+  local pathKeys, argKeys = {}, {}
+  for i = 1, #ids do
+    pathKeys[#pathKeys + 1] = bblPathKey(ids[i], entryIdx)
+    argKeys[#argKeys + 1] = bblArgKey(ids[i], entryIdx)
+  end
+  removeAllKeys(lines, pathKeys)
+  removeAllKeys(lines, argKeys)
   return true
 end
 
@@ -378,33 +449,14 @@ function config_parse.swapBblHotkeySlots(lines, keyId, slotA, slotB)
   if not isValidBblEntryIdx(slotA) or not isValidBblEntryIdx(slotB) then return false end
   if slotA == slotB then return true end
 
-  local keyPathA = bblPathKey(keyId, slotA)
-  local keyPathB = bblPathKey(keyId, slotB)
-  local keyArgA = bblArgKey(keyId, slotA)
-  local keyArgB = bblArgKey(keyId, slotB)
+  local slotAData = config_parse.getBblHotkeySlot(lines, keyId, slotA)
+  local slotBData = config_parse.getBblHotkeySlot(lines, keyId, slotB)
 
-  local pathA, commentA = config_parse.getWithComment(lines, keyPathA)
-  local pathB, commentB = config_parse.getWithComment(lines, keyPathB)
-  local argsA = config_parse.getBblHotkeyArgs(lines, keyId, slotA)
-  local argsB = config_parse.getBblHotkeyArgs(lines, keyId, slotB)
+  config_parse.setBblHotkeyPath(lines, keyId, slotA, slotBData.pathExists and slotBData.path or nil, slotBData.disabled)
+  config_parse.setBblHotkeyArgs(lines, keyId, slotA, slotBData.args)
 
-  removeAllKey(lines, keyPathA)
-  removeAllKey(lines, keyPathB)
-  removeAllKey(lines, keyArgA)
-  removeAllKey(lines, keyArgB)
-
-  if pathB ~= nil then
-    table.insert(lines, { key = keyPathA, value = pathB or "", comment = commentB and true or nil })
-  end
-  if pathA ~= nil then
-    table.insert(lines, { key = keyPathB, value = pathA or "", comment = commentA and true or nil })
-  end
-  for _, arg in ipairs(argsB or {}) do
-    table.insert(lines, { key = keyArgA, value = arg.value or "", comment = arg.comment and true or arg.disabled and true or nil })
-  end
-  for _, arg in ipairs(argsA or {}) do
-    table.insert(lines, { key = keyArgB, value = arg.value or "", comment = arg.comment and true or arg.disabled and true or nil })
-  end
+  config_parse.setBblHotkeyPath(lines, keyId, slotB, slotAData.pathExists and slotAData.path or nil, slotAData.disabled)
+  config_parse.setBblHotkeyArgs(lines, keyId, slotB, slotAData.args)
   return true
 end
 
@@ -839,11 +891,47 @@ end
 
 local SEPARATOR = "#----------------------------------"
 
+local function toFreemcbootKeyId(keyId)
+  local canonical = canonicalBblHotkeyId(keyId)
+  if not canonical then return tostring(keyId or "") end
+  if canonical:match("^[A-Z]+$") then
+    return canonical:sub(1, 1) .. canonical:sub(2):lower()
+  end
+  return canonical
+end
+
+local function appendFreemcbootLaunchKeys(out, lines, maxEntries)
+  local keys = { "AUTO" }
+  for _, k in ipairs(config_parse.getBblHotkeys() or {}) do
+    keys[#keys + 1] = k
+  end
+  for _, keyId in ipairs(keys) do
+    local added = false
+    for slot = 1, maxEntries do
+      local path, disabled = config_parse.getBblHotkeyPath(lines, keyId, slot)
+      if path ~= nil then
+        local saveKeyId = toFreemcbootKeyId(keyId)
+        out[#out + 1] = {
+          key = "LK_" .. tostring(saveKeyId) .. "_E" .. tostring(slot),
+          value = path or "",
+          comment = disabled and true or nil
+        }
+        added = true
+      end
+    end
+    if added then
+      out[#out + 1] = { comment = SEPARATOR }
+    end
+  end
+end
+
 -- Regenerate OSDMENU lines from in-memory state. Optional categories: list of { name, options = { { key }, ... } }
 -- so globals are output by category with a separator after each category; then each menu entry block with a separator after each. No unknown keys.
 -- When categories is nil, globals are output in original order with no separators.
-function config_parse.regenerateLines(lines, categories)
+-- includeArgs=false skips arg_OSDSYS_ITEM_* lines. maxEntries / maxPathsPerEntry apply per output order when provided.
+function config_parse.regenerateLines(lines, categories, includeArgs, maxEntries, maxPathsPerEntry)
   local out = {}
+  local allowArgs = includeArgs ~= false
   local function addSep()
     table.insert(out, { comment = SEPARATOR })
   end
@@ -871,13 +959,21 @@ function config_parse.regenerateLines(lines, categories)
   end
 
   local entries = config_parse.getMenuEntryIndices(lines)
-  for _, ent in ipairs(entries) do
+  for entPos, ent in ipairs(entries) do
+    if type(maxEntries) == "number" and maxEntries >= 0 and entPos > maxEntries then
+      break
+    end
     local idx = ent.idx
     local disabled = ent.disabled
     local name = config_parse.getMenuEntryName(lines, idx) or ""
     table.insert(out, { key = "name_OSDSYS_ITEM_" .. tostring(idx), value = name, comment = disabled })
     local paths = config_parse.getMenuEntryPaths(lines, idx)
-    for i, p in ipairs(paths) do
+    local pathLimit = #paths
+    if type(maxPathsPerEntry) == "number" and maxPathsPerEntry >= 0 then
+      pathLimit = math.min(pathLimit, maxPathsPerEntry)
+    end
+    for i = 1, pathLimit do
+      local p = paths[i]
       local pv = type(p) == "table" and p.value or p
       local pc = type(p) == "table" and p.comment or nil
       -- ## only when entry disabled AND path was individually disabled (comment == 2); else # or nil
@@ -885,12 +981,14 @@ function config_parse.regenerateLines(lines, categories)
       table.insert(out,
         { key = "path" .. tostring(i) .. "_OSDSYS_ITEM_" .. tostring(idx), value = pv, comment = pcomment })
     end
-    local args = config_parse.getMenuEntryArgs(lines, idx)
-    for _, a in ipairs(args) do
-      local av = type(a) == "table" and a.value or a
-      local ac = type(a) == "table" and a.comment or nil
-      local acomment = disabled and (ac == 2 and 2 or true) or (ac and true or nil)
-      table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = av, comment = acomment })
+    if allowArgs then
+      local args = config_parse.getMenuEntryArgs(lines, idx)
+      for _, a in ipairs(args) do
+        local av = type(a) == "table" and a.value or a
+        local ac = type(a) == "table" and a.comment or nil
+        local acomment = disabled and (ac == 2 and 2 or true) or (ac and true or nil)
+        table.insert(out, { key = "arg_OSDSYS_ITEM_" .. tostring(idx), value = av, comment = acomment })
+      end
     end
     addSep()
   end
@@ -952,6 +1050,18 @@ function config_parse.regenerateForSave(lines, fileType, options)
   local opt = options or {}
   if fileType == "osdmenu_cnf" then
     return config_parse.regenerateLines(lines, opt.osdmenu_cnf_categories or {})
+  end
+  if fileType == "freemcboot_cnf" then
+    local cats = opt.freemcboot_cnf_categories or opt.osdmenu_cnf_categories or {}
+    local maxEntries = (type(opt.FMCB_MAX_ENTRIES) == "number" and opt.FMCB_MAX_ENTRIES) or 99
+    local maxPathsPerEntry = (type(opt.FMCB_MAX_PATHS_PER_ENTRY) == "number" and opt.FMCB_MAX_PATHS_PER_ENTRY) or 3
+    local out = config_parse.regenerateLines(lines, cats, false, maxEntries, maxPathsPerEntry)
+    local cnfVersion = config_parse.get(lines, "CNF_version") or "1"
+    table.insert(out, 1, { key = "CNF_version", value = cnfVersion })
+    table.insert(out, 2, { comment = SEPARATOR })
+    local maxLaunchKeyEntries = (type(opt.FMCB_BBL_MAX_ENTRIES) == "number" and opt.FMCB_BBL_MAX_ENTRIES) or 3
+    appendFreemcbootLaunchKeys(out, lines, maxLaunchKeyEntries)
+    return out
   end
   if fileType == "osdmbr_cnf" then
     return config_parse.regenerateLinesMBR(lines, opt.osdmbr_cnf or {})

@@ -23,6 +23,15 @@ local function formatArgCount(n)
   return "(" .. tostring(count) .. " args)"
 end
 
+local function getOsdmbrHotkeyPadName(key)
+  if key == "boot_start" then return "start" end
+  if key == "boot_triangle" then return "triangle" end
+  if key == "boot_circle" then return "circle" end
+  if key == "boot_cross" then return "cross" end
+  if key == "boot_square" then return "square" end
+  return nil
+end
+
 local function getCategoryOptSel(ctx, categoryIdx)
   if not categoryIdx or categoryIdx < 1 then return 1 end
   local byFile = ctx.editorCategoryOptSelByFile
@@ -47,6 +56,25 @@ local function setCategoryOptSel(ctx, categoryIdx, sel)
   ctx.editorCategoryOptSelByFile[fileKey][categoryIdx] = math.max(1, math.floor(tonumber(sel) or 1))
 end
 
+local function getEditorBackState(ctx)
+  local context = ctx and ctx.context or nil
+  local fileType = ctx and ctx.fileType or nil
+  if context == "ps2bbl" or context == "psxbbl" then
+    return "select_config"
+  end
+  if context == "osdmenu" or context == "freemcboot" then
+    if fileType == "osdmenu_cnf" or fileType == "osdgsm_cnf" or fileType == "freemcboot_cnf" then
+      local common = ctx and ctx._ and ctx._.common or nil
+      local slots = (common and common.getPresentMcSlots and common.getPresentMcSlots()) or {}
+      if type(slots) == "table" and #slots > 1 then
+        return "choose_mc"
+      end
+      return "main"
+    end
+  end
+  return "main"
+end
+
 local function run(ctx)
   local _ = ctx._
   -- Leave-save prompt when going back to file select with unsaved changes
@@ -59,7 +87,7 @@ local function run(ctx)
       ctx.saveSplash = nil
       local locations = _.getLocations(ctx.context, ctx.fileType, ctx.chosenMcSlot)
       if ctx.fileType == "osdmenu_cnf" and #locations >= 2 then
-        ctx.returnToSelectConfigAfterSave = true
+        ctx.returnToSelectConfigAfterSave = getEditorBackState(ctx)
         ctx.saveChoices = locations
         ctx.saveSel = ctx.saveSel or 1
         ctx.state = "choose_save"
@@ -69,12 +97,13 @@ local function run(ctx)
           ctx.lines = _.config_parse.regenerateForSave(ctx.lines, ctx.fileType, _.config_options)
           local parentDir = path:match("^(.+)/[^/]+$")
           local ok, err = _.common.saveConfig(ctx, path, ctx.lines, parentDir)
-          if ok then
-            ctx.currentPath = path
-            ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
-            ctx.configModified = false
-            ctx.returnToSelectConfigAfterSaveFlash = true
-          else
+              if ok then
+                ctx.currentPath = path
+                ctx.saveSplash = { kind = "saved", detail = path or "", framesLeft = 60 }
+                ctx.configModified = false
+                ctx.returnStateAfterSaveFlash = getEditorBackState(ctx)
+                ctx.returnToSelectConfigAfterSaveFlash = true
+              else
             ctx.saveSplash = {
               kind = "failed",
               detail = _.common.localizeParseError(err, _.editor_str) or
@@ -88,7 +117,7 @@ local function run(ctx)
       end
     elseif (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
       ctx.editorLeavePrompt = nil
-      ctx.state = "select_config"
+      ctx.state = getEditorBackState(ctx)
       ctx.currentPath = nil
       ctx.lines = nil
       ctx.optList = nil
@@ -112,10 +141,13 @@ local function run(ctx)
     return
   end
 
-  local isCategorizedFile = (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini")
+  local isCategorizedFile = (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "freemcboot_cnf" or
+      ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini")
   local categories = {}
   if ctx.fileType == "osdmenu_cnf" then
     categories = _.config_options.osdmenu_cnf_categories or {}
+  elseif ctx.fileType == "freemcboot_cnf" then
+    categories = _.config_options.freemcboot_cnf_categories or _.config_options.osdmenu_cnf_categories or {}
   elseif ctx.fileType == "ps2bbl_ini" then
     categories = _.config_options.ps2bbl_ini_categories or {}
   elseif ctx.fileType == "psxbbl_ini" then
@@ -124,15 +156,10 @@ local function run(ctx)
 
   if isCategorizedFile and ctx.editorCategoryIdx == 0 then
     local cats = categories
-    if ctx.optSel < 1 then ctx.optSel = 1 end
-    if ctx.optSel > #cats then ctx.optSel = #cats end
     local maxVis = _.MAX_VISIBLE
-    if #cats > maxVis then
-      ctx.optScroll = ctx.optSel - math.floor(maxVis / 2)
-      ctx.optScroll = math.max(0, math.min(ctx.optScroll, #cats - maxVis))
-    else
-      ctx.optScroll = 0
-    end
+    ctx.optSel = _.common.clampListSelection(ctx.optSel or 1, #cats)
+    ctx.optScroll = _.common.centeredListScroll(ctx.optSel, #cats, maxVis)
+    local maxCatLabelW = (_.w or 640) - (_.MARGIN_X + 16) - (_.MARGIN_X + 8)
     for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #cats) do
       local cat = cats[i]
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.optScroll - 1) * _.ROW_H
@@ -140,6 +167,14 @@ local function run(ctx)
       local catLabel = cat.name or _.common_str.empty
       if ctx.fileType == "osdmenu_cnf" then
         catLabel = (_.strings.categories and _.strings.categories[i]) or catLabel
+      elseif ctx.fileType == "freemcboot_cnf" then
+        catLabel = (_.strings.categories_freemcboot and _.strings.categories_freemcboot[i]) or catLabel
+      end
+      if _.common.fitListRowText then
+        catLabel = _.common.fitListRowText(ctx, "editor_cat_row_" .. tostring(i), _.font, catLabel, maxCatLabelW,
+          _.FONT_SCALE, i == ctx.optSel)
+      elseif _.common.truncateTextToWidth then
+        catLabel = _.common.truncateTextToWidth(_.font, catLabel, maxCatLabelW, _.FONT_SCALE)
       end
       _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel,
         catLabel, col)
@@ -147,10 +182,10 @@ local function run(ctx)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.editor_str.cross_open_circle_back_items, nil,
       _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.optSel = ctx.optSel - 1; if ctx.optSel < 1 then ctx.optSel = #cats end
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, -1)
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.optSel = ctx.optSel + 1; if ctx.optSel > #cats then ctx.optSel = 1 end
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, 1)
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 and #cats > 0 then
       local cat = cats[ctx.optSel]
@@ -189,18 +224,14 @@ local function run(ctx)
       if ctx.configModified then
         ctx.editorLeavePrompt = true
       else
-        ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0
+        ctx.state = getEditorBackState(ctx); ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0
       end
     end
   elseif ctx.optList and #ctx.optList > 0 then
     local startY = _.MARGIN_Y + _.scaleY(58)
     local maxVis = _.MAX_VISIBLE
-    if #ctx.optList > maxVis then
-      ctx.optScroll = ctx.optSel - math.floor(maxVis / 2)
-      ctx.optScroll = math.max(0, math.min(ctx.optScroll, #ctx.optList - maxVis))
-    else
-      ctx.optScroll = 0
-    end
+    ctx.optSel = _.common.clampListSelection(ctx.optSel or 1, #ctx.optList)
+    ctx.optScroll = _.common.centeredListScroll(ctx.optSel, #ctx.optList, maxVis)
     for i = ctx.optScroll + 1, math.min(ctx.optScroll + maxVis, #ctx.optList) do
       local o = ctx.optList[i]
       local y = startY + (i - ctx.optScroll - 1) * _.ROW_H
@@ -228,7 +259,11 @@ local function run(ctx)
             nil
         if slot and slot.used then
           local p = (slot.path ~= "" and slot.path) or _.common_str.not_set
-          valDisplay = p .. " " .. formatArgCount(slot.argCount)
+          if ctx.fileType == "freemcboot_cnf" then
+            valDisplay = p
+          else
+            valDisplay = p .. " " .. formatArgCount(slot.argCount)
+          end
         else
           valDisplay = _.common_str.not_set
         end
@@ -254,19 +289,47 @@ local function run(ctx)
         valDisplay = formatTimerSeconds(valDisplay, unitSingular, unitPlural)
       end
       local inlineAutoRow = false
+      local bootHotkeyPad = nil
+      local bootHotkeyIcon = nil
+      local bootHotkeyIconW, bootHotkeyIconH, bootHotkeyIconGap = 0, 0, 0
+      if ctx.fileType == "osdmbr_cnf" and o.optType == "boot_paths" then
+        bootHotkeyPad = getOsdmbrHotkeyPadName(o.key)
+        if bootHotkeyPad then
+          bootHotkeyIcon = _.common.getPadIcon and _.common.getPadIcon(bootHotkeyPad) or nil
+          if bootHotkeyIcon then
+            local baseIconW = _.common.PAD_ICON_W or 26
+            local baseIconH = _.common.PAD_ICON_H or 26
+            local textH = (_.common and _.common.FT_PIXEL_H) or 18
+            bootHotkeyIconH = math.min(baseIconH, textH)
+            bootHotkeyIconW = math.max(1, math.floor((baseIconW * bootHotkeyIconH) / baseIconH + 0.5))
+            bootHotkeyIconGap = 8
+          end
+        end
+      end
       if o.key == "NAME_AUTO" then
         inlineAutoRow = true
         local nameVal = _.config_parse.get(ctx.lines, o.key) or o.default or ""
         local nameDisp = (nameVal ~= "" and nameVal) or _.common_str.empty
         lab = (_.menu_str.name or "Name: ") .. nameDisp
         valDisplay = ""
+      elseif ctx.fileType == "freemcboot_cnf" and o.key and o.key:match("^ESR_Path_E%d+$") then
+        inlineAutoRow = true
+        local slotIdx = o.key:match("^ESR_Path_E(%d+)$") or "?"
+        local pathVal = _.config_parse.get(ctx.lines, o.key) or o.default or ""
+        local pathDisp = (pathVal ~= "" and pathVal) or _.common_str.not_set
+        lab = "ESR path E" .. tostring(slotIdx) .. ": " .. pathDisp
+        valDisplay = ""
       elseif o.optType == "bbl_slot" and (o.bblKeyId == "AUTO" or (o.key and o.key:match("^_auto_e%d+$"))) then
         inlineAutoRow = true
         local slotIdx = tonumber(o.bblEntrySlot) or 0
         local slot = _.config_parse.getBblHotkeySlot and _.config_parse.getBblHotkeySlot(ctx.lines, "AUTO", slotIdx) or nil
         local pathDisp = (slot and slot.path and slot.path ~= "") and slot.path or _.common_str.not_set
-        local argCount = (slot and slot.argCount) or 0
-        lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp .. " " .. formatArgCount(argCount)
+        if ctx.fileType == "freemcboot_cnf" then
+          lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp
+        else
+          local argCount = (slot and slot.argCount) or 0
+          lab = "E" .. tostring(slotIdx) .. ": " .. pathDisp .. " " .. formatArgCount(argCount)
+        end
         valDisplay = ""
       end
       if inlineAutoRow then
@@ -277,8 +340,40 @@ local function run(ctx)
         elseif _.common.truncateTextToWidth then
           lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
         end
+      elseif bootHotkeyIcon then
+        local rowTextX = (_.MARGIN_X + 16) + bootHotkeyIconW + bootHotkeyIconGap
+        local maxInlineW = (_.w or 640) - rowTextX - (_.MARGIN_X + 8)
+        if _.common.fitListRowText then
+          lab = _.common.fitListRowText(ctx, "editor_boot_hotkey_row_" .. tostring(i), _.font, lab, maxInlineW, _.FONT_SCALE,
+            i == ctx.optSel)
+        elseif _.common.truncateTextToWidth then
+          lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
+        end
+      else
+        local valueColX = _.VALUE_X or 360
+        local maxInlineW = valueColX - (_.MARGIN_X + 16) - 14
+        if valDisplay == nil then
+          maxInlineW = (_.w or 640) - (_.MARGIN_X + 16) - (_.MARGIN_X + 8)
+        end
+        if _.common.fitListRowText then
+          lab = _.common.fitListRowText(ctx, "editor_opt_row_" .. tostring(i), _.font, lab, maxInlineW, _.FONT_SCALE,
+            i == ctx.optSel)
+        elseif _.common.truncateTextToWidth then
+          lab = _.common.truncateTextToWidth(_.font, lab, maxInlineW, _.FONT_SCALE)
+        end
       end
-      _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
+      if bootHotkeyIcon then
+        local rowX = _.MARGIN_X + 16
+        local iconY = y + math.floor(((_.LINE_H or bootHotkeyIconH) - bootHotkeyIconH) / 2)
+        if _.Graphics.drawScaleImage then
+          _.Graphics.drawScaleImage(bootHotkeyIcon, rowX, iconY, bootHotkeyIconW, bootHotkeyIconH)
+        else
+          _.Graphics.drawImage(bootHotkeyIcon, rowX, iconY)
+        end
+        _.drawText(_.font, _.drawMode, rowX + bootHotkeyIconW + bootHotkeyIconGap, y, _.FONT_SCALE, lab, col)
+      else
+        _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
+      end
       if (not inlineAutoRow) and valDisplay == "" and (o.optType == "path" or o.optType == "boot_paths" or o.optType == "text" or o.optType == "enum") then
         valDisplay = _.common_str.not_set
       end
@@ -287,56 +382,18 @@ local function run(ctx)
           local valCol = (valDisplay == _.common_str.off or valDisplay == _.common_str.not_set) and _.DIM or
               ((i == ctx.optSel) and _.WHITE or _.GRAY)
           local valueAreaWidth = (_.w or 640) - 72 - _.VALUE_X
-          local textW = (_.common.calcTextWidth and _.common.calcTextWidth(_.font, valDisplay, _.FONT_SCALE)) or
-              (#valDisplay * 10)
-          local drawVal = valDisplay
-          if i == ctx.optSel and textW > valueAreaWidth then
-            -- Autoscroll long value (e.g. DKWDRV path): hold at start, scroll slowly, hold at end then repeat
-            ctx.editorValueScrollTicks = (ctx.editorValueScrollTicks or 0) + 1
-            local ticks = ctx.editorValueScrollTicks
-            local visibleChars = 1
-            if _.common.calcTextWidth then
-              for n = 1, #valDisplay do
-                if _.common.calcTextWidth(_.font, valDisplay:sub(1, n), _.FONT_SCALE) > valueAreaWidth then
-                  visibleChars = n - 1
-                  break
-                end
-                visibleChars = n
-              end
-            else
-              visibleChars = math.max(1, math.floor(valueAreaWidth / 10))
-            end
-            visibleChars = math.min(visibleChars, #valDisplay)
-            local totalSteps = math.max(0, #valDisplay - visibleChars)
-            local HOLD_START, FRAMES_PER_STEP, HOLD_END = 50, 18, 70
-            local cycleLen = HOLD_START + totalSteps * FRAMES_PER_STEP + HOLD_END
-            if ticks >= cycleLen then
-              ctx.editorValueScrollTicks = 0
-              ticks = 0
-            end
-            local scrollStart
-            if ticks < HOLD_START then
-              scrollStart = 1
-            elseif ticks < HOLD_START + totalSteps * FRAMES_PER_STEP then
-              scrollStart = 1 + math.floor((ticks - HOLD_START) / FRAMES_PER_STEP)
-            else
-              scrollStart = totalSteps + 1
-            end
-            drawVal = valDisplay:sub(scrollStart, scrollStart + visibleChars - 1)
-          elseif i ~= ctx.optSel then
-            -- Truncate to fit within value area (screen margin)
-            if textW > valueAreaWidth and _.common.calcTextWidth then
-              for n = 1, #valDisplay do
-                if _.common.calcTextWidth(_.font, valDisplay:sub(1, n) .. "...", _.FONT_SCALE) > valueAreaWidth then
-                  drawVal = (n > 1 and (valDisplay:sub(1, n - 1) .. "...") or "...")
-                  break
-                end
-                drawVal = valDisplay
-              end
-            elseif textW > valueAreaWidth then
-              local maxLen = math.max(1, math.floor(valueAreaWidth / 10) - 3)
-              drawVal = valDisplay:sub(1, maxLen) .. "..."
-            end
+          local drawVal
+          if _.common.fitValueText then
+            drawVal = _.common.fitValueText(ctx, "editor_value_row_" .. tostring(i), _.font, valDisplay, valueAreaWidth,
+              _.FONT_SCALE, i == ctx.optSel, { holdStart = 50, stepFrames = 18, holdEnd = 70 })
+          elseif _.common.fitListRowText then
+            drawVal = _.common.fitListRowText(ctx, "editor_value_row_" .. tostring(i), _.font, valDisplay, valueAreaWidth,
+              _.FONT_SCALE, i == ctx.optSel, { holdStart = 50, stepFrames = 18, holdEnd = 70 })
+          elseif _.common.truncateTextToWidth then
+            drawVal = (i == ctx.optSel) and valDisplay or
+                _.common.truncateTextToWidth(_.font, valDisplay, valueAreaWidth, _.FONT_SCALE)
+          else
+            drawVal = valDisplay
           end
           _.drawText(_.font, _.drawMode, _.VALUE_X, y, _.FONT_SCALE, drawVal, valCol)
         end
@@ -369,12 +426,10 @@ local function run(ctx)
       { left = _.common_str.hint_prev, right = _.common_str.hint_next })
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintItems, nil, _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      if ctx.optSel > 1 then ctx.optSel = ctx.optSel - 1 else ctx.optSel = #ctx.optList end
-      ctx.editorValueScrollTicks = nil
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #ctx.optList, -1)
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      if ctx.optSel < #ctx.optList then ctx.optSel = ctx.optSel + 1 else ctx.optSel = 1 end
-      ctx.editorValueScrollTicks = nil
+      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #ctx.optList, 1)
     end
     if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_L1 | _.PAD_R1 | _.PAD_L2 | _.PAD_R2)) ~= 0 then
       local o = ctx.optList[ctx.optSel]
@@ -510,10 +565,16 @@ local function run(ctx)
         ctx.state = "path_picker"
       end
     end
-    if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and ctx.optList and #ctx.optList > 0 and ctx.fileType == "osdmenu_cnf" then
+    if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and ctx.optList and #ctx.optList > 0 and
+        (ctx.fileType == "osdmenu_cnf" or ctx.fileType == "freemcboot_cnf") then
       local o = ctx.optList[ctx.optSel]
       if o and o.key and o.key:sub(1, 1) ~= "_" and o.optType ~= "header" then
-        local def = _.config_options.getOsdmenuDefault and _.config_options.getOsdmenuDefault(o.key)
+        local def = nil
+        if ctx.fileType == "freemcboot_cnf" then
+          def = _.config_options.getFreemcbootDefault and _.config_options.getFreemcbootDefault(o.key)
+        else
+          def = _.config_options.getOsdmenuDefault and _.config_options.getOsdmenuDefault(o.key)
+        end
         if def ~= nil then
           _.config_parse.set(ctx.lines, o.key, def); ctx.configModified = true
         end
@@ -568,7 +629,7 @@ local function run(ctx)
       if ctx.configModified then
         ctx.editorLeavePrompt = true
       else
-        ctx.state = "select_config"; ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0; ctx.saveSplash = nil
+        ctx.state = getEditorBackState(ctx); ctx.currentPath = nil; ctx.lines = nil; ctx.optList = nil; ctx.editorCategoryIdx = 0; ctx.saveSplash = nil
       end
     end
   end

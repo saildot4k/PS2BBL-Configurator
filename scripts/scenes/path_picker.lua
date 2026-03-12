@@ -214,14 +214,21 @@ local function ensureBblCommandRows(ctx)
   end
   local _ = ctx._
   local p = _.path_str or {}
-  local cmdRows = {
-    { name = "$CDVD", desc = p.bbl_cmd_cdvd or "$CDVD", special = "bbl_cmd" },
-    { name = "$CDVD_NO_PS2LOGO", desc = p.bbl_cmd_cdvd_no_logo or "$CDVD_NO_PS2LOGO", special = "bbl_cmd" },
-    { name = "$OSDSYS", desc = p.bbl_cmd_osdsys or "$OSDSYS", special = "bbl_cmd" },
-    { name = "$CREDITS", desc = p.bbl_cmd_credits or "$CREDITS", special = "bbl_cmd" },
-    { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker or "$HDDCHECKER (HDD build)", special = "bbl_cmd" },
-    { name = "$RUNKELF:", desc = p.bbl_cmd_runkelf or "$RUNKELF:<path>", special = "bbl_cmd", bblTokenPrompt = true },
-  }
+  local cmdRows
+  if ctx.fileType == "freemcboot_cnf" then
+    cmdRows = {
+      { name = "OSDSYS", desc = p.fmcb_cmd_osdsys or "OSDSYS", special = "bbl_cmd" },
+    }
+  else
+    cmdRows = {
+      { name = "$CDVD", desc = p.bbl_cmd_cdvd or "$CDVD", special = "bbl_cmd" },
+      { name = "$CDVD_NO_PS2LOGO", desc = p.bbl_cmd_cdvd_no_logo or "$CDVD_NO_PS2LOGO", special = "bbl_cmd" },
+      { name = "$OSDSYS", desc = p.bbl_cmd_osdsys or "$OSDSYS", special = "bbl_cmd" },
+      { name = "$CREDITS", desc = p.bbl_cmd_credits or "$CREDITS", special = "bbl_cmd" },
+      { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker or "$HDDCHECKER (HDD build)", special = "bbl_cmd" },
+      { name = "$RUNKELF:", desc = p.bbl_cmd_runkelf or "$RUNKELF:<path>", special = "bbl_cmd", bblTokenPrompt = true },
+    }
+  end
   for i = 1, #cmdRows do
     table.insert(ctx.pathList, cmdRows[i])
   end
@@ -235,9 +242,11 @@ end
 
 local function getSelectedBblName(ctx)
   local ft = ctx and ctx.fileType or nil
+  if ft == "freemcboot_cnf" then return "FreeMCBoot" end
   if ft == "psxbbl_ini" then return "PSXBBL" end
   if ft == "ps2bbl_ini" then return "PS2BBL" end
   local c = ctx and ctx.context or nil
+  if c == "freemcboot" then return "FreeMCBoot" end
   if c == "psxbbl" then return "PSXBBL" end
   return "PS2BBL"
 end
@@ -451,14 +460,21 @@ local function run(ctx)
         end
       end
       if ctx.pathPickerLoading and ctx.pathPickerLoadingFrames >= LOAD_TIMEOUT_FRAMES then
+        local timeoutDevice = load.deviceId or (load.staticHdd and "hdd0") or load.deviceType or "device"
         ctx.pathPickerLoading = nil
         ctx.pathPickerLoadingFrames = nil
         ctx.pathPickerModulesLoaded = nil
-        ctx.pathPickerLoadingTimeoutMsg = true
+        ctx.pathPickerLoadingTimeoutMsg = tostring(timeoutDevice)
       end
     else
       if ctx.pathPickerLoadingTimeoutMsg then
+        local timeoutDevice = tostring(ctx.pathPickerLoadingTimeoutMsg)
         local msg = _.path_str.device_timeout
+        if type(msg) == "string" and msg:find("%%DEVICE%%") then
+          msg = msg:gsub("%%DEVICE%%", function() return timeoutDevice end)
+        else
+          msg = timeoutDevice .. " not found"
+        end
         local tw = _.common.calcTextWidth(_.font, msg, _.FONT_SCALE)
         local cx = _.common.centerX(_, tw)
         local cy = math.floor((_.MARGIN_Y + _.HINT_Y) / 2) - math.floor(_.LINE_H / 2)
@@ -544,6 +560,7 @@ local function run(ctx)
         else
           ctx.pathPickerScroll = 0
         end
+        local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
         for i = 1, math.min(maxVis, totalCount - ctx.pathPickerScroll) do
           local listIdx = ctx.pathPickerScroll + i
           local displayName
@@ -558,6 +575,12 @@ local function run(ctx)
           end
           local y = _.MARGIN_Y + _.scaleY(50) + (i - 1) * _.LINE_H
           local col = greyed and _.DIM or ((listIdx == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY)
+          if _.common.fitListRowText then
+            displayName = _.common.fitListRowText(ctx, "path_picker_device_row_" .. tostring(listIdx), _.font,
+              displayName, maxLabelW, _.FONT_SCALE, listIdx == ctx.pathPickerSel)
+          elseif _.common.truncateTextToWidth then
+            displayName = _.common.truncateTextToWidth(_.font, displayName or "", maxLabelW, _.FONT_SCALE)
+          end
           _.drawListRow(_.MARGIN_X + 20, y, listIdx == ctx.pathPickerSel, displayName, col)
         end
         if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -735,12 +758,20 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #parts,
         _.DIM)
     end
+    local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
     for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + maxVis, #parts) do
       local p = parts[i]
       if not p then break end
       local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.pathPickerScroll - 1) * _.LINE_H
       local col = (i == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY
-      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, p.name or _.common_str.empty, col)
+      local label = p.name or _.common_str.empty
+      if _.common.fitListRowText then
+        label = _.common.fitListRowText(ctx, "path_picker_part_row_" .. tostring(i), _.font, label, maxLabelW,
+          _.FONT_SCALE, i == ctx.pathPickerSel)
+      elseif _.common.truncateTextToWidth then
+        label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+      end
+      _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, label, col)
     end
     if #parts == 0 then
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(60), _.FONT_SCALE, _.path_str.no_partitions, _
@@ -851,6 +882,7 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.w - _.MARGIN_X - 56, _.MARGIN_Y, 0.9, ctx.pathPickerSel .. " / " .. #show,
         _.DIM)
     end
+    local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
     for i = ctx.pathPickerScroll + 1, math.min(ctx.pathPickerScroll + maxVis, #show) do
       local e = show[i]
       if not e then break end
@@ -858,6 +890,12 @@ local function run(ctx)
       local label = e.name or _.common_str.empty
       if e.directory and label ~= "" then label = label .. "/" end
       local col = (i == ctx.pathPickerSel) and _.SELECTED_ENTRY or _.GRAY
+      if _.common.fitListRowText then
+        label = _.common.fitListRowText(ctx, "path_picker_browse_row_" .. tostring(i), _.font, label, maxLabelW,
+          _.FONT_SCALE, i == ctx.pathPickerSel)
+      elseif _.common.truncateTextToWidth then
+        label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+      end
       _.drawListRow(_.MARGIN_X + 20, y, i == ctx.pathPickerSel, label, col)
     end
     if #show == 0 then

@@ -9,6 +9,7 @@ local function run(ctx)
   local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.entryIdx)
   local args = _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx)
   local hasOsdOrShutdown = false
+  local allowArgs = (ctx.fileType ~= "freemcboot_cnf")
   for _, p in ipairs(paths) do
     local pv = type(p) == "table" and p.value or p
     if (pv or ""):upper() == "OSDSYS" or (pv or ""):upper() == "POWEROFF" then
@@ -23,21 +24,30 @@ local function run(ctx)
       hasCdrom = true; break
     end
   end
-  if hasCdrom then table.insert(subOpts, _.menu_str.launch_disc_options) end
-  if not (hasOsdOrShutdown or hasCdrom) then table.insert(subOpts, _.menu_str.arguments) end
+  if allowArgs and hasCdrom then table.insert(subOpts, _.menu_str.launch_disc_options) end
+  if allowArgs and not (hasOsdOrShutdown or hasCdrom) then table.insert(subOpts, _.menu_str.arguments) end
   local pathsStr = _.menu_str.paths .. (#paths == 0 and _.menu_str.none or #paths .. _.menu_str.path_s)
   local argsStr = _.menu_str.args ..
-      ((hasOsdOrShutdown or hasCdrom) and _.menu_str.none or (#args == 0 and _.menu_str.none or #args .. _.menu_str.arg_s))
+      ((not allowArgs or hasOsdOrShutdown or hasCdrom) and _.menu_str.none or
+      (#args == 0 and _.menu_str.none or #args .. _.menu_str.arg_s))
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, _.menu_str.entry_index .. ctx.entryIdx, _.WHITE)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(24), 0.8,
     _.menu_str.name .. (name == "" and _.common_str.empty or name:sub(1, 40)), _.DIM)
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(44), 0.8, pathsStr .. ", " .. argsStr, _.DIM)
   if ctx.entryEditSub < 1 then ctx.entryEditSub = 1 end
   if ctx.entryEditSub > #subOpts then ctx.entryEditSub = #subOpts end
+  local maxLabelW = (_.w or 640) - (_.MARGIN_X + 20) - _.MARGIN_X
   for i = 1, #subOpts do
     local y = _.MARGIN_Y + _.scaleY(90) + (i - 1) * _.LINE_H
     local col = (i == ctx.entryEditSub) and _.SELECTED_ENTRY or _.WHITE
-    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryEditSub, subOpts[i], col)
+    local label = subOpts[i]
+    if _.common.fitListRowText then
+      label = _.common.fitListRowText(ctx, "menu_entry_edit_row_" .. tostring(i), _.font, label, maxLabelW, _.FONT_SCALE,
+        i == ctx.entryEditSub)
+    elseif _.common.truncateTextToWidth then
+      label = _.common.truncateTextToWidth(_.font, label, maxLabelW, _.FONT_SCALE)
+    end
+    _.drawListRow(_.MARGIN_X + 20, y, i == ctx.entryEditSub, label, col)
   end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.menu_str.cross_select_circle_back_items, nil,
     _.DIM, _.w - 2 * _.MARGIN_X)
