@@ -81,6 +81,8 @@ local function run(ctx)
     videoKey = "bblArgGsmVideoIdx",
     compatKey = "bblArgGsmCompatIdx",
     argKeyKey = "bblArgGsmArgKey",
+    lastVideoKey = "bblArgGsmLastVideoIdx",
+    editIdxKey = "bblArgGsmEditIdx",
     rowStateKeyPrefix = "bbl_hotkey_args_gsm_picker_row_",
   }
 
@@ -107,11 +109,24 @@ local function run(ctx)
 
   if arg_gsm_picker.run(ctx, {
         keys = gsmKeys,
-        onSubmit = function(arg)
-          addArgValue(arg)
+        onSubmit = function(arg, editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx >= 1 then
+            local args2 = getArgs()
+            if args2[idx] then
+              args2[idx].value = arg
+              setArgs(args2)
+              ctx.bblArgSel = _.common.clampListSelection(idx, #args2)
+            end
+          else
+            addArgValue(arg)
+          end
         end,
-        onCancel = function()
-          reopenAddMenu()
+        onCancel = function(editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx < 1 then
+            reopenAddMenu()
+          end
         end,
       }) then
     return
@@ -226,24 +241,30 @@ local function run(ctx)
   if total > 0 and (_.padEffective & _.PAD_CROSS) ~= 0 then
     local editIdx = ctx.bblArgSel
     local editVal = (args[editIdx] and args[editIdx].value) or ""
-    _.common.beginTextInput(ctx, {
-      titleIdMode = nil,
-      prompt = _.menu_str.edit_argument_prompt or "Edit argument",
-      value = editVal,
-      maxLen = 255,
-      callback = function(val)
-        local args2 = getArgs()
-        if args2[editIdx] then
-          args2[editIdx].value = val or ""
-        end
-        setArgs(args2)
-        ctx.state = "bbl_hotkey_args"
-      end,
-      returnState = "bbl_hotkey_args",
-      gridSel = 1,
-      scroll = 1,
-      state = "text_input",
-    })
+    local gsmArgKey, gsmVideoIdx, gsmCompatIdx = arg_gsm_picker.parseExistingGsmArg(_, editVal)
+    if gsmArgKey then
+      arg_gsm_picker.open(ctx, gsmKeys, gsmArgKey, gsmVideoIdx, gsmCompatIdx)
+      ctx[gsmKeys.editIdxKey] = editIdx
+    else
+      _.common.beginTextInput(ctx, {
+        titleIdMode = nil,
+        prompt = _.menu_str.edit_argument_prompt or "Edit argument",
+        value = editVal,
+        maxLen = 255,
+        callback = function(val)
+          local args2 = getArgs()
+          if args2[editIdx] then
+            args2[editIdx].value = val or ""
+          end
+          setArgs(args2)
+          ctx.state = "bbl_hotkey_args"
+        end,
+        returnState = "bbl_hotkey_args",
+        gridSel = 1,
+        scroll = 1,
+        state = "text_input",
+      })
+    end
   end
 
   if (_.padEffective & _.PAD_SELECT) ~= 0 and total < maxArgs then

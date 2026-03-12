@@ -113,6 +113,8 @@ local function run(ctx)
     videoKey = "entryArgGsmVideoIdx",
     compatKey = "entryArgGsmCompatIdx",
     argKeyKey = "entryArgGsmArgKey",
+    lastVideoKey = "entryArgGsmLastVideoIdx",
+    editIdxKey = "entryArgGsmEditIdx",
     rowStateKeyPrefix = "entry_args_gsm_picker_row_",
   }
 
@@ -157,11 +159,26 @@ local function run(ctx)
 
   if arg_gsm_picker.run(ctx, {
         keys = gsmKeys,
-        onSubmit = function(arg)
-          addArgValue(arg)
+        onSubmit = function(arg, editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx >= 1 then
+            local args2 = getArgs()
+            if type(args2[idx]) == "table" then
+              args2[idx].value = arg
+            else
+              args2[idx] = { value = arg, disabled = false }
+            end
+            setArgs(args2)
+            ctx.entryArgSel = _.common.clampListSelection(idx, #args2)
+          else
+            addArgValue(arg)
+          end
         end,
-        onCancel = function()
-          reopenAddMenu()
+        onCancel = function(editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx < 1 then
+            reopenAddMenu()
+          end
         end,
       }) then
     return
@@ -271,27 +288,33 @@ local function run(ctx)
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
       local editIdx = ctx.entryArgSel
       local editValue = type(args[editIdx]) == "table" and args[editIdx].value or args[editIdx]
-      _.common.beginTextInput(ctx, {
-        argEditIdx = editIdx,
-        titleIdMode = nil,
-        prompt = _.menu_str.edit_argument_prompt,
-        value = editValue,
-        maxLen = 79,
-        callback = function(val)
-          local args2 = getArgs()
-          if type(args2[ctx.argEditIdx]) == "table" then
-            args2[ctx.argEditIdx].value = val or ""
-          else
-            args2[ctx.argEditIdx] = { value = val or "", disabled = false }
-          end
-          setArgs(args2)
-          ctx.state = "entry_args"
-        end,
-        returnState = "entry_args",
-        gridSel = 1,
-        scroll = 1,
-        state = "text_input",
-      })
+      local gsmArgKey, gsmVideoIdx, gsmCompatIdx = arg_gsm_picker.parseExistingGsmArg(_, editValue)
+      if gsmArgKey then
+        arg_gsm_picker.open(ctx, gsmKeys, gsmArgKey, gsmVideoIdx, gsmCompatIdx)
+        ctx[gsmKeys.editIdxKey] = editIdx
+      else
+        _.common.beginTextInput(ctx, {
+          argEditIdx = editIdx,
+          titleIdMode = nil,
+          prompt = _.menu_str.edit_argument_prompt,
+          value = editValue,
+          maxLen = 79,
+          callback = function(val)
+            local args2 = getArgs()
+            if type(args2[ctx.argEditIdx]) == "table" then
+              args2[ctx.argEditIdx].value = val or ""
+            else
+              args2[ctx.argEditIdx] = { value = val or "", disabled = false }
+            end
+            setArgs(args2)
+            ctx.state = "entry_args"
+          end,
+          returnState = "entry_args",
+          gridSel = 1,
+          scroll = 1,
+          state = "text_input",
+        })
+      end
     end
   end
 
