@@ -63,6 +63,45 @@ function arg_presets.hasNhddlElfPath(pathsOrPath)
   return false
 end
 
+function arg_presets.isApaPfsHddPath(path)
+  local s = trimText(path):lower()
+  if s == "" then return false end
+  if s:match("^pfs%d:/") then return true end
+  if s:match("^hdd%d:[^:]+:pfs:") then return true end
+  if s:match("^hdd%d:[^:]+/") then return true end -- FMCB-style mapped pfs path
+  if s:match("^hdd%d:[^:]+:patinfo$") then return true end
+  return false
+end
+
+function arg_presets.pathsSupportPatinfo(pathsOrPath)
+  if type(pathsOrPath) == "string" then
+    return arg_presets.isApaPfsHddPath(pathsOrPath)
+  end
+  local hasAny = false
+  for _, item in ipairs(pathsOrPath or {}) do
+    local p = trimText(arg_presets.pathValue(item))
+    if p ~= "" then
+      hasAny = true
+      if not arg_presets.isApaPfsHddPath(p) then
+        return false
+      end
+    end
+  end
+  return hasAny
+end
+
+function arg_presets.hasCdromPath(pathsOrPath)
+  if type(pathsOrPath) == "string" then
+    return trimText(pathsOrPath):lower() == "cdrom"
+  end
+  for _, item in ipairs(pathsOrPath or {}) do
+    if trimText(arg_presets.pathValue(item)):lower() == "cdrom" then
+      return true
+    end
+  end
+  return false
+end
+
 function arg_presets.collectUsedArgs(args)
   local usedKnown = {
     appid = false,
@@ -76,6 +115,12 @@ function arg_presets.collectUsedArgs(args)
     osd = false,
     hosd = false,
     noflags = false,
+    nologo = false,
+    nogameid = false,
+    dkwdrv = false,
+    ps1fast = false,
+    ps1smooth = false,
+    ps1vneg = false,
   }
   local usedModes = {}
   for _, item in ipairs(args or {}) do
@@ -101,6 +146,18 @@ function arg_presets.collectUsedArgs(args)
       usedKnown.hosd = true
     elseif a == "-noflags" then
       usedKnown.noflags = true
+    elseif a == "-nologo" then
+      usedKnown.nologo = true
+    elseif a == "-nogameid" then
+      usedKnown.nogameid = true
+    elseif a == "-dkwdrv" or a:match("^%-dkwdrv%s*=") then
+      usedKnown.dkwdrv = true
+    elseif a == "-ps1fast" then
+      usedKnown.ps1fast = true
+    elseif a == "-ps1smooth" then
+      usedKnown.ps1smooth = true
+    elseif a == "-ps1vneg" then
+      usedKnown.ps1vneg = true
     else
       local mv = a:match("^%-mode%s*=%s*(.+)$")
       if mv and mv ~= "" then

@@ -31,13 +31,7 @@ local function run(ctx)
     ctx.state = "menu_entry_edit"; return
   end
 
-  local hasCdrom = false
-  for _, p in ipairs(paths or {}) do
-    if arg_presets.pathValue(p):lower() == "cdrom" then
-      hasCdrom = true
-      break
-    end
-  end
+  local hasCdrom = arg_presets.hasCdromPath(paths)
   local hasNhddlElfPath = arg_presets.hasNhddlElfPath(paths)
 
   local function getArgs()
@@ -107,6 +101,24 @@ local function run(ctx)
   })
   local addRows = arg_profiles.buildAddRows(profileState)
   local removeNhddlPair = arg_profiles.profileUsesNhddl(profileState.activeProfileId)
+  if not arg_presets.pathsSupportPatinfo(paths) then
+    local filteredRows = {}
+    for i = 1, #addRows do
+      if addRows[i].uniqueKey ~= "patinfo" then
+        filteredRows[#filteredRows + 1] = addRows[i]
+      end
+    end
+    addRows = filteredRows
+  end
+  if not hasCdrom then
+    local filteredRows = {}
+    for i = 1, #addRows do
+      if not addRows[i].cdromOnly then
+        filteredRows[#filteredRows + 1] = addRows[i]
+      end
+    end
+    addRows = filteredRows
+  end
   local gsmKeys = {
     openKey = "entryArgGsmPickerMenu",
     selKey = "entryArgGsmPickerSel",
@@ -152,6 +164,16 @@ local function run(ctx)
       local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
       if titleId ~= "" then
         addArgValue("-titleid=" .. titleId)
+      end
+      ctx.state = "entry_args"
+    end)
+  end
+
+  local function openDkwdrvPathInput()
+    openNewArgumentInput("DKWDRV path", 79, function(val)
+      local p = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if p ~= "" then
+        addArgValue("-dkwdrv=" .. p)
       end
       ctx.state = "entry_args"
     end)
@@ -207,6 +229,8 @@ local function run(ctx)
               openTitleIdInput()
             elseif row.kind == "egsm" or row.kind == "gsm" then
               openGsmPicker(row)
+            elseif row.kind == "dkwdrv_path" then
+              openDkwdrvPathInput()
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then

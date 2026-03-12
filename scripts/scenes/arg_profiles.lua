@@ -126,6 +126,23 @@ local rowsNhddl = {
   makeRow("-udpbd_ip=<ip>", nil, "NHDDL UDPBD IP; pairs with -mode=udpbd.", { kind = "udpbd_ip", uniqueKey = "udpbd_ip" }),
 }
 
+local rowsCdromLauncher = {
+  makeRow("-nologo", "-nologo", "Launch disc directly, bypassing rom0:PS2LOGO.",
+    { uniqueKey = "nologo", cdromOnly = true }),
+  makeRow("-nogameid", "-nogameid", "Disable visual game ID for disc launches.",
+    { uniqueKey = "nogameid", cdromOnly = true }),
+  makeRow("-dkwdrv", "-dkwdrv", "Use mc?:/BOOT/DKWDRV.ELF for PS1 discs instead of rom0:PS1DRV.",
+    { uniqueKey = "dkwdrv", cdromOnly = true }),
+  makeRow("-dkwdrv=<path>", nil, "Use custom DKWDRV ELF path for PS1 discs.",
+    { kind = "dkwdrv_path", uniqueKey = "dkwdrv", cdromOnly = true }),
+  makeRow("-ps1fast", "-ps1fast", "Force fast PS1 disc speed (when not using DKWDRV).",
+    { uniqueKey = "ps1fast", cdromOnly = true }),
+  makeRow("-ps1smooth", "-ps1smooth", "Force PS1 texture smoothing (when not using DKWDRV).",
+    { uniqueKey = "ps1smooth", cdromOnly = true }),
+  makeRow("-ps1vneg", "-ps1vneg", "Run PS1DRV via PS1DRV Video Mode Negator.",
+    { uniqueKey = "ps1vneg", cdromOnly = true }),
+}
+
 local profiles = {}
 
 profiles.ps2bbl_generic = {
@@ -161,6 +178,7 @@ profiles.osdmenu_global = {
 appendRows(profiles.osdmenu_global.rows, rowsTitleApp)
 appendEgsmRows(profiles.osdmenu_global.rows, "osdmenu")
 appendRows(profiles.osdmenu_global.rows, rowsDev9Patinfo)
+appendRows(profiles.osdmenu_global.rows, rowsCdromLauncher)
 
 profiles.osdmenu_nhddl = {
   id = "osdmenu_nhddl",
@@ -173,6 +191,7 @@ appendRows(profiles.osdmenu_nhddl.rows, rowsNhddl)
 appendRows(profiles.osdmenu_nhddl.rows, rowsTitleApp)
 appendEgsmRows(profiles.osdmenu_nhddl.rows, "osdmenu")
 appendRows(profiles.osdmenu_nhddl.rows, rowsDev9Patinfo)
+appendRows(profiles.osdmenu_nhddl.rows, rowsCdromLauncher)
 
 profiles.hosdmenu_global = cloneProfile(profiles.osdmenu_global)
 profiles.hosdmenu_global.id = "hosdmenu_global"
@@ -199,6 +218,7 @@ profiles.osdmbr_global = {
 }
 appendEgsmRows(profiles.osdmbr_global.rows, "osdmbr")
 appendRows(profiles.osdmbr_global.rows, rowsMbrOnly)
+appendRows(profiles.osdmbr_global.rows, rowsCdromLauncher)
 
 profiles.osdmbr_nhddl = {
   id = "osdmbr_nhddl",
@@ -210,6 +230,7 @@ profiles.osdmbr_nhddl = {
 appendRows(profiles.osdmbr_nhddl.rows, rowsNhddl)
 appendEgsmRows(profiles.osdmbr_nhddl.rows, "osdmbr")
 appendRows(profiles.osdmbr_nhddl.rows, rowsMbrOnly)
+appendRows(profiles.osdmbr_nhddl.rows, rowsCdromLauncher)
 
 local appProfileIds = {
   ps2bbl = { "ps2bbl_generic", "ps2bbl_nhddl" },

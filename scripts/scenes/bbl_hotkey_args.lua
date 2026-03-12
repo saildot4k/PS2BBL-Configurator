@@ -65,6 +65,7 @@ local function run(ctx)
   local args = getArgs()
   local total = #args
   local entryPath = _.config_parse.getBblHotkeyPath(ctx.lines, keyId, slot)
+  local hasCdrom = arg_presets.hasCdromPath(entryPath)
   local isNhddlElfPath = arg_presets.isNhddlElfPath(entryPath)
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
   local profileState = arg_profiles.resolve({
@@ -74,6 +75,24 @@ local function run(ctx)
     hasNhddlPath = isNhddlElfPath,
   })
   local presetRows = arg_profiles.buildAddRows(profileState)
+  if not arg_presets.pathsSupportPatinfo(entryPath) then
+    local filteredRows = {}
+    for i = 1, #presetRows do
+      if presetRows[i].uniqueKey ~= "patinfo" then
+        filteredRows[#filteredRows + 1] = presetRows[i]
+      end
+    end
+    presetRows = filteredRows
+  end
+  if not hasCdrom then
+    local filteredRows = {}
+    for i = 1, #presetRows do
+      if not presetRows[i].cdromOnly then
+        filteredRows[#filteredRows + 1] = presetRows[i]
+      end
+    end
+    presetRows = filteredRows
+  end
   local removeNhddlPair = true
   local gsmKeys = {
     openKey = "bblArgGsmPickerMenu",
@@ -151,6 +170,15 @@ local function run(ctx)
         ctx.state = "bbl_hotkey_args"
       end)
     end
+    local function openDkwdrvPathInput()
+      openNewArgumentInput("DKWDRV path", 255, function(val)
+        local p = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if p ~= "" then
+          addArgValue("-dkwdrv=" .. p)
+        end
+        ctx.state = "bbl_hotkey_args"
+      end)
+    end
     local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ") [" ..
         arg_profiles.getMenuTag(profileState) .. "]"
     if arg_add_menu.run(ctx, {
@@ -175,6 +203,8 @@ local function run(ctx)
               openTitleIdInput()
             elseif row.kind == "egsm" or row.kind == "gsm" then
               openGsmPicker(row)
+            elseif row.kind == "dkwdrv_path" then
+              openDkwdrvPathInput()
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
