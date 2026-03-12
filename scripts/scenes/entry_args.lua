@@ -107,16 +107,17 @@ local function run(ctx)
   })
   local addRows = arg_profiles.buildAddRows(profileState)
   local removeNhddlPair = arg_profiles.profileUsesNhddl(profileState.activeProfileId)
+  local gsmKeys = {
+    openKey = "entryArgGsmPickerMenu",
+    selKey = "entryArgGsmPickerSel",
+    videoKey = "entryArgGsmVideoIdx",
+    compatKey = "entryArgGsmCompatIdx",
+    argKeyKey = "entryArgGsmArgKey",
+    rowStateKeyPrefix = "entry_args_gsm_picker_row_",
+  }
 
   local function clearGsmMenus()
-    ctx.entryArgGsmVideoMenu = nil
-    ctx.entryArgGsmVideoSel = nil
-    ctx.entryArgGsmVideoScroll = nil
-    ctx.entryArgGsmCompatMenu = nil
-    ctx.entryArgGsmCompatSel = nil
-    ctx.entryArgGsmCompatScroll = nil
-    ctx.entryArgGsmVideoIdx = nil
-    ctx.entryArgGsmArgKey = nil
+    arg_gsm_picker.clearState(ctx, gsmKeys)
   end
 
   local function reopenAddMenu()
@@ -126,11 +127,7 @@ local function run(ctx)
   end
 
   local function openGsmPicker(row)
-    clearGsmMenus()
-    ctx.entryArgGsmArgKey = (row and row.egsmArgKey) or "-gsm"
-    ctx.entryArgGsmVideoMenu = true
-    ctx.entryArgGsmVideoSel = ctx.entryArgGsmVideoSel or 1
-    ctx.entryArgGsmVideoScroll = ctx.entryArgGsmVideoScroll or 0
+    arg_gsm_picker.open(ctx, gsmKeys, (row and row.egsmArgKey) or "-gsm")
   end
 
   if hasCdrom and not isBoot then
@@ -158,65 +155,16 @@ local function run(ctx)
     end)
   end
 
-  if ctx.entryArgGsmCompatMenu then
-    local compatRows = arg_gsm_picker.buildCompatRows(_)
-    if #compatRows == 0 then
-      clearGsmMenus()
-      reopenAddMenu()
-    elseif arg_add_menu.run(ctx, {
-          menuOpenKey = "entryArgGsmCompatMenu",
-          selKey = "entryArgGsmCompatSel",
-          scrollKey = "entryArgGsmCompatScroll",
-          rows = compatRows,
-          title = arg_gsm_picker.compatTitle(_, ctx.entryArgGsmVideoIdx),
-          descDefault = "Select compatibility mode.",
-          rowStateKeyPrefix = "entry_args_gsm_compat_row_",
-          onSelect = function(row)
-            local arg = arg_gsm_picker.buildArg(_, ctx.entryArgGsmArgKey, ctx.entryArgGsmVideoIdx, row.compatIdx)
-            clearGsmMenus()
-            if arg and arg ~= "" then
-              addArgValue(arg)
-            end
-          end,
-          onCancel = function()
-            ctx.entryArgGsmCompatMenu = nil
-            ctx.entryArgGsmCompatSel = nil
-            ctx.entryArgGsmCompatScroll = nil
-            ctx.entryArgGsmVideoMenu = true
-            ctx.entryArgGsmVideoSel = ctx.entryArgGsmVideoSel or 1
-            ctx.entryArgGsmVideoScroll = ctx.entryArgGsmVideoScroll or 0
-          end,
-        }) then
-      return
-    end
-  end
-
-  if ctx.entryArgGsmVideoMenu then
-    local videoRows = arg_gsm_picker.buildVideoRows(_)
-    if #videoRows == 0 then
-      clearGsmMenus()
-      reopenAddMenu()
-    elseif arg_add_menu.run(ctx, {
-          menuOpenKey = "entryArgGsmVideoMenu",
-          selKey = "entryArgGsmVideoSel",
-          scrollKey = "entryArgGsmVideoScroll",
-          rows = videoRows,
-          title = arg_gsm_picker.videoTitle(_),
-          descDefault = "Select eGSM video mode.",
-          rowStateKeyPrefix = "entry_args_gsm_video_row_",
-          onSelect = function(row)
-            ctx.entryArgGsmVideoIdx = row.videoIdx
-            ctx.entryArgGsmCompatMenu = true
-            ctx.entryArgGsmCompatSel = ctx.entryArgGsmCompatSel or 1
-            ctx.entryArgGsmCompatScroll = ctx.entryArgGsmCompatScroll or 0
-          end,
-          onCancel = function()
-            clearGsmMenus()
-            reopenAddMenu()
-          end,
-        }) then
-      return
-    end
+  if arg_gsm_picker.run(ctx, {
+        keys = gsmKeys,
+        onSubmit = function(arg)
+          addArgValue(arg)
+        end,
+        onCancel = function()
+          reopenAddMenu()
+        end,
+      }) then
+    return
   end
 
   if ctx.entryArgAddMenu and #addRows > 0 then
