@@ -26,7 +26,7 @@ Choose `Free McBoot`, `Free HDBoot`, `OSDMenu`, `HOSDMenu`, `OSDMenu MBR`, `PS2B
 
 ## Config lookup order for each application
 
-These are the orders and files that each app looks for when loading. First found file is used. R3CONFIGURATOR will let you search for and edit any of these config file paths.
+These are the orders and files that each app looks for when loading. First found file is used by each app. R3CONFIGURATOR will let you search for and edit any of these config file paths.
 
 ### FreeMcBoot (`FREEMCB.CNF`)
 
