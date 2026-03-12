@@ -1,6 +1,8 @@
 --[[ Arguments list for a menu entry or MBR boot key (when ctx.bootKey is set and we're in MBR). ]]
 
 local arg_presets = dofile("scripts/scenes/arg_presets.lua")
+local arg_profiles = dofile("scripts/scenes/arg_profiles.lua")
+local arg_gsm_picker = dofile("scripts/scenes/arg_gsm_picker.lua")
 local arg_add_menu = dofile("scripts/scenes/arg_add_menu.lua")
 
 local function run(ctx)
@@ -29,13 +31,7 @@ local function run(ctx)
     ctx.state = "menu_entry_edit"; return
   end
 
-  local hasCdrom = false
-  for _, p in ipairs(paths or {}) do
-    if arg_presets.pathValue(p) == "cdrom" then
-      hasCdrom = true
-      break
-    end
-  end
+  local hasCdrom = arg_presets.hasCdromPath(paths)
   local hasNhddlElfPath = arg_presets.hasNhddlElfPath(paths)
 
   local function getArgs()
@@ -96,14 +92,63 @@ local function run(ctx)
   local args = getArgs()
   local total = #args
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
+  local profileState = arg_profiles.resolve({
+    surface = "entry_args",
+    context = ctx.context,
+    fileType = ctx.fileType,
+    isBoot = isBoot,
+    hasNhddlPath = hasNhddlElfPath,
+  })
+  local addRows = arg_profiles.buildAddRows(profileState)
+  local removeNhddlPair = arg_profiles.profileUsesNhddl(profileState.activeProfileId)
+  if not arg_presets.pathsSupportPatinfo(paths) then
+    local filteredRows = {}
+    for i = 1, #addRows do
+      if addRows[i].uniqueKey ~= "patinfo" then
+        filteredRows[#filteredRows + 1] = addRows[i]
+      end
+    end
+    addRows = filteredRows
+  end
+  if not hasCdrom then
+    local filteredRows = {}
+    for i = 1, #addRows do
+      if not addRows[i].cdromOnly then
+        filteredRows[#filteredRows + 1] = addRows[i]
+      end
+    end
+    addRows = filteredRows
+  end
+  local gsmKeys = {
+    openKey = "entryArgGsmPickerMenu",
+    selKey = "entryArgGsmPickerSel",
+    videoKey = "entryArgGsmVideoIdx",
+    compatKey = "entryArgGsmCompatIdx",
+    argKeyKey = "entryArgGsmArgKey",
+    lastVideoKey = "entryArgGsmLastVideoIdx",
+    editIdxKey = "entryArgGsmEditIdx",
+    rowStateKeyPrefix = "entry_args_gsm_picker_row_",
+  }
 
-  local nhddlPresetRows = nil
-  if hasNhddlElfPath then
-    nhddlPresetRows = arg_presets.buildEntryNhddlRows()
-  else
+  local function clearGsmMenus()
+    arg_gsm_picker.clearState(ctx, gsmKeys)
+  end
+
+  local function reopenAddMenu()
+    ctx.entryArgAddMenu = true
+    ctx.entryArgAddSel = ctx.entryArgAddSel or 1
+    ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
+  end
+
+  local function openGsmPicker(row)
+    arg_gsm_picker.open(ctx, gsmKeys, (row and row.egsmArgKey) or "-gsm")
+  end
+
+  if hasCdrom and not isBoot then
     ctx.entryArgAddMenu = nil
     ctx.entryArgAddSel = nil
     ctx.entryArgAddScroll = nil
+    clearGsmMenus()
   end
 
   local function openUdpbdIpInput()
@@ -114,13 +159,60 @@ local function run(ctx)
     end)
   end
 
-  if ctx.entryArgAddMenu and nhddlPresetRows then
+  local function openTitleIdInput()
+    openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
+      local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if titleId ~= "" then
+        addArgValue("-titleid=" .. titleId)
+      end
+      ctx.state = "entry_args"
+    end)
+  end
+
+  local function openDkwdrvPathInput()
+    openNewArgumentInput("DKWDRV path", 79, function(val)
+      local p = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+      if p ~= "" then
+        addArgValue("-dkwdrv=" .. p)
+      end
+      ctx.state = "entry_args"
+    end)
+  end
+
+  if arg_gsm_picker.run(ctx, {
+        keys = gsmKeys,
+        onSubmit = function(arg, editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx >= 1 then
+            local args2 = getArgs()
+            if type(args2[idx]) == "table" then
+              args2[idx].value = arg
+            else
+              args2[idx] = { value = arg, disabled = false }
+            end
+            setArgs(args2)
+            ctx.entryArgSel = _.common.clampListSelection(idx, #args2)
+          else
+            addArgValue(arg)
+          end
+        end,
+        onCancel = function(editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx < 1 then
+            reopenAddMenu()
+          end
+        end,
+      }) then
+    return
+  end
+
+  if ctx.entryArgAddMenu and #addRows > 0 then
     if arg_add_menu.run(ctx, {
           menuOpenKey = "entryArgAddMenu",
           selKey = "entryArgAddSel",
           scrollKey = "entryArgAddScroll",
-          rows = nhddlPresetRows,
-          title = "Add argument [NHDDL]",
+          rows = addRows,
+          title = "Add argument [" .. arg_profiles.getMenuTag(profileState) .. "]",
           descDefault = "Enter any custom argument manually.",
           rowStateKeyPrefix = "entry_args_add_row_",
           rowDisabledReason = function(row)
@@ -133,6 +225,12 @@ local function run(ctx)
                 if v ~= "" then addArgValue(v) end
                 ctx.state = "entry_args"
               end)
+            elseif row.kind == "titleid" then
+              openTitleIdInput()
+            elseif row.kind == "egsm" or row.kind == "gsm" then
+              openGsmPicker(row)
+            elseif row.kind == "dkwdrv_path" then
+              openDkwdrvPathInput()
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
@@ -142,7 +240,7 @@ local function run(ctx)
             end
           end,
         }) then
-      return
+        return
     end
   end
 
@@ -214,43 +312,40 @@ local function run(ctx)
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= #args then
       local editIdx = ctx.entryArgSel
       local editValue = type(args[editIdx]) == "table" and args[editIdx].value or args[editIdx]
-      _.common.beginTextInput(ctx, {
-        argEditIdx = editIdx,
-        titleIdMode = nil,
-        prompt = _.menu_str.edit_argument_prompt,
-        value = editValue,
-        maxLen = 79,
-        callback = function(val)
-          local args2 = getArgs()
-          if type(args2[ctx.argEditIdx]) == "table" then
-            args2[ctx.argEditIdx].value = val or ""
-          else
-            args2[ctx.argEditIdx] = { value = val or "", disabled = false }
-          end
-          setArgs(args2)
-          ctx.state = "entry_args"
-        end,
-        returnState = "entry_args",
-        gridSel = 1,
-        scroll = 1,
-        state = "text_input",
-      })
+      local gsmArgKey, gsmVideoIdx, gsmCompatIdx = arg_gsm_picker.parseExistingGsmArg(_, editValue)
+      if gsmArgKey then
+        arg_gsm_picker.open(ctx, gsmKeys, gsmArgKey, gsmVideoIdx, gsmCompatIdx)
+        ctx[gsmKeys.editIdxKey] = editIdx
+      else
+        _.common.beginTextInput(ctx, {
+          argEditIdx = editIdx,
+          titleIdMode = nil,
+          prompt = _.menu_str.edit_argument_prompt,
+          value = editValue,
+          maxLen = 79,
+          callback = function(val)
+            local args2 = getArgs()
+            if type(args2[ctx.argEditIdx]) == "table" then
+              args2[ctx.argEditIdx].value = val or ""
+            else
+              args2[ctx.argEditIdx] = { value = val or "", disabled = false }
+            end
+            setArgs(args2)
+            ctx.state = "entry_args"
+          end,
+          returnState = "entry_args",
+          gridSel = 1,
+          scroll = 1,
+          state = "text_input",
+        })
+      end
     end
   end
 
-  if (_.padEffective & _.PAD_SELECT) ~= 0 and not hasCdrom then
-    if hasNhddlElfPath and nhddlPresetRows then
-      ctx.entryArgAddMenu = true
-      ctx.entryArgAddSel = ctx.entryArgAddSel or 1
-      ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
-    else
-      openNewArgumentInput(_.menu_str.new_argument_prompt, 79, function(val)
-        if (val or "") ~= "" then
-          local args2 = getArgs(); table.insert(args2, { value = val, disabled = false }); setArgs(args2)
-        end
-        ctx.state = "entry_args"
-      end)
-    end
+  if (_.padEffective & _.PAD_SELECT) ~= 0 and (isBoot or not hasCdrom) then
+    ctx.entryArgAddMenu = true
+    ctx.entryArgAddSel = ctx.entryArgAddSel or 1
+    ctx.entryArgAddScroll = ctx.entryArgAddScroll or 0
   end
 
   if (_.padEffective & _.PAD_L1) ~= 0 then
@@ -270,7 +365,7 @@ local function run(ctx)
 
   if (_.padEffective & _.PAD_SQUARE) ~= 0 then
     if ctx.entryArgSel >= 1 and ctx.entryArgSel <= total then
-      local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.entryArgSel, hasNhddlElfPath)
+      local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.entryArgSel, removeNhddlPair)
       setArgs(args2)
       ctx.entryArgSel = _.common.clampListSelection(ctx.entryArgSel, #args2)
     end

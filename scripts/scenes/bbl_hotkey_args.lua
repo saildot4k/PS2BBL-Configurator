@@ -1,6 +1,8 @@
 --[[ Argument editor for one BBL hotkey slot (ARG_<HOTKEY>_E#). ]]
 
 local arg_presets = dofile("scripts/scenes/arg_presets.lua")
+local arg_profiles = dofile("scripts/scenes/arg_profiles.lua")
+local arg_gsm_picker = dofile("scripts/scenes/arg_gsm_picker.lua")
 local arg_add_menu = dofile("scripts/scenes/arg_add_menu.lua")
 
 local function run(ctx)
@@ -63,15 +65,90 @@ local function run(ctx)
   local args = getArgs()
   local total = #args
   local entryPath = _.config_parse.getBblHotkeyPath(ctx.lines, keyId, slot)
+  local hasCdrom = arg_presets.hasCdromPath(entryPath)
   local isNhddlElfPath = arg_presets.isNhddlElfPath(entryPath)
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
+  local profileState = arg_profiles.resolve({
+    surface = "bbl_hotkey",
+    context = ctx.context,
+    fileType = ctx.fileType,
+    hasNhddlPath = isNhddlElfPath,
+  })
+  local presetRows = arg_profiles.buildAddRows(profileState)
+  if not arg_presets.pathsSupportPatinfo(entryPath) then
+    local filteredRows = {}
+    for i = 1, #presetRows do
+      if presetRows[i].uniqueKey ~= "patinfo" then
+        filteredRows[#filteredRows + 1] = presetRows[i]
+      end
+    end
+    presetRows = filteredRows
+  end
+  if not hasCdrom then
+    local filteredRows = {}
+    for i = 1, #presetRows do
+      if not presetRows[i].cdromOnly then
+        filteredRows[#filteredRows + 1] = presetRows[i]
+      end
+    end
+    presetRows = filteredRows
+  end
+  local removeNhddlPair = true
+  local gsmKeys = {
+    openKey = "bblArgGsmPickerMenu",
+    selKey = "bblArgGsmPickerSel",
+    videoKey = "bblArgGsmVideoIdx",
+    compatKey = "bblArgGsmCompatIdx",
+    argKeyKey = "bblArgGsmArgKey",
+    lastVideoKey = "bblArgGsmLastVideoIdx",
+    editIdxKey = "bblArgGsmEditIdx",
+    rowStateKeyPrefix = "bbl_hotkey_args_gsm_picker_row_",
+  }
 
-  local presetRows = arg_presets.buildBblRows(isNhddlElfPath)
+  local function clearGsmMenus()
+    arg_gsm_picker.clearState(ctx, gsmKeys)
+  end
+
+  local function reopenAddMenu()
+    if total >= maxArgs then return end
+    ctx.bblArgAddMenu = true
+    ctx.bblArgAddSel = ctx.bblArgAddSel or 1
+    ctx.bblArgAddScroll = ctx.bblArgAddScroll or 0
+  end
+
+  local function openGsmPicker(row)
+    arg_gsm_picker.open(ctx, gsmKeys, (row and row.egsmArgKey) or "-gsm")
+  end
 
   if ctx.bblArgAddMenu and total >= maxArgs then
     ctx.bblArgAddMenu = nil
     ctx.bblArgAddSel = nil
     ctx.bblArgAddScroll = nil
+  end
+
+  if arg_gsm_picker.run(ctx, {
+        keys = gsmKeys,
+        onSubmit = function(arg, editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx >= 1 then
+            local args2 = getArgs()
+            if args2[idx] then
+              args2[idx].value = arg
+              setArgs(args2)
+              ctx.bblArgSel = _.common.clampListSelection(idx, #args2)
+            end
+          else
+            addArgValue(arg)
+          end
+        end,
+        onCancel = function(editIdx)
+          local idx = math.floor(tonumber(editIdx) or 0)
+          if idx < 1 then
+            reopenAddMenu()
+          end
+        end,
+      }) then
+    return
   end
 
   if ctx.bblArgAddMenu then
@@ -84,8 +161,26 @@ local function run(ctx)
         ctx.state = "bbl_hotkey_args"
       end)
     end
-    local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ")"
-    if isNhddlElfPath then titleAdd = titleAdd .. " [NHDDL]" end
+    local function openTitleIdInput()
+      openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
+        local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if titleId ~= "" then
+          addArgValue("-titleid=" .. titleId)
+        end
+        ctx.state = "bbl_hotkey_args"
+      end)
+    end
+    local function openDkwdrvPathInput()
+      openNewArgumentInput("DKWDRV path", 255, function(val)
+        local p = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if p ~= "" then
+          addArgValue("-dkwdrv=" .. p)
+        end
+        ctx.state = "bbl_hotkey_args"
+      end)
+    end
+    local titleAdd = "Add argument (" .. tostring(total) .. "/" .. tostring(maxArgs) .. ") [" ..
+        arg_profiles.getMenuTag(profileState) .. "]"
     if arg_add_menu.run(ctx, {
           menuOpenKey = "bblArgAddMenu",
           selKey = "bblArgAddSel",
@@ -105,13 +200,11 @@ local function run(ctx)
                 ctx.state = "bbl_hotkey_args"
               end)
             elseif row.kind == "titleid" then
-              openNewArgumentInput("TITLEID (up to 11 chars)", 11, function(val)
-                local titleId = tostring(val or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                if titleId ~= "" then
-                  addArgValue("-titleid=" .. titleId)
-                end
-                ctx.state = "bbl_hotkey_args"
-              end)
+              openTitleIdInput()
+            elseif row.kind == "egsm" or row.kind == "gsm" then
+              openGsmPicker(row)
+            elseif row.kind == "dkwdrv_path" then
+              openDkwdrvPathInput()
             elseif row.kind == "udpbd_ip" then
               openUdpbdIpInput()
             elseif row.modeValue == "udpbd" and usedKnown.udpbd_ip ~= true then
@@ -178,24 +271,30 @@ local function run(ctx)
   if total > 0 and (_.padEffective & _.PAD_CROSS) ~= 0 then
     local editIdx = ctx.bblArgSel
     local editVal = (args[editIdx] and args[editIdx].value) or ""
-    _.common.beginTextInput(ctx, {
-      titleIdMode = nil,
-      prompt = _.menu_str.edit_argument_prompt or "Edit argument",
-      value = editVal,
-      maxLen = 255,
-      callback = function(val)
-        local args2 = getArgs()
-        if args2[editIdx] then
-          args2[editIdx].value = val or ""
-        end
-        setArgs(args2)
-        ctx.state = "bbl_hotkey_args"
-      end,
-      returnState = "bbl_hotkey_args",
-      gridSel = 1,
-      scroll = 1,
-      state = "text_input",
-    })
+    local gsmArgKey, gsmVideoIdx, gsmCompatIdx = arg_gsm_picker.parseExistingGsmArg(_, editVal)
+    if gsmArgKey then
+      arg_gsm_picker.open(ctx, gsmKeys, gsmArgKey, gsmVideoIdx, gsmCompatIdx)
+      ctx[gsmKeys.editIdxKey] = editIdx
+    else
+      _.common.beginTextInput(ctx, {
+        titleIdMode = nil,
+        prompt = _.menu_str.edit_argument_prompt or "Edit argument",
+        value = editVal,
+        maxLen = 255,
+        callback = function(val)
+          local args2 = getArgs()
+          if args2[editIdx] then
+            args2[editIdx].value = val or ""
+          end
+          setArgs(args2)
+          ctx.state = "bbl_hotkey_args"
+        end,
+        returnState = "bbl_hotkey_args",
+        gridSel = 1,
+        scroll = 1,
+        state = "text_input",
+      })
+    end
   end
 
   if (_.padEffective & _.PAD_SELECT) ~= 0 and total < maxArgs then
@@ -210,7 +309,7 @@ local function run(ctx)
   end
 
   if total > 0 and (_.padEffective & _.PAD_SQUARE) ~= 0 then
-    local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.bblArgSel, true)
+    local args2 = arg_presets.removeArgAndPairedUdpbd(getArgs(), ctx.bblArgSel, removeNhddlPair)
     setArgs(args2)
     ctx.bblArgSel = _.common.clampListSelection(ctx.bblArgSel, #args2)
   end

@@ -1,18 +1,6 @@
---[[ Shared preset and argument helpers for entry args and BBL hotkey args. ]]
+--[[ Shared argument helpers and profile override state for args editors. ]]
 
 local arg_presets = {}
-
-local function cloneRow(row)
-  local out = {}
-  for k, v in pairs(row or {}) do out[k] = v end
-  return out
-end
-
-local function appendRows(dst, src)
-  for i = 1, #(src or {}) do
-    dst[#dst + 1] = cloneRow(src[i])
-  end
-end
 
 local function argValue(item)
   if type(item) == "table" then return item.value end
@@ -23,122 +11,31 @@ local function trimText(s)
   return tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-local manualRow = {
-  label = "Enter manually",
-  kind = "manual",
-  desc = "Enter any custom argument manually.",
-}
+local function ensureProfileOverrideMap(ctx)
+  if type(ctx) ~= "table" then return nil end
+  if type(ctx.argProfileOverrideByScope) ~= "table" then
+    ctx.argProfileOverrideByScope = {}
+  end
+  return ctx.argProfileOverrideByScope
+end
 
-local bblNonNhddlRows = {
-  {
-    label = "-appid",
-    value = "-appid",
-    desc = "Forces app visual game ID even if APP_GAMEID = 0.",
-    uniqueKey = "appid",
-  },
-  {
-    label = "-titleid=<11 chars>",
-    kind = "titleid",
-    desc = "Overrides app title ID (up to 11 characters).",
-    uniqueKey = "titleid",
-  },
-}
+function arg_presets.getProfileOverride(ctx, scopeKey)
+  local map = ensureProfileOverrideMap(ctx)
+  if not map or not scopeKey or scopeKey == "" then return "auto" end
+  local v = map[scopeKey]
+  if type(v) ~= "string" or v == "" then return "auto" end
+  return v
+end
 
-local nhddlCoreRows = {
-  {
-    label = "-video=ntsc",
-    value = "-video=ntsc",
-    desc = "NHDDL: force NTSC video mode.",
-    uniqueKey = "video",
-  },
-  {
-    label = "-video=pal",
-    value = "-video=pal",
-    desc = "NHDDL: force PAL video mode.",
-    uniqueKey = "video",
-  },
-  {
-    label = "-video=480p",
-    value = "-video=480p",
-    desc = "NHDDL/Neutrino: request 480p (build-dependent).",
-    uniqueKey = "video",
-  },
-  {
-    label = "-mode=usb",
-    value = "-mode=usb",
-    desc = "NHDDL: initialize USB mode only.",
-    modeValue = "usb",
-  },
-  {
-    label = "-mode=mx4sio",
-    value = "-mode=mx4sio",
-    desc = "NHDDL: initialize MX4SIO mode only.",
-    modeValue = "mx4sio",
-  },
-  {
-    label = "-mode=mmce",
-    value = "-mode=mmce",
-    desc = "NHDDL: initialize MMCE mode only.",
-    modeValue = "mmce",
-  },
-  {
-    label = "-mode=ilink",
-    value = "-mode=ilink",
-    desc = "NHDDL: initialize iLink mode only.",
-    modeValue = "ilink",
-  },
-  {
-    label = "-mode=ata",
-    value = "-mode=ata",
-    desc = "NHDDL: initialize ATA mode only.",
-    modeValue = "ata",
-  },
-  {
-    label = "-mode=hdl",
-    value = "-mode=hdl",
-    desc = "NHDDL: initialize HDL mode only.",
-    modeValue = "hdl",
-  },
-  {
-    label = "-mode=udpbd",
-    value = "-mode=udpbd",
-    desc = "NHDDL UDPBD mode; requires -udpbd_ip=<IP> (paired automatically).",
-    modeValue = "udpbd",
-  },
-  {
-    label = "-udpbd_ip=<ip>",
-    kind = "udpbd_ip",
-    desc = "NHDDL UDPBD IP; requires -mode=udpbd (paired automatically).",
-    uniqueKey = "udpbd_ip",
-  },
-  {
-    label = "-noinit",
-    value = "-noinit",
-    desc = "NHDDL: skip IOP initialization (advanced).",
-    uniqueKey = "noinit",
-  },
-}
-
-local sharedTailRows = {
-  {
-    label = "-dev9=NICHDD",
-    value = "-dev9=NICHDD",
-    desc = "Keep both DEV9 (network) and HDD powered/on.",
-    uniqueKey = "dev9",
-  },
-  {
-    label = "-dev9=NIC",
-    value = "-dev9=NIC",
-    desc = "Keep DEV9 on; unmount pfs0: and idle hdd0:/hdd1:.",
-    uniqueKey = "dev9",
-  },
-  {
-    label = "-patinfo",
-    value = "-patinfo",
-    desc = "Enable PATINFO launch handling for :PATINFO paths.",
-    uniqueKey = "patinfo",
-  },
-}
+function arg_presets.setProfileOverride(ctx, scopeKey, profileId)
+  local map = ensureProfileOverrideMap(ctx)
+  if not map or not scopeKey or scopeKey == "" then return end
+  if not profileId or profileId == "" or profileId == "auto" then
+    map[scopeKey] = nil
+    return
+  end
+  map[scopeKey] = tostring(profileId)
+end
 
 function arg_presets.normalizeArg(v)
   return trimText(v):lower()
@@ -166,6 +63,45 @@ function arg_presets.hasNhddlElfPath(pathsOrPath)
   return false
 end
 
+function arg_presets.isApaPfsHddPath(path)
+  local s = trimText(path):lower()
+  if s == "" then return false end
+  if s:match("^pfs%d:/") then return true end
+  if s:match("^hdd%d:[^:]+:pfs:") then return true end
+  if s:match("^hdd%d:[^:]+/") then return true end -- FMCB-style mapped pfs path
+  if s:match("^hdd%d:[^:]+:patinfo$") then return true end
+  return false
+end
+
+function arg_presets.pathsSupportPatinfo(pathsOrPath)
+  if type(pathsOrPath) == "string" then
+    return arg_presets.isApaPfsHddPath(pathsOrPath)
+  end
+  local hasAny = false
+  for _, item in ipairs(pathsOrPath or {}) do
+    local p = trimText(arg_presets.pathValue(item))
+    if p ~= "" then
+      hasAny = true
+      if not arg_presets.isApaPfsHddPath(p) then
+        return false
+      end
+    end
+  end
+  return hasAny
+end
+
+function arg_presets.hasCdromPath(pathsOrPath)
+  if type(pathsOrPath) == "string" then
+    return trimText(pathsOrPath):lower() == "cdrom"
+  end
+  for _, item in ipairs(pathsOrPath or {}) do
+    if trimText(arg_presets.pathValue(item)):lower() == "cdrom" then
+      return true
+    end
+  end
+  return false
+end
+
 function arg_presets.collectUsedArgs(args)
   local usedKnown = {
     appid = false,
@@ -174,27 +110,56 @@ function arg_presets.collectUsedArgs(args)
     patinfo = false,
     video = false,
     udpbd_ip = false,
-    noinit = false,
+    egsm = false,
+    gsm = false,
+    osd = false,
+    hosd = false,
+    noflags = false,
+    nologo = false,
+    nogameid = false,
+    dkwdrv = false,
+    ps1fast = false,
+    ps1smooth = false,
+    ps1vneg = false,
   }
   local usedModes = {}
   for _, item in ipairs(args or {}) do
     local a = arg_presets.normalizeArg(argValue(item))
     if a == "-appid" then
       usedKnown.appid = true
-    elseif a:match("^%-titleid=") then
+    elseif a:match("^%-titleid%s*=") then
       usedKnown.titleid = true
-    elseif a:match("^%-dev9=") then
+    elseif a:match("^%-dev9%s*=") then
       usedKnown.dev9 = true
     elseif a == "-patinfo" then
       usedKnown.patinfo = true
-    elseif a:match("^%-video=") then
+    elseif a:match("^%-video%s*=") then
       usedKnown.video = true
-    elseif a:match("^%-udpbd_ip=") then
+    elseif a:match("^%-udpbd_ip%s*=") then
       usedKnown.udpbd_ip = true
-    elseif a == "-noinit" then
-      usedKnown.noinit = true
+    elseif a:match("^%-gsm%s*=") then
+      usedKnown.egsm = true
+      usedKnown.gsm = true
+    elseif a == "-osd" then
+      usedKnown.osd = true
+    elseif a == "-hosd" then
+      usedKnown.hosd = true
+    elseif a == "-noflags" then
+      usedKnown.noflags = true
+    elseif a == "-nologo" then
+      usedKnown.nologo = true
+    elseif a == "-nogameid" then
+      usedKnown.nogameid = true
+    elseif a == "-dkwdrv" or a:match("^%-dkwdrv%s*=") then
+      usedKnown.dkwdrv = true
+    elseif a == "-ps1fast" then
+      usedKnown.ps1fast = true
+    elseif a == "-ps1smooth" then
+      usedKnown.ps1smooth = true
+    elseif a == "-ps1vneg" then
+      usedKnown.ps1vneg = true
     else
-      local mv = a:match("^%-mode=%s*(.+)$")
+      local mv = a:match("^%-mode%s*=%s*(.+)$")
       if mv and mv ~= "" then
         mv = trimText(mv)
         if mv ~= "" then usedModes[mv] = true end
@@ -204,26 +169,10 @@ function arg_presets.collectUsedArgs(args)
   return usedKnown, usedModes
 end
 
-function arg_presets.buildEntryNhddlRows()
-  local rows = { cloneRow(manualRow) }
-  appendRows(rows, nhddlCoreRows)
-  appendRows(rows, sharedTailRows)
-  return rows
-end
-
-function arg_presets.buildBblRows(isNhddlElfPath)
-  local rows = { cloneRow(manualRow) }
-  if not isNhddlElfPath then
-    appendRows(rows, bblNonNhddlRows)
-  else
-    appendRows(rows, nhddlCoreRows)
-  end
-  appendRows(rows, sharedTailRows)
-  return rows
-end
-
 function arg_presets.rowDisabled(row, usedKnown, usedModes, total, maxArgs)
   if not row then return true, "invalid" end
+  if row.kind == "profile" then return false, nil end
+
   local used = usedKnown or {}
   local modes = usedModes or {}
   local curTotal = math.max(0, math.floor(tonumber(total) or 0))
@@ -268,9 +217,9 @@ function arg_presets.addUdpbdPair(args, ipValue, maxArgs)
   local hasUdpbdIp = false
   for _, item in ipairs(out) do
     local a = arg_presets.normalizeArg(argValue(item))
-    if a:match("^%-mode=%s*udpbd%s*$") then
+    if a:match("^%-mode%s*=%s*udpbd%s*$") then
       hasModeUdpbd = true
-    elseif a:match("^%-udpbd_ip=") then
+    elseif a:match("^%-udpbd_ip%s*=") then
       hasUdpbdIp = true
     end
   end
@@ -301,13 +250,13 @@ function arg_presets.removeArgAndPairedUdpbd(args, removeIdx, removePair)
   end
 
   local removedVal = arg_presets.normalizeArg(argValue(removed))
-  local removedModeUdpbd = removedVal:match("^%-mode=%s*udpbd%s*$") ~= nil
-  local removedUdpbdIp = removedVal:match("^%-udpbd_ip=") ~= nil
+  local removedModeUdpbd = removedVal:match("^%-mode%s*=%s*udpbd%s*$") ~= nil
+  local removedUdpbdIp = removedVal:match("^%-udpbd_ip%s*=") ~= nil
 
   if removedModeUdpbd then
     for i = #out, 1, -1 do
       local a = arg_presets.normalizeArg(argValue(out[i]))
-      if a:match("^%-udpbd_ip=") then
+      if a:match("^%-udpbd_ip%s*=") then
         table.remove(out, i)
         break
       end
@@ -315,7 +264,7 @@ function arg_presets.removeArgAndPairedUdpbd(args, removeIdx, removePair)
   elseif removedUdpbdIp then
     for i = #out, 1, -1 do
       local a = arg_presets.normalizeArg(argValue(out[i]))
-      if a:match("^%-mode=%s*udpbd%s*$") then
+      if a:match("^%-mode%s*=%s*udpbd%s*$") then
         table.remove(out, i)
         break
       end
