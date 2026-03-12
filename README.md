@@ -1,7 +1,5 @@
 ![logo](https://raw.githubusercontent.com/saildot4k/R3CONFIGURATOR/refs/heads/modularize/res/title.png)
 
-# R3CCONFIGURATOR
-
 A PlayStation 2 GUI application for editing FMCB, FHDB, OSDMenu, OSDMenu MBR, HOSDMenu, PS2BBL Extended and PSXBBL Extended.
 
 **This application is based on [Enceladus](https://github.com/DanielSant0s/Enceladus)** by Daniel Santos.  
