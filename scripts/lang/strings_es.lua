@@ -77,10 +77,14 @@ strings.editor = {
 -- Entradas del menú
 strings.menu_entries = {
   edit_menu_entries = "Editar entradas del menú",
+  edit_irx_entries = "Editar entradas IRX",
   item = "Elemento ",
   hint_items = { { pad = "cross", label = "Entrar", row = 1 }, { pad = "select", label = "Insertar", row = 1 }, { pad = "square", label = "Eliminar", row = 1 }, { pad = "circle", label = "Atrás", row = 1 }, { pad = "left", label = "Izquierda", row = 2 }, { pad = "L1", label = "Arriba", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Abajo", row = 2 }, { pad = "right", label = "Derecha", row = 2 } },
   hint_items_with_enable = { { pad = "cross", label = "Entrar", row = 1 }, { pad = "triangle", label = "Habilitar", row = 1 }, { pad = "select", label = "Insertar", row = 1 }, { pad = "square", label = "Eliminar", row = 1 }, { pad = "circle", label = "Atrás", row = 1 }, { pad = "left", label = "Izquierda", row = 2 }, { pad = "L1", label = "Arriba", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Abajo", row = 2 }, { pad = "right", label = "Derecha", row = 2 } },
   hint_items_with_disable = { { pad = "cross", label = "Entrar", row = 1 }, { pad = "triangle", label = "Deshab.", row = 1 }, { pad = "select", label = "Insertar", row = 1 }, { pad = "square", label = "Eliminar", row = 1 }, { pad = "circle", label = "Atrás", row = 1 }, { pad = "left", label = "Izquierda", row = 2 }, { pad = "L1", label = "Arriba", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Abajo", row = 2 }, { pad = "right", label = "Derecha", row = 2 } },
+  irx_hint_items = { { pad = "cross", label = "Entrar", row = 1 }, { pad = "select", label = "Insertar", row = 1 }, { pad = "square", label = "Eliminar", row = 1 }, { pad = "circle", label = "Atrás", row = 1 }, { pad = "L1", label = "Arriba", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Abajo", row = 2 } },
+  irx_hint_items_with_enable = { { pad = "cross", label = "Entrar", row = 1 }, { pad = "triangle", label = "Habilitar", row = 1 }, { pad = "select", label = "Insertar", row = 1 }, { pad = "square", label = "Eliminar", row = 1 }, { pad = "circle", label = "Atrás", row = 1 }, { pad = "L1", label = "Arriba", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Abajo", row = 2 } },
+  irx_hint_items_with_disable = { { pad = "cross", label = "Entrar", row = 1 }, { pad = "triangle", label = "Deshab.", row = 1 }, { pad = "select", label = "Insertar", row = 1 }, { pad = "square", label = "Eliminar", row = 1 }, { pad = "circle", label = "Atrás", row = 1 }, { pad = "L1", label = "Arriba", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Abajo", row = 2 } },
   entry_index = "Entrada ",
   name = "Nombre: ",
   paths = "Rutas: ",
@@ -139,6 +143,7 @@ strings.path_picker = {
   waiting_for_device_drivers = "Esperando dispositivo...",
   circle_back_items = { { pad = "circle", label = "Atrás" } },
   device_timeout = "No se encontró %DEVICE%",
+  irx_extension_required = "La ruta debe terminar en .irx",
   wildcard_confirm_title = "¿Usar ruta como comodín?",
   wildcard_confirm_hint = { { pad = "cross", label = "Sí" }, { pad = "circle", label = "No" } },
 }
@@ -256,6 +261,10 @@ strings.options_osdmbr = {
   osd_language = { label = "Idioma OSD", desc = "Forzar idioma OSD (depende del modelo de consola)" },
 }
 
+strings.options_bbl = {
+  _bbl_irx_entries = { label = "Editar entradas IRX", desc = "Editar rutas de módulos LOAD_IRX_E#" },
+}
+
 -- Editor eGSM (pantalla única: valores predeterminados + anulaciones de título)
 strings.egsm = {
   default_label = "Predeterminado",
@@ -284,6 +293,7 @@ strings.egsm = {
 strings.options = {}
 for k, v in pairs(strings.options_osdmenu or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdmbr or {}) do strings.options[k] = v end
+for k, v in pairs(strings.options_bbl or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdgsm or {}) do strings.options[k] = v end
 
 -- Etiquetas/descripciones de opciones de CDROM (subpantalla de opciones de lanzamiento de disco). Las claves son simbólicas (sin argumentos brutos).

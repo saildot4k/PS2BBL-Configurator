@@ -77,10 +77,14 @@ strings.editor = {
 -- Menu entries
 strings.menu_entries = {
   edit_menu_entries = "Edit menu entries",
+  edit_irx_entries = "Edit IRX entries",
   item = "Item ",
   hint_items = { { pad = "cross", label = "Enter", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
   hint_items_with_enable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
   hint_items_with_disable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
+  irx_hint_items = { { pad = "cross", label = "Enter", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
+  irx_hint_items_with_enable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
+  irx_hint_items_with_disable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
   entry_index = "Entry ",
   name = "Name: ",
   paths = "Paths: ",
@@ -139,6 +143,7 @@ strings.path_picker = {
   waiting_for_device_drivers = "Waiting for device...",
   circle_back_items = { { pad = "circle", label = "Back" } },
   device_timeout = "%DEVICE% not found",
+  irx_extension_required = "Path must end in .irx",
   wildcard_confirm_title = "Use path as wildcard?",
   wildcard_confirm_hint = { { pad = "cross", label = "Yes" }, { pad = "circle", label = "No" } },
 }
@@ -256,6 +261,10 @@ strings.options_osdmbr = {
   osd_language = { label = "OSD language", desc = "Force OSD language (depends on console model)" },
 }
 
+strings.options_bbl = {
+  _bbl_irx_entries = { label = "Edit IRX entries", desc = "Edit LOAD_IRX_E# module paths" },
+}
+
 -- eGSM editor (single screen: default + title overrides)
 strings.egsm = {
   default_label = "Default",
@@ -284,6 +293,7 @@ strings.egsm = {
 strings.options = {}
 for k, v in pairs(strings.options_osdmenu or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdmbr or {}) do strings.options[k] = v end
+for k, v in pairs(strings.options_bbl or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdgsm or {}) do strings.options[k] = v end
 
 -- CDROM option labels/descs (Launch disc options sub-screen). Keys are symbolic (no raw args).
