@@ -8,7 +8,7 @@ local strings = {}
 
 -- Main flow (main, choose_mc, select_config, initHdd, open, choose_load)
 strings.main = {
-  main_title = "R3CCONFIGURATOR",
+  main_title = "R3CONFIGURATOR",
   main_sub = "Pick one of the options below",
   version_unknown = "unknown",
   main_hint_items = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "start", label = "Exit", row = 2 } },
