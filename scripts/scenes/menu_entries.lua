@@ -51,11 +51,13 @@ local function run(ctx)
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     ctx.entrySel = ctx.entrySel + 1; if ctx.entrySel > total then ctx.entrySel = 1 end
   end
-  if (_.padEffective & _.PAD_LEFT) ~= 0 then
-    ctx.entrySel = math.max(1, ctx.entrySel - maxVis)
-  end
-  if (_.padEffective & _.PAD_RIGHT) ~= 0 then
-    ctx.entrySel = math.min(total, ctx.entrySel + maxVis)
+  local function toggleSelectedDisabled()
+    if ctx.entrySel >= 1 and ctx.entrySel <= #ctx.entryList then
+      local ent = ctx.entryList[ctx.entrySel]
+      _.config_parse.setMenuEntryDisabled(ctx.lines, ent.idx, not ent.disabled)
+      ctx.configModified = true
+      ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
+    end
   end
   if (_.padEffective & _.PAD_SELECT) ~= 0 and canAddEntry then
     local belowIdx = (total == 0) and 0 or ctx.entryList[ctx.entrySel].idx
@@ -67,13 +69,8 @@ local function run(ctx)
     ctx.entryEditSub = ctx.entryEditSub or 1
     ctx.state = "menu_entry_edit"
   end
-  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
-    if ctx.entrySel >= 1 and ctx.entrySel <= #ctx.entryList then
-      local ent = ctx.entryList[ctx.entrySel]
-      _.config_parse.setMenuEntryDisabled(ctx.lines, ent.idx, not ent.disabled)
-      ctx.configModified = true
-      ctx.entryList = _.config_parse.getMenuEntryIndices(ctx.lines)
-    end
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+    toggleSelectedDisabled()
   end
   if (_.padEffective & _.PAD_L1) ~= 0 then
     if ctx.entrySel >= 1 and #ctx.entryList >= 2 and ctx.entrySel >= 2 then
@@ -124,22 +121,13 @@ local function run(ctx)
     for _, item in ipairs(hints or {}) do
       if item.pad ~= "select" then
         filtered[#filtered + 1] = item
+      else
+        filtered[#filtered + 1] = { pad = "", label = "", row = item.row }
       end
     end
     hints = filtered
   end
-  local pageStr = tostring(maxVis)
-  local hintsAdjusted = {}
-  for _, item in ipairs(hints) do
-    local label = item.label
-    if item.pad == "left" then
-      label = "-" .. pageStr
-    elseif item.pad == "right" then
-      label = "+" .. pageStr
-    end
-    hintsAdjusted[#hintsAdjusted + 1] = { pad = item.pad, label = label, row = item.row }
-  end
-  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hintsAdjusted, nil, _.DIM,
+  _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hints, nil, _.DIM,
     _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_START) ~= 0 then
     ctx.saveSplash = nil

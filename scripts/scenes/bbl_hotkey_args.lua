@@ -253,6 +253,17 @@ local function run(ctx)
   if total > 0 and args[ctx.bblArgSel] then
     hint = args[ctx.bblArgSel].disabled and (_.menu_str.args_hint_items_with_enable or _.menu_str.args_hint_items) or
         (_.menu_str.args_hint_items_with_disable or _.menu_str.args_hint_items)
+    if total >= maxArgs then
+      local filtered = {}
+      for _, item in ipairs(hint or {}) do
+        if item.pad ~= "select" then
+          filtered[#filtered + 1] = item
+        else
+          filtered[#filtered + 1] = { pad = "", label = "", row = item.row }
+        end
+      end
+      hint = filtered
+    end
   else
     hint = {
       { pad = "select", label = "Add", row = 1 },
@@ -303,9 +314,15 @@ local function run(ctx)
     ctx.bblArgAddScroll = ctx.bblArgAddScroll or 0
   end
 
-  if total > 0 and (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
-    _.config_parse.setBblHotkeyArgDisabled(ctx.lines, keyId, slot, ctx.bblArgSel, not args[ctx.bblArgSel].disabled)
-    ctx.configModified = true
+  local function toggleSelectedArgDisabled()
+    if total > 0 then
+      _.config_parse.setBblHotkeyArgDisabled(ctx.lines, keyId, slot, ctx.bblArgSel, not args[ctx.bblArgSel].disabled)
+      ctx.configModified = true
+    end
+  end
+
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+    toggleSelectedArgDisabled()
   end
 
   if total > 0 and (_.padEffective & _.PAD_SQUARE) ~= 0 then

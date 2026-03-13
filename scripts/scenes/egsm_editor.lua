@@ -137,14 +137,19 @@ local function run(ctx)
     ctx.egsmSel = ctx.egsmSel + 1; if ctx.egsmSel > total then ctx.egsmSel = 1 end
   end
 
-  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and (ctx.egsmSel == 1 or (ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries)) then
+  local function toggleSelectedEgsmDisabled()
     if ctx.egsmSel == 1 then
       _.config_parse.setEgsmDefault(ctx.lines, defValue, not defCommented)
-    else
+      ctx.configModified = true
+    elseif ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries then
       local ent = entries[ctx.egsmSel - 1]
       _.config_parse.setEgsmEntry(ctx.lines, ent.titleId, ent.value, not ent.commented)
+      ctx.configModified = true
     end
-    ctx.configModified = true
+  end
+
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+    toggleSelectedEgsmDisabled()
   end
 
   if (_.padEffective & _.PAD_CROSS) ~= 0 and (ctx.egsmSel == 1 or (ctx.egsmSel >= 2 and ctx.egsmSel <= 1 + #entries)) then

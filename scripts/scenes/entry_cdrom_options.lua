@@ -62,7 +62,8 @@ local function run(ctx)
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     ctx.cdromOptSel = ctx.cdromOptSel + 1; if ctx.cdromOptSel > #opts then ctx.cdromOptSel = 1 end
   end
-  if (_.padEffective & _.PAD_CROSS) ~= 0 and #opts > 0 then
+  local function toggleSelectedOption()
+    if #opts == 0 then return end
     local key = opts[ctx.cdromOptSel].key
     args = isBoot and (function()
       local a = _.config_parse.getBootArgs(ctx.lines, ctx.bootKey) or {}
@@ -95,6 +96,9 @@ local function run(ctx)
       end
       ctx.configModified = true
     end
+  end
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_CROSS)) ~= 0 then
+    toggleSelectedOption()
   end
   if (_.padEffective & _.PAD_CIRCLE) ~= 0 then
     if isBoot then

@@ -462,6 +462,10 @@ local function run(ctx)
         end
         _.config_parse.set(ctx.lines, o.key, (idx == 0) and "" or o.enumVals[idx])
         ctx.configModified = true
+      elseif o.optType == "bool" then
+        local cur = _.config_parse.get(ctx.lines, o.key) or o.default or "0"
+        _.config_parse.set(ctx.lines, o.key, (cur == "1") and "0" or "1")
+        ctx.configModified = true
       elseif (o.optType == "int" or o.optType == "string") then
         local cur = _.config_parse.get(ctx.lines, o.key) or o.default or "0"
         local num = tonumber(cur)

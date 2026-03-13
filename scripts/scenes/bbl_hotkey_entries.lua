@@ -36,6 +36,15 @@ local function formatArgCount(n)
   return "(" .. tostring(count) .. " args)"
 end
 
+local function findHintLabel(items, pad, fallback)
+  for _, item in ipairs(items or {}) do
+    if item.pad == pad and item.label and item.label ~= "" then
+      return item.label
+    end
+  end
+  return fallback
+end
+
 local function run(ctx)
   local _ = ctx._
   if not ctx.lines then
@@ -136,8 +145,22 @@ local function run(ctx)
   local hint = _.menu_str.cross_select_circle_back_items or
       { { pad = "cross", label = "Enter" }, { pad = "circle", label = "Back" } }
   if sel and sel.kind == "entry" then
-    hint = sel.data.disabled and (_.menu_str.paths_hint_items_with_enable or _.menu_str.paths_hint_items) or
-        (_.menu_str.paths_hint_items_with_disable or _.menu_str.paths_hint_items)
+    local baseHint = sel.data.disabled and (_.menu_str.hint_items_with_enable or _.menu_str.hint_items) or
+        (_.menu_str.hint_items_with_disable or _.menu_str.hint_items)
+    local prevLabel = (_.common_str and _.common_str.hint_prev) or "Previous"
+    local nextLabel = (_.common_str and _.common_str.hint_next) or "Next"
+    hint = {
+      { pad = "left", label = prevLabel, row = 2 },
+      { pad = "L1", label = findHintLabel(baseHint, "L1", "Up"), row = 2 },
+      { pad = "", label = "", row = 2 },
+      { pad = "R1", label = findHintLabel(baseHint, "R1", "Down"), row = 2 },
+      { pad = "right", label = nextLabel, row = 2 },
+      { pad = "cross", label = findHintLabel(baseHint, "cross", "Enter"), row = 1 },
+      { pad = "triangle", label = findHintLabel(baseHint, "triangle", sel.data.disabled and "Enable" or "Disable"), row = 1 },
+      { pad = "", label = "", row = 1 },
+      { pad = "square", label = findHintLabel(baseHint, "square", "Delete"), row = 1 },
+      { pad = "circle", label = findHintLabel(baseHint, "circle", "Back"), row = 1 },
+    }
   end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hint, nil, _.DIM, _.w - 2 * _.MARGIN_X)
 
@@ -183,11 +206,14 @@ local function run(ctx)
     end
   end
 
-  if sel and sel.kind == "entry" and (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
-    if sel.data.pathExists then
+  local function toggleSelectedEntryDisabled()
+    if sel and sel.kind == "entry" and sel.data.pathExists then
       _.config_parse.setBblHotkeyPathDisabled(ctx.lines, keyId, sel.slot, not sel.data.disabled)
       ctx.configModified = true
     end
+  end
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+    toggleSelectedEntryDisabled()
   end
   if sel and sel.kind == "entry" and (_.padEffective & _.PAD_SQUARE) ~= 0 then
     _.config_parse.removeBblHotkeySlot(ctx.lines, keyId, sel.slot)

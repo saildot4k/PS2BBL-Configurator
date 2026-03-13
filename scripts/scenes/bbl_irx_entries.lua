@@ -122,10 +122,16 @@ local function run(ctx)
     end
   end
 
-  if total > 0 and (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
-    local ent = entries[ctx.bblIrxSel]
-    _.config_parse.setBblIrxEntryDisabled(ctx.lines, ent.idx, not ent.disabled)
-    ctx.configModified = true
+  local function toggleSelectedIrxDisabled()
+    if total > 0 then
+      local ent = entries[ctx.bblIrxSel]
+      _.config_parse.setBblIrxEntryDisabled(ctx.lines, ent.idx, not ent.disabled)
+      ctx.configModified = true
+    end
+  end
+
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+    toggleSelectedIrxDisabled()
   end
 
   if total > 0 and (_.padEffective & _.PAD_L1) ~= 0 and ctx.bblIrxSel >= 2 then

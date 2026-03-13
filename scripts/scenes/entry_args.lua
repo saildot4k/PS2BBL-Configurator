@@ -293,6 +293,17 @@ local function run(ctx)
     argHints = args[ctx.entryArgSel].disabled and (_.menu_str.args_hint_items_with_enable or argHints)
         or (_.menu_str.args_hint_items_with_disable or argHints)
   end
+  if not (isBoot or not hasCdrom) then
+    local filtered = {}
+    for _, item in ipairs(argHints or {}) do
+      if item.pad ~= "select" then
+        filtered[#filtered + 1] = item
+      else
+        filtered[#filtered + 1] = { pad = "", label = "", row = item.row }
+      end
+    end
+    argHints = filtered
+  end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, argHints, nil, _.DIM, _.w - 2 * _.MARGIN_X)
 
   if (_.padEffective & _.PAD_UP) ~= 0 then
@@ -302,10 +313,15 @@ local function run(ctx)
     ctx.entryArgSel = _.common.wrapListSelection(ctx.entryArgSel, total, 1)
   end
 
-  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and
-      type(args[ctx.entryArgSel]) == "table" then
-    _.config_parse.setArgDisabled(ctx.lines, ctx.entryIdx, ctx.entryArgSel, not args[ctx.entryArgSel].disabled)
-    ctx.configModified = true
+  local function toggleSelectedArgDisabled()
+    if not isBoot and ctx.entryArgSel >= 1 and ctx.entryArgSel <= total and type(args[ctx.entryArgSel]) == "table" then
+      _.config_parse.setArgDisabled(ctx.lines, ctx.entryIdx, ctx.entryArgSel, not args[ctx.entryArgSel].disabled)
+      ctx.configModified = true
+    end
+  end
+
+  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+    toggleSelectedArgDisabled()
   end
 
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
