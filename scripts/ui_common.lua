@@ -79,16 +79,20 @@ local padIconNames                 = {
   r3 = "R3"
 }
 
+local function isValidImageHandle(img)
+  return type(img) == "number" and img ~= 0
+end
+
 function common.getPadIcon(name)
-  if not name then return nil end
+  if type(name) ~= "string" or name == "" then return nil end
   local key = name:lower()
   local file = padIconNames[key] or key
   if padIconCache[file] == nil then
     local ok, img = pcall(Graphics.loadImage, "scripts/textures/" .. file .. ".png")
-    if ok and img and Graphics.setImageFilters and LINEAR then
+    if ok and isValidImageHandle(img) and Graphics.setImageFilters and LINEAR then
       pcall(Graphics.setImageFilters, img, LINEAR)
     end
-    padIconCache[file] = (ok and img) and img or false
+    padIconCache[file] = (ok and isValidImageHandle(img)) and img or false
   end
   return (padIconCache[file] ~= false) and padIconCache[file] or nil
 end
@@ -160,27 +164,29 @@ function common.drawHintLine(font, drawMode, x, y, scale, hintItems, textFallbac
         local item = hintItems[j]
         local padName = item and item.pad
         local label = (item and item.label) or ""
-        local icon = common.getPadIcon(padName)
-        local groupW = groupWidths[j]
-        local slotLeft = rowLeft + (idx - 1) * slotW
-        local px
-        if numInRow % 2 == 1 then
-          px = math.floor(slotLeft + (slotW - groupW) / 2)
-        elseif idx <= leftCount then
-          px = math.floor(slotLeft)
-        else
-          px = math.floor(slotLeft + slotW - groupW)
-        end
-        if icon then
-          if Graphics.drawScaleImage then
-            Graphics.drawScaleImage(icon, px, iconY, iconW, common.PAD_ICON_H)
+        if padName and padName ~= "" then
+          local icon = common.getPadIcon(padName)
+          local groupW = groupWidths[j]
+          local slotLeft = rowLeft + (idx - 1) * slotW
+          local px
+          if numInRow % 2 == 1 then
+            px = math.floor(slotLeft + (slotW - groupW) / 2)
+          elseif idx <= leftCount then
+            px = math.floor(slotLeft)
           else
-            Graphics.drawImage(icon, px, iconY)
+            px = math.floor(slotLeft + slotW - groupW)
           end
-          common.drawText(font, drawMode, px + iconW + gap, textY, scale, label, color)
-        else
-          common.drawText(font, drawMode, px, textY, scale, (padName or "") .. (label ~= "" and "=" .. label or ""),
-            color, textH)
+          if icon then
+            if Graphics.drawScaleImage then
+              Graphics.drawScaleImage(icon, px, iconY, iconW, common.PAD_ICON_H)
+            else
+              Graphics.drawImage(icon, px, iconY)
+            end
+            common.drawText(font, drawMode, px + iconW + gap, textY, scale, label, color)
+          else
+            common.drawText(font, drawMode, px, textY, scale, (padName or "") .. (label ~= "" and "=" .. label or ""),
+              color, textH)
+          end
         end
       end
     end

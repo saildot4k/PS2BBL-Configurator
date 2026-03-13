@@ -121,10 +121,12 @@ local function run(ctx)
     local iconW = math.max(1, math.floor((baseIconW * iconH) / baseIconH + 0.5))
     local iconGap = 8
     local iconY = _.MARGIN_Y + math.floor(((_.LINE_H or iconH) - iconH) / 2)
-    if _.Graphics.drawScaleImage then
-      _.Graphics.drawScaleImage(icon, _.MARGIN_X, iconY, iconW, iconH)
-    else
-      _.Graphics.drawImage(icon, _.MARGIN_X, iconY)
+    if icon then
+      if _.Graphics.drawScaleImage then
+        _.Graphics.drawScaleImage(icon, _.MARGIN_X, iconY, iconW, iconH)
+      else
+        _.Graphics.drawImage(icon, _.MARGIN_X, iconY)
+      end
     end
     _.drawText(_.font, _.drawMode, _.MARGIN_X + iconW + iconGap, _.MARGIN_Y, 1, titleSuffix, _.WHITE)
   end

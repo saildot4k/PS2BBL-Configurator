@@ -568,6 +568,16 @@ local function run(ctx)
         ctx.addPathKey = nil
         local isBblLoadIrx = (ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini") and o.key and
             o.key:match("^LOAD_IRX_E%d+$")
+        ctx.pathPickerTarget = nil
+        ctx.pathPickerFileExts = isBblLoadIrx and { ".irx" } or nil
+        ctx.pathPickerBootKey = nil
+        ctx.pathPickerForEntryIdx = nil
+        ctx.pathPickerBblHotkeyKey = nil
+        ctx.pathPickerBblHotkeySlot = nil
+        ctx.pathPickerBblHotkeyDisabled = nil
+        ctx.pathPickerBblIrxIdx = nil
+        ctx.pathPickerBblIrxDisabled = nil
+        ctx.pathPickerReturnState = nil
         ctx.pathPickerContext = isBblLoadIrx and "path_only" or
             ((o.key == "path_DKWDRV_ELF") and "mc_only" or ((ctx.context == "mbr") and "mbr" or "osdmenu"))
         ctx.pathPickerSub = "device"

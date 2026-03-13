@@ -237,6 +237,8 @@ static int lua_drawimg(lua_State *L) {
   if (argc != 3 && argc != 4)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL)
+    return 0;
   float x = luaL_checknumber(L, 2);
   float y = luaL_checknumber(L, 3);
   Color color = 0x80808080;
@@ -259,6 +261,8 @@ static int lua_drawimg_rotate(lua_State *L) {
   if (argc != 4 && argc != 5)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL)
+    return 0;
   float x = luaL_checknumber(L, 2);
   float y = luaL_checknumber(L, 3);
   float radius = luaL_checknumber(L, 4);
@@ -282,6 +286,8 @@ static int lua_drawimg_scale(lua_State *L) {
   if (argc != 5 && argc != 6)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL)
+    return 0;
   float x = luaL_checknumber(L, 2);
   float y = luaL_checknumber(L, 3);
   float width = luaL_checknumber(L, 4);
@@ -304,6 +310,8 @@ static int lua_drawimg_part(lua_State *L) {
   if (argc != 7 && argc != 8)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL)
+    return 0;
   float x = luaL_checknumber(L, 2);
   float y = luaL_checknumber(L, 3);
   float startx = (float)luaL_checknumber(L, 4);
@@ -326,6 +334,8 @@ static int lua_drawimg_full(lua_State *L) {
   if (argc != 10 && argc != 11)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL)
+    return 0;
   float x = luaL_checknumber(L, 2);
   float y = luaL_checknumber(L, 3);
   float startx = (float)luaL_checknumber(L, 4);
@@ -349,6 +359,10 @@ static int lua_width(lua_State *L) {
   if (argc != 1)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL) {
+    lua_pushinteger(L, 0);
+    return 1;
+  }
   lua_pushinteger(L, (uint32_t)(source->Width));
   return 1;
 }
@@ -358,6 +372,10 @@ static int lua_height(lua_State *L) {
   if (argc != 1)
     return luaL_error(L, "wrong number of arguments");
   GSTEXTURE *source = (GSTEXTURE *)(luaL_checkinteger(L, 1));
+  if (source == NULL) {
+    lua_pushinteger(L, 0);
+    return 1;
+  }
   lua_pushinteger(L, (uint32_t)(source->Height));
   return 1;
 }

@@ -53,11 +53,13 @@ local function run(ctx)
     end
     local y = _.MARGIN_Y + _.scaleY(50) + (i - ctx.bblHotkeyScroll - 1) * _.LINE_H
     local col = (i == ctx.bblHotkeySel) and _.SELECTED_ENTRY or _.WHITE
-    local iconY = y + math.floor(((_.LINE_H or iconH) - iconH) / 2)
-    if _.Graphics.drawScaleImage then
-      _.Graphics.drawScaleImage(keyIcon, rowX, iconY, iconW, iconH)
-    else
-      _.Graphics.drawImage(keyIcon, rowX, iconY)
+    if keyIcon then
+      local iconY = y + math.floor(((_.LINE_H or iconH) - iconH) / 2)
+      if _.Graphics.drawScaleImage then
+        _.Graphics.drawScaleImage(keyIcon, rowX, iconY, iconW, iconH)
+      else
+        _.Graphics.drawImage(keyIcon, rowX, iconY)
+      end
     end
     _.drawText(_.font, _.drawMode, rowX + iconW + iconGap, y, _.FONT_SCALE, line, col)
   end

@@ -121,8 +121,16 @@ local function run(ctx)
     ctx.entryPathSel = ctx.entryPathSel + 1; if ctx.entryPathSel > total then ctx.entryPathSel = 1 end
   end
   local function openPathPicker(editIdx)
+    ctx.editKey = nil
     ctx.pathPickerForEntryIdx = isBoot and nil or ctx.entryIdx
     ctx.pathPickerBootKey = isBoot and ctx.bootKey or nil
+    ctx.pathPickerBblHotkeyKey = nil
+    ctx.pathPickerBblHotkeySlot = nil
+    ctx.pathPickerBblHotkeyDisabled = nil
+    ctx.pathPickerBblIrxIdx = nil
+    ctx.pathPickerBblIrxDisabled = nil
+    ctx.pathPickerTarget = nil
+    ctx.pathPickerFileExts = nil
     ctx.pathPickerEditIdx = editIdx
     ctx.pathPickerSub = "device"
     ctx.pathList = _.file_selector.getDevices(isBoot and "mbr" or "osdmenu") or {}

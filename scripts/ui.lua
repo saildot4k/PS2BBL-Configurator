@@ -92,6 +92,10 @@ local overlayLogoCache = {}
 local OVERLAY_LOGO_OPACITY = 0.25 -- 75% transparent
 local OVERLAY_LOGO_OPACITY_R3 = 1.0 -- keep splash/title logo fully visible if selected
 
+local function isValidImageHandle(img)
+  return type(img) == "number" and img ~= 0
+end
+
 local function getOverlayLogoColor(key)
   local opacity = (key == "r3configurat3r") and OVERLAY_LOGO_OPACITY_R3 or OVERLAY_LOGO_OPACITY
   return Color.new(0x80, 0x80, 0x80, math.floor(0x80 * opacity + 0.5))
@@ -120,7 +124,7 @@ local function getSelectionOverlayLogoTexture(key)
     return nil
   end
   local ok, img = pcall(Graphics.loadImage, path)
-  if ok and img then
+  if ok and isValidImageHandle(img) then
     if Graphics.setImageFilters and LINEAR then
       pcall(Graphics.setImageFilters, img, LINEAR)
     end

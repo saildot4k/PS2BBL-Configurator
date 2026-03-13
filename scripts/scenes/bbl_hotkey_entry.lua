@@ -110,6 +110,9 @@ local function run(ctx)
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if rows[ctx.bblEntryDetailSel] == "path" then
       -- Reuse path picker so BBL slot paths support both manual input and device browse.
+      ctx.editKey = nil
+      ctx.pathPickerTarget = nil
+      ctx.pathPickerFileExts = nil
       ctx.pathPickerContext = "path_only"
       ctx.pathPickerSub = "device"
       ctx.pathList = _.file_selector.getDevices("path_only") or {}
@@ -119,6 +122,8 @@ local function run(ctx)
       ctx.pathPickerBootKey = nil
       ctx.pathPickerForEntryIdx = nil
       ctx.pathPickerEditIdx = nil
+      ctx.pathPickerBblIrxIdx = nil
+      ctx.pathPickerBblIrxDisabled = nil
       ctx.isAddPath = false
       ctx.addPathKey = nil
       ctx.pathPickerReturnState = "bbl_hotkey_entry"
