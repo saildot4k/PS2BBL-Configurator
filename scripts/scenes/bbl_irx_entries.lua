@@ -130,7 +130,7 @@ local function run(ctx)
     end
   end
 
-  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
     toggleSelectedIrxDisabled()
   end
 

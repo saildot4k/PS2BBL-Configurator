@@ -138,7 +138,7 @@ local function run(ctx)
       ctx.configModified = true
     end
   end
-  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
     toggleSelectedPathDisabled()
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then

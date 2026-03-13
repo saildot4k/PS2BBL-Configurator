@@ -122,7 +122,7 @@ function common.drawHintLine(font, drawMode, x, y, scale, hintItems, textFallbac
     local groupWidths = {}
     for i = 1, n do
       local item = hintItems[i]
-      local label = (item and item.label) or ""
+      local label = (item and (item.layoutLabel or item.label)) or ""
       groupWidths[i] = iconW + gap + getTextWidth(label)
     end
     local bottomIndices, topIndices = {}, {}

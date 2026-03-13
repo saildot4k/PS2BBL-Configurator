@@ -45,6 +45,26 @@ local function findHintLabel(items, pad, fallback)
   return fallback
 end
 
+local function getTextWidth(font, label)
+  if not label or label == "" then return 0 end
+  if font and Font and Font.ftCalcDimensions then
+    local w = Font.ftCalcDimensions(font, label)
+    if type(w) == "number" and w > 0 then
+      return w
+    end
+  end
+  return #label
+end
+
+local function findWidestHintLabel(_, itemsA, itemsB, pad, fallback)
+  local labelA = findHintLabel(itemsA, pad, fallback)
+  local labelB = findHintLabel(itemsB, pad, fallback)
+  if getTextWidth(_.font, labelA) >= getTextWidth(_.font, labelB) then
+    return labelA
+  end
+  return labelB
+end
+
 local function run(ctx)
   local _ = ctx._
   if not ctx.lines then
@@ -145,18 +165,19 @@ local function run(ctx)
   local hint = _.menu_str.cross_select_circle_back_items or
       { { pad = "cross", label = "Enter" }, { pad = "circle", label = "Back" } }
   if sel and sel.kind == "entry" then
-    local baseHint = sel.data.disabled and (_.menu_str.hint_items_with_enable or _.menu_str.hint_items) or
-        (_.menu_str.hint_items_with_disable or _.menu_str.hint_items)
-    local prevLabel = (_.common_str and _.common_str.hint_prev) or "Previous"
-    local nextLabel = (_.common_str and _.common_str.hint_next) or "Next"
+    local enableHint = _.menu_str.paths_hint_items_with_enable or _.menu_str.paths_hint_items
+    local disableHint = _.menu_str.paths_hint_items_with_disable or _.menu_str.paths_hint_items
+    local baseHint = sel.data.disabled and enableHint or disableHint
+    local toggleLayoutLabel = findWidestHintLabel(_, enableHint, disableHint, "triangle",
+      sel.data.disabled and "Enable" or "Disable")
     hint = {
-      { pad = "left", label = prevLabel, row = 2 },
+      { pad = "", label = "", row = 2 },
       { pad = "L1", label = findHintLabel(baseHint, "L1", "Up"), row = 2 },
       { pad = "", label = "", row = 2 },
       { pad = "R1", label = findHintLabel(baseHint, "R1", "Down"), row = 2 },
-      { pad = "right", label = nextLabel, row = 2 },
+      { pad = "", label = "", row = 2 },
       { pad = "cross", label = findHintLabel(baseHint, "cross", "Enter"), row = 1 },
-      { pad = "triangle", label = findHintLabel(baseHint, "triangle", sel.data.disabled and "Enable" or "Disable"), row = 1 },
+      { pad = "triangle", label = findHintLabel(baseHint, "triangle", sel.data.disabled and "Enable" or "Disable"), layoutLabel = toggleLayoutLabel, row = 1 },
       { pad = "", label = "", row = 1 },
       { pad = "square", label = findHintLabel(baseHint, "square", "Delete"), row = 1 },
       { pad = "circle", label = findHintLabel(baseHint, "circle", "Back"), row = 1 },
@@ -212,7 +233,7 @@ local function run(ctx)
       ctx.configModified = true
     end
   end
-  if (_.padEffective & (_.PAD_LEFT | _.PAD_RIGHT | _.PAD_TRIANGLE)) ~= 0 then
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
     toggleSelectedEntryDisabled()
   end
   if sel and sel.kind == "entry" and (_.padEffective & _.PAD_SQUARE) ~= 0 then
