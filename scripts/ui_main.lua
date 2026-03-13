@@ -21,6 +21,37 @@ strings = strings or {}
 _G.CONFIG_UI.strings = strings
 _G.CONFIG_UI.langCycleDisabled = cwdOverride
 
+local function defaultLanguageDisplayName(code)
+  local names = {
+    de = "Deutsch",
+    en = "English",
+    es = "Espanol",
+    fr = "Francais",
+  }
+  return names[code] or ((type(code) == "string" and code ~= "") and code:upper() or "Language")
+end
+
+local function getLanguageCodeFromFile(file)
+  return type(file) == "string" and file:match("^strings_(%w+)%.lua$") or nil
+end
+
+local function buildLanguageDisplayNames(files)
+  local names = {}
+  for i, file in ipairs(files or {}) do
+    local code = getLanguageCodeFromFile(file)
+    local displayName = defaultLanguageDisplayName(code)
+    local langStrings = tryLoadStrings("scripts/lang/" .. file)
+    if langStrings and type(langStrings.language_name) == "string" and langStrings.language_name ~= "" then
+      displayName = langStrings.language_name
+    elseif langStrings and type(langStrings.main) == "table" and type(langStrings.main.language_name) == "string" and
+        langStrings.main.language_name ~= "" then
+      displayName = langStrings.main.language_name
+    end
+    names[i] = displayName
+  end
+  return names
+end
+
 -- Build list of lang files (scripts/lang/strings_*.lua) for L1/R1 cycle; only when not CWD override.
 if not cwdOverride and System and System.listDirectory then
   local list = {}
@@ -36,6 +67,7 @@ if not cwdOverride and System and System.listDirectory then
     table.sort(list)
   end
   _G.CONFIG_UI.langFiles = list
+  _G.CONFIG_UI.langDisplayNames = buildLanguageDisplayNames(list)
   local idx = 1
   for i, f in ipairs(list) do
     if f == "strings_en.lua" then
@@ -46,6 +78,7 @@ if not cwdOverride and System and System.listDirectory then
 else
   _G.CONFIG_UI.langFiles = nil
   _G.CONFIG_UI.langIndex = nil
+  _G.CONFIG_UI.langDisplayNames = nil
 end
 
 local C = _G.CONFIG_UI
@@ -55,6 +88,66 @@ local config_parse = C.config_parse
 local PAD_UP, PAD_DOWN, PAD_CROSS, PAD_CIRCLE, PAD_START = common.PAD_UP, common.PAD_DOWN, common.PAD_CROSS,
     common.PAD_CIRCLE, common.PAD_START
 local PAD_L1, PAD_R1 = common.PAD_L1, common.PAD_R1
+
+local function findHintLabel(items, pad, fallback)
+  for _, item in ipairs(items or {}) do
+    if item.pad == pad and item.label and item.label ~= "" then
+      return item.label
+    end
+  end
+  return fallback
+end
+
+local function widerLabel(font, scale, a, b)
+  local wa = common.calcTextWidth and common.calcTextWidth(font, a or "", scale) or #(a or "")
+  local wb = common.calcTextWidth and common.calcTextWidth(font, b or "", scale) or #(b or "")
+  if wa >= wb then
+    return a or ""
+  end
+  return b or ""
+end
+
+local function getLanguageDisplayName(idx)
+  local names = C.langDisplayNames
+  if names and names[idx] and names[idx] ~= "" then
+    return names[idx]
+  end
+  local code = getLanguageCodeFromFile(C.langFiles and C.langFiles[idx] or nil)
+  return defaultLanguageDisplayName(code)
+end
+
+local function buildMainLangHintItems(s, main_str)
+  if C.langCycleDisabled or not C.langFiles or #C.langFiles <= 1 then
+    return main_str.main_hint_items or {}
+  end
+
+  local idx = C.langIndex or 1
+  local prevIdx = idx - 1
+  local nextIdx = idx + 1
+  if prevIdx < 1 then prevIdx = #C.langFiles end
+  if nextIdx > #C.langFiles then nextIdx = 1 end
+
+  local baseHint = main_str.main_hint_items_with_lang or main_str.main_hint_items or {}
+  local upLabel = findHintLabel(baseHint, "up", "Up")
+  local enterLabel = findHintLabel(baseHint, "cross", "Enter")
+  local downLabel = findHintLabel(baseHint, "down", "Down")
+  local saveLabel = findHintLabel(baseHint, "start", "Save")
+  local prevLabel = getLanguageDisplayName(prevIdx)
+  local nextLabel = getLanguageDisplayName(nextIdx)
+
+  local leftLayout = widerLabel(s.font, 0.7, upLabel, prevLabel)
+  local centerLayout = widerLabel(s.font, 0.7, enterLabel, saveLabel)
+  local rightLayout = widerLabel(s.font, 0.7, downLabel, nextLabel)
+
+  return {
+    { pad = "up", label = upLabel, layoutLabel = leftLayout, row = 1 },
+    { pad = "cross", label = enterLabel, layoutLabel = centerLayout, row = 1 },
+    { pad = "down", label = downLabel, layoutLabel = rightLayout, row = 1 },
+    { pad = "L1", label = prevLabel, layoutLabel = leftLayout, row = 2 },
+    { pad = "start", label = saveLabel, layoutLabel = centerLayout, row = 2 },
+    { pad = "R1", label = nextLabel, layoutLabel = rightLayout, row = 2 },
+  }
+end
 
 local function clearPathPickerState(s)
   s.bootKey = nil
@@ -345,7 +438,7 @@ local function runMain(s, pad)
   local w = s.w or 640
   dt(s.font, s.drawMode, w - M - vw, MY, 0.75, versionStr, common.DIM)
   dt(s.font, s.drawMode, M, MY + sc(22), 0.75, main_str.main_sub or "", common.DIM)
-  local hintItems = (not C.langCycleDisabled and C.langFiles and #C.langFiles > 1 and main_str.main_hint_items_with_lang) or
+  local hintItems = (not C.langCycleDisabled and C.langFiles and #C.langFiles > 1 and buildMainLangHintItems(s, main_str)) or
       main_str.main_hint_items
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, hintItems or {}, nil, common.DIM)
   for i, label in ipairs(s.main) do

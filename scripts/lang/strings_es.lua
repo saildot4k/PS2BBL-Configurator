@@ -5,6 +5,7 @@
 ]]
 
 local strings = {}
+strings.language_name = "Espanol"
 
 -- Flujo principal (main, choose_mc, select_config, initHdd, open, choose_load)
 strings.main = {
@@ -12,7 +13,7 @@ strings.main = {
   main_sub = "Elige una de las opciones a continuación",
   version_unknown = "desconocido",
   main_hint_items = { { pad = "up", label = "Arriba" }, { pad = "cross", label = "Entrar" }, { pad = "down", label = "Abajo" }, { pad = "start", label = "Salir", row = 2 } },
-  main_hint_items_with_lang = { { pad = "up", label = "Arriba" }, { pad = "cross", label = "Entrar" }, { pad = "down", label = "Abajo" }, { pad = "L1", label = "Idioma", row = 2 }, { pad = "start", label = "Guardar", row = 2 }, { pad = "R1", label = "Idioma", row = 2 } },
+  main_hint_items_with_lang = { { pad = "up", label = "Arriba", layoutLabel = "Idioma -", row = 1 }, { pad = "cross", label = "Entrar", layoutLabel = "Salir", row = 1 }, { pad = "down", label = "Abajo", layoutLabel = "Idioma +", row = 1 }, { pad = "L1", label = "Idioma -", layoutLabel = "Idioma -", row = 2 }, { pad = "start", label = "Salir", layoutLabel = "Salir", row = 2 }, { pad = "R1", label = "Idioma +", layoutLabel = "Idioma +", row = 2 } },
   main_ps2bbl_mc = "PS2BBL",
   main_psxbbl_mc = "PSXBBL",
   main_osdmenu = "OSDMenu",
