@@ -58,7 +58,7 @@ jobs:
     - name: Build release archive
       run: |
         cd release_vfs
-        zip -r ../osdmenu-configurator-${{ env.GIT_VERSION }}.zip ./*
+        zip -r ../r3configurator-${{ env.GIT_VERSION }}.zip ./*
 
     - name: Create nightly release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -69,7 +69,7 @@ jobs:
         prerelease: true
         title: "Nightly build"
         files: |
-          osdmenu-configurator-${{ env.GIT_VERSION }}.zip
+          r3configurator-${{ env.GIT_VERSION }}.zip
 
     - name: Create stable release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -78,5 +78,5 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         draft: true
         files: |
-          osdmenu-configurator-${{ env.GIT_VERSION }}.zip
+          r3configurator-${{ env.GIT_VERSION }}.zip
 
