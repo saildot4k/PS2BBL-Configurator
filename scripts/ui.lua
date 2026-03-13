@@ -24,6 +24,7 @@ local scene_entry_cdrom_options = dofile("scripts/scenes/entry_cdrom_options.lua
 local scene_entry_paths = dofile("scripts/scenes/entry_paths.lua")
 local scene_entry_args = dofile("scripts/scenes/entry_args.lua")
 local scene_bbl_hotkeys = dofile("scripts/scenes/bbl_hotkeys.lua")
+local scene_bbl_irx_entries = dofile("scripts/scenes/bbl_irx_entries.lua")
 local scene_bbl_hotkey_entries = dofile("scripts/scenes/bbl_hotkey_entries.lua")
 local scene_bbl_hotkey_entry = dofile("scripts/scenes/bbl_hotkey_entry.lua")
 local scene_bbl_hotkey_args = dofile("scripts/scenes/bbl_hotkey_args.lua")
@@ -201,6 +202,7 @@ local function mainLoop()
   local entryIdx, entryEditSub = nil, 1
   local pathPickerForEntryIdx = nil
   local pathPickerBblHotkeyKey, pathPickerBblHotkeySlot, pathPickerBblHotkeyDisabled = nil, nil, nil
+  local pathPickerBblIrxIdx, pathPickerBblIrxDisabled = nil, nil
   local textInputPrompt, textInputValue, textInputMaxLen, textInputCallback = nil, "", 79, nil
   local textInputGridSel, textInputShift = 1, false
   local editorCategoryIdx = 0
@@ -208,6 +210,7 @@ local function mainLoop()
   local saveChoices, saveSel = nil, 1
   local entryPathSel, entryPathScroll = 1, 0
   local entryArgSel, entryArgScroll = 1, 0
+  local bblIrxSel, bblIrxScroll = 1, 0
   local cdromOptSel = 1
   local pathPickerEditIdx, argEditIdx = nil, nil
   local textInputReturnState, textInputCursor, textInputScroll = "menu_entry_edit", 1, 1
@@ -233,6 +236,7 @@ local function mainLoop()
     c.pathPickerForEntryIdx = pathPickerForEntryIdx
     c.pathPickerBblHotkeyKey, c.pathPickerBblHotkeySlot, c.pathPickerBblHotkeyDisabled = pathPickerBblHotkeyKey,
         pathPickerBblHotkeySlot, pathPickerBblHotkeyDisabled
+    c.pathPickerBblIrxIdx, c.pathPickerBblIrxDisabled = pathPickerBblIrxIdx, pathPickerBblIrxDisabled
     c.textInputPrompt, c.textInputValue, c.textInputMaxLen = textInputPrompt, textInputValue, textInputMaxLen
     c.textInputGridSel, c.textInputShift = textInputGridSel, textInputShift
     c.editorCategoryIdx = editorCategoryIdx
@@ -240,6 +244,7 @@ local function mainLoop()
     c.saveChoices, c.saveSel = saveChoices, saveSel
     c.entryPathSel, c.entryPathScroll = entryPathSel, entryPathScroll
     c.entryArgSel, c.entryArgScroll = entryArgSel, entryArgScroll
+    c.bblIrxSel, c.bblIrxScroll = bblIrxSel, bblIrxScroll
     c.cdromOptSel = cdromOptSel
     c.pathPickerEditIdx, c.argEditIdx = pathPickerEditIdx, argEditIdx
     c.textInputReturnState, c.textInputCursor, c.textInputScroll = textInputReturnState, textInputCursor, textInputScroll
@@ -265,6 +270,7 @@ local function mainLoop()
     pathPickerForEntryIdx = c.pathPickerForEntryIdx
     pathPickerBblHotkeyKey, pathPickerBblHotkeySlot, pathPickerBblHotkeyDisabled = c.pathPickerBblHotkeyKey,
         c.pathPickerBblHotkeySlot, c.pathPickerBblHotkeyDisabled
+    pathPickerBblIrxIdx, pathPickerBblIrxDisabled = c.pathPickerBblIrxIdx, c.pathPickerBblIrxDisabled
     textInputPrompt, textInputValue, textInputMaxLen = c.textInputPrompt, c.textInputValue, c.textInputMaxLen
     textInputGridSel, textInputShift = c.textInputGridSel, c.textInputShift
     editorCategoryIdx = c.editorCategoryIdx
@@ -272,6 +278,7 @@ local function mainLoop()
     saveChoices, saveSel = c.saveChoices, c.saveSel
     entryPathSel, entryPathScroll = c.entryPathSel, c.entryPathScroll
     entryArgSel, entryArgScroll = c.entryArgSel, c.entryArgScroll
+    bblIrxSel, bblIrxScroll = c.bblIrxSel, c.bblIrxScroll
     cdromOptSel = c.cdromOptSel
     pathPickerEditIdx, argEditIdx = c.pathPickerEditIdx, c.argEditIdx
     textInputReturnState, textInputCursor, textInputScroll = c.textInputReturnState, c.textInputCursor, c
@@ -476,6 +483,10 @@ local function mainLoop()
       syncToS(c)
       scene_bbl_hotkeys.run(c)
       syncFromS(c)
+    elseif state == "bbl_irx_entries" then
+      syncToS(c)
+      scene_bbl_irx_entries.run(c)
+      syncFromS(c)
     elseif state == "bbl_hotkey_entries" then
       syncToS(c)
       scene_bbl_hotkey_entries.run(c)
@@ -517,6 +528,7 @@ local function mainLoop()
   end
   local sceneNames = { "main", "choose_mc", "select_config", "initHdd", "open", "choose_load", "editor", "choose_save",
     "color_edit", "menu_entries", "menu_entry_edit", "entry_cdrom_options", "entry_paths", "entry_args", "bbl_hotkeys",
+    "bbl_irx_entries",
     "bbl_hotkey_entries", "bbl_hotkey_entry", "bbl_hotkey_args", "egsm_editor", "egsm_value_edit", "text_input",
     "path_picker" }
   local scenes = {}

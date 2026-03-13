@@ -122,7 +122,7 @@ function common.drawHintLine(font, drawMode, x, y, scale, hintItems, textFallbac
     local groupWidths = {}
     for i = 1, n do
       local item = hintItems[i]
-      local label = (item and item.label) or ""
+      local label = (item and (item.layoutLabel or item.label)) or ""
       groupWidths[i] = iconW + gap + getTextWidth(label)
     end
     local bottomIndices, topIndices = {}, {}
@@ -198,11 +198,13 @@ function common.drawHintLine(font, drawMode, x, y, scale, hintItems, textFallbac
   end
 end
 
--- Build editor hint items: show ±1/±10/±50 only for int/string (enum: left/right only with enumHintLabels). Show Reset only when option has default.
+-- Build editor hint items: show ±1/±10/±50 only for int/string; enum/bool use left/right with enumHintLabels.
+-- Show Reset only when option has default.
 function common.buildEditorHintItems(selOpt, hintEditItems, getDefaultFn, enumHintLabels)
   if not hintEditItems or #hintEditItems == 0 then return hintEditItems end
   local numericPads = { left = true, right = true, L1 = true, R1 = true, L2 = true, R2 = true }
-  local showNumeric = selOpt and (selOpt.optType == "int" or selOpt.optType == "string" or selOpt.optType == "enum")
+  local showNumeric = selOpt and
+      (selOpt.optType == "int" or selOpt.optType == "string" or selOpt.optType == "enum" or selOpt.optType == "bool")
   local showReset = selOpt and selOpt.key and selOpt.key:sub(1, 1) ~= "_" and selOpt.optType ~= "header" and getDefaultFn and
       getDefaultFn(selOpt.key) ~= nil
   local out = {}
@@ -210,9 +212,10 @@ function common.buildEditorHintItems(selOpt, hintEditItems, getDefaultFn, enumHi
     local pad = (item.pad or ""):lower()
     if pad == "l1" or pad == "r1" or pad == "l2" or pad == "r2" then pad = pad:upper() end
     if numericPads[pad] then
-      if showNumeric and (selOpt.optType ~= "enum" or pad == "left" or pad == "right") then
+      if showNumeric and ((selOpt.optType ~= "enum" and selOpt.optType ~= "bool") or pad == "left" or pad == "right") then
         local toInsert = item
-        if selOpt.optType == "enum" and (pad == "left" or pad == "right") and enumHintLabels and enumHintLabels[pad] then
+        if (selOpt.optType == "enum" or selOpt.optType == "bool") and (pad == "left" or pad == "right") and enumHintLabels and
+            enumHintLabels[pad] then
           toInsert = { pad = item.pad, label = enumHintLabels[pad], row = item.row }
         elseif selOpt.optType ~= "enum" and selOpt.intPadLabels and selOpt.intPadLabels[pad] then
           toInsert = { pad = item.pad, label = tostring(selOpt.intPadLabels[pad]), row = item.row }

@@ -5,6 +5,7 @@
 ]]
 
 local strings = {}
+strings.language_name = "English"
 
 -- Main flow (main, choose_mc, select_config, initHdd, open, choose_load)
 strings.main = {
@@ -12,7 +13,7 @@ strings.main = {
   main_sub = "Pick one of the options below",
   version_unknown = "unknown",
   main_hint_items = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "start", label = "Exit", row = 2 } },
-  main_hint_items_with_lang = { { pad = "up", label = "Up" }, { pad = "cross", label = "Enter" }, { pad = "down", label = "Down" }, { pad = "L1", label = "Language", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Language", row = 2 } },
+  main_hint_items_with_lang = { { pad = "up", label = "Up", layoutLabel = "Language -", row = 1 }, { pad = "cross", label = "Enter", layoutLabel = "Enter", row = 1 }, { pad = "down", label = "Down", layoutLabel = "Language +", row = 1 }, { pad = "L1", label = "Language -", layoutLabel = "Language -", row = 2 }, { pad = "start", label = "Exit", layoutLabel = "Enter", row = 2 }, { pad = "R1", label = "Language +", layoutLabel = "Language +", row = 2 } },
   main_ps2bbl_mc = "PS2BBL",
   main_psxbbl_mc = "PSXBBL",
   main_osdmenu = "OSDMenu",
@@ -77,10 +78,14 @@ strings.editor = {
 -- Menu entries
 strings.menu_entries = {
   edit_menu_entries = "Edit menu entries",
+  edit_irx_entries = "Edit IRX entries",
   item = "Item ",
-  hint_items = { { pad = "cross", label = "Enter", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
-  hint_items_with_enable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
-  hint_items_with_disable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "-12", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "+12", row = 2 } },
+  hint_items = { { pad = "cross", label = "Enter", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "Previous", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "Next", row = 2 } },
+  hint_items_with_enable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", layoutLabel = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "Previous", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "Next", row = 2 } },
+  hint_items_with_disable = { { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", layoutLabel = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "Previous", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "right", label = "Next", row = 2 } },
+  irx_hint_items = { { pad = "", label = "", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 } },
+  irx_hint_items_with_enable = { { pad = "", label = "", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Enable", layoutLabel = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 } },
+  irx_hint_items_with_disable = { { pad = "", label = "", row = 2 }, { pad = "L1", label = "Up", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "R1", label = "Down", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "cross", label = "Enter", row = 1 }, { pad = "triangle", label = "Disable", layoutLabel = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 } },
   entry_index = "Entry ",
   name = "Name: ",
   paths = "Paths: ",
@@ -99,14 +104,14 @@ strings.menu_entries = {
   launch_disc_options_sub = "These options override the default disc launch behavior",
   paths_for_entry_title = "Paths for %s (entry %s)",
   paths_hint_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
-  paths_hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
-  paths_hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
+  paths_hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", layoutLabel = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
+  paths_hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", layoutLabel = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
   args_for_entry_title = "Arguments for %s (entry %s)",
   args_hint_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
-  args_hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
-  args_hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
+  args_hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", layoutLabel = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
+  args_hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", layoutLabel = "Disable", row = 1 }, { pad = "square", label = "Remove", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "L1", label = "Up", row = 2 }, { pad = "select", label = "Add", row = 2 }, { pad = "R1", label = "Down", row = 2 } },
   cdrom_hint = "Launch disc entry: use Launch disc options for flags",
-  cdrom_toggle_hint_items = { { pad = "cross", label = "Toggle" }, { pad = "circle", label = "Back" } },
+  cdrom_toggle_hint_items = { { pad = "cross", label = "Toggle", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "left", label = "Previous", row = 2 }, { pad = "right", label = "Next", row = 2 } },
   new_argument_prompt = "New argument",
   edit_argument_prompt = "Edit argument",
 }
@@ -139,6 +144,7 @@ strings.path_picker = {
   waiting_for_device_drivers = "Waiting for device...",
   circle_back_items = { { pad = "circle", label = "Back" } },
   device_timeout = "%DEVICE% not found",
+  irx_extension_required = "Path must end in .irx",
   wildcard_confirm_title = "Use path as wildcard?",
   wildcard_confirm_hint = { { pad = "cross", label = "Yes" }, { pad = "circle", label = "No" } },
 }
@@ -256,13 +262,17 @@ strings.options_osdmbr = {
   osd_language = { label = "OSD language", desc = "Force OSD language (depends on console model)" },
 }
 
+strings.options_bbl = {
+  _bbl_irx_entries = { label = "Edit IRX entries", desc = "Edit LOAD_IRX_E# module paths" },
+}
+
 -- eGSM editor (single screen: default + title overrides)
 strings.egsm = {
   default_label = "Default",
   title_id_prompt = "Title ID (e.g. SCES12345)",
   hint_items = { { pad = "cross", label = "Edit", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "start", label = "Save", row = 2 } },
-  hint_items_with_enable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "start", label = "Save", row = 2 } },
-  hint_items_with_disable = { { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 }, { pad = "start", label = "Save", row = 2 } },
+  hint_items_with_enable = { { pad = "left", label = "Previous", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "right", label = "Next", row = 2 }, { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Enable", layoutLabel = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 } },
+  hint_items_with_disable = { { pad = "left", label = "Previous", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "start", label = "Save", row = 2 }, { pad = "", label = "", row = 2 }, { pad = "right", label = "Next", row = 2 }, { pad = "cross", label = "Edit", row = 1 }, { pad = "triangle", label = "Disable", layoutLabel = "Disable", row = 1 }, { pad = "select", label = "Insert", row = 1 }, { pad = "square", label = "Delete", row = 1 }, { pad = "circle", label = "Back", row = 1 } },
   -- Value edit screen (per loader README: fp1/fp2/1080ix1..3, compat 1/2/3)
   value_edit_title = "eGSM value",
   result_prefix = "Value: ",
@@ -284,6 +294,7 @@ strings.egsm = {
 strings.options = {}
 for k, v in pairs(strings.options_osdmenu or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdmbr or {}) do strings.options[k] = v end
+for k, v in pairs(strings.options_bbl or {}) do strings.options[k] = v end
 for k, v in pairs(strings.options_osdgsm or {}) do strings.options[k] = v end
 
 -- CDROM option labels/descs (Launch disc options sub-screen). Keys are symbolic (no raw args).

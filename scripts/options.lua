@@ -196,6 +196,7 @@ config_options.BBL_HOTKEYS = {
 }
 config_options.BBL_MAX_ENTRIES = 10
 config_options.BBL_MAX_ARGS_PER_ENTRY = 8
+config_options.BBL_MAX_IRX_ENTRIES = 10
 config_options.FMCB_MAX_ENTRIES = 99
 config_options.FMCB_MAX_PATHS_PER_ENTRY = 3
 config_options.FMCB_BBL_MAX_ENTRIES = 3
@@ -268,16 +269,12 @@ local function buildBblIniGlobalOptions()
     },
   }
 
-  for i = 1, 10 do
-    local k = "LOAD_IRX_E" .. tostring(i)
-    table.insert(out, {
-      key = k,
-      optType = "path",
-      default = "",
-      label = k,
-      desc = "IRX module path (" .. tostring(i) .. ").",
-    })
-  end
+  table.insert(out, {
+    key = "_bbl_irx_entries",
+    optType = "action",
+    label = "Edit IRX entries",
+    desc = "Edit LOAD_IRX_E# module paths.",
+  })
   return out
 end
 

@@ -36,6 +36,21 @@ local function applyBblHotkeyPathAndReturn(ctx, val)
   return true
 end
 
+local function applyBblIrxPathAndReturn(ctx, val)
+  if not ctx.pathPickerBblIrxIdx or not ctx.lines then return nil end
+  local _ = ctx._
+  local entryIdx = tonumber(ctx.pathPickerBblIrxIdx)
+  if not entryIdx then return nil end
+  _.config_parse.setBblIrxEntry(ctx.lines, entryIdx, val, ctx.pathPickerBblIrxDisabled and true or false)
+  ctx.state = ctx.pathPickerReturnState or "bbl_irx_entries"
+  ctx.pathPickerBblIrxIdx = nil
+  ctx.pathPickerBblIrxDisabled = nil
+  ctx.pathPickerReturnState = nil
+  ctx.pathPickerEditIdx = nil
+  ctx.pathPickerFileExts = nil
+  return true
+end
+
 -- Convert pfs path (pfs0:/ or pfs1:/...) to full partition path (hdd0:PART:pfs:...). Returns nil if not a pfs path.
 local function pfsToPartitionPath(pfsPath, partitionPath)
   if not pfsPath or not partitionPath then return nil end
@@ -62,6 +77,11 @@ local function hasIniFilter(ctx)
     if ext == ".ini" then return true end
   end
   return false
+end
+
+local function isBblIrxPath(path)
+  local s = tostring(path or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  return s ~= "" and s:lower():match("%.irx$") ~= nil, s
 end
 
 local function listBrowseEntries(ctx, path)
@@ -156,6 +176,11 @@ local function applyManualPath(ctx, val)
       ctx.pathPickerBblHotkeyKey = nil
       ctx.pathPickerBblHotkeySlot = nil
       ctx.pathPickerBblHotkeyDisabled = nil
+    elseif ctx.pathPickerBblIrxIdx then
+      ctx.state = ctx.pathPickerReturnState or "bbl_irx_entries"
+      ctx.pathPickerBblIrxIdx = nil
+      ctx.pathPickerBblIrxDisabled = nil
+      ctx.pathPickerFileExts = nil
     else
       ctx.state = ctx.pathPickerReturnState or "editor"
     end
@@ -164,6 +189,22 @@ local function applyManualPath(ctx, val)
     return
   end
   local _ = ctx._
+  if ctx.pathPickerBblIrxIdx then
+    local okIrx, normalizedVal = isBblIrxPath(val)
+    if not okIrx then
+      ctx.saveSplash = {
+        kind = "failed",
+        detail = (_.path_str and _.path_str.irx_extension_required) or "Path must end in .irx",
+        framesLeft = 60
+      }
+      ctx.state = "path_picker"
+      ctx.pathPickerSub = "device"
+      ctx.pathList = _.file_selector.getDevices(ctx.pathPickerContext) or {}
+      ctx.pathPickerScroll = 0
+      return
+    end
+    val = normalizedVal
+  end
   if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
   if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
   ctx.pathList = nil
@@ -176,6 +217,7 @@ local function applyManualPath(ctx, val)
   ctx.configModified = true
   if applyBootPathAndReturn(ctx, val) then
   elseif applyBblHotkeyPathAndReturn(ctx, val) then
+  elseif applyBblIrxPathAndReturn(ctx, val) then
   elseif ctx.pathPickerForEntryIdx then
     local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
     if ctx.pathPickerEditIdx then
@@ -343,6 +385,16 @@ local function run(ctx)
         ctx.pathPickerBblHotkeySlot = nil
         ctx.pathPickerBblHotkeyDisabled = nil
         ctx.pathPickerReturnState = nil
+      elseif mode == "bbl_irx" then
+        local entryIdx = tonumber(ctx.pathPickerBblIrxIdx)
+        if entryIdx then
+          _.config_parse.setBblIrxEntry(ctx.lines, entryIdx, chosenVal, ctx.pathPickerBblIrxDisabled and true or false)
+        end
+        ctx.state = ctx.pathPickerReturnState or "bbl_irx_entries"
+        ctx.pathPickerBblIrxIdx = nil
+        ctx.pathPickerBblIrxDisabled = nil
+        ctx.pathPickerReturnState = nil
+        ctx.pathPickerFileExts = nil
       elseif mode == "entry" then
         local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
         if ctx.pathPickerEditIdx then
@@ -641,27 +693,28 @@ local function run(ctx)
                 ctx.state = "text_input"
                 return
               end
-              if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
-              if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
-              ctx.pathList = nil
-              ctx.pfs0Mounted = nil
-              ctx.pfs1Mounted = nil
-              if ctx.pathPickerBootKey and ctx.lines then
-                if ctx.pathPickerEditIdx then
-                  local paths = _.config_parse.getBootPaths(ctx.lines, ctx.pathPickerBootKey) or {}
-                  paths[ctx.pathPickerEditIdx] = pathVal
-                  _.config_parse.setBootPaths(ctx.lines, ctx.pathPickerBootKey, paths)
-                else
-                  _.config_parse.append(ctx.lines, ctx.pathPickerBootKey, pathVal)
-                end
-                if e.noargs then _.config_parse.setBootArgs(ctx.lines, ctx.pathPickerBootKey, {}) end
-                ctx.state = ctx.pathPickerReturnState or "editor"
-                ctx.pathPickerBootKey = nil
-                ctx.pathPickerReturnState = nil
-                ctx.pathPickerForEntryIdx = nil
-                ctx.pathPickerEditIdx = nil
-              elseif applyBblHotkeyPathAndReturn(ctx, pathVal) then
-              elseif ctx.pathPickerForEntryIdx then
+	              if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
+	              if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
+	              ctx.pathList = nil
+	              ctx.pfs0Mounted = nil
+	              ctx.pfs1Mounted = nil
+	              if ctx.pathPickerBootKey and ctx.lines then
+	                if ctx.pathPickerEditIdx then
+	                  local paths = _.config_parse.getBootPaths(ctx.lines, ctx.pathPickerBootKey) or {}
+	                  paths[ctx.pathPickerEditIdx] = pathVal
+	                  _.config_parse.setBootPaths(ctx.lines, ctx.pathPickerBootKey, paths)
+	                else
+	                  _.config_parse.append(ctx.lines, ctx.pathPickerBootKey, pathVal)
+	                end
+	                if e.noargs then _.config_parse.setBootArgs(ctx.lines, ctx.pathPickerBootKey, {}) end
+	                ctx.state = ctx.pathPickerReturnState or "editor"
+	                ctx.pathPickerBootKey = nil
+	                ctx.pathPickerReturnState = nil
+	                ctx.pathPickerForEntryIdx = nil
+	                ctx.pathPickerEditIdx = nil
+	              elseif applyBblHotkeyPathAndReturn(ctx, pathVal) then
+	              elseif applyBblIrxPathAndReturn(ctx, pathVal) then
+	              elseif ctx.pathPickerForEntryIdx then
                 local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
                 if ctx.pathPickerEditIdx then
                   local item = paths[ctx.pathPickerEditIdx]
@@ -727,6 +780,12 @@ local function run(ctx)
           ctx.pathPickerBblHotkeySlot = nil
           ctx.pathPickerBblHotkeyDisabled = nil
           ctx.pathPickerReturnState = nil
+        elseif ctx.pathPickerBblIrxIdx then
+          ctx.state = ctx.pathPickerReturnState or "bbl_irx_entries"
+          ctx.pathPickerBblIrxIdx = nil
+          ctx.pathPickerBblIrxDisabled = nil
+          ctx.pathPickerReturnState = nil
+          ctx.pathPickerFileExts = nil
         elseif ctx.pathPickerForEntryIdx then
           ctx.entryIdx = ctx.pathPickerForEntryIdx
           ctx.state = (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -777,8 +836,11 @@ local function run(ctx)
       _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y + _.scaleY(60), _.FONT_SCALE, _.path_str.no_partitions, _
         .DIM)
     end
+    local hasFileFilter = type(ctx.pathPickerFileExts) == "table" and #ctx.pathPickerFileExts > 0
+    local allowPatinfo = (not isConfigOpenTarget(ctx)) and (not hasFileFilter)
     local partHint = isConfigOpenTarget(ctx) and _.path_str.cross_open_circle_back_items or
-        (_.path_str.cross_open_square_patinfo_circle_back_items or _.path_str.cross_open_circle_back_items)
+        (allowPatinfo and (_.path_str.cross_open_square_patinfo_circle_back_items or _.path_str.cross_open_circle_back_items) or
+          _.path_str.cross_open_circle_back_items)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, partHint, nil, _.DIM, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
       ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #parts end
@@ -792,13 +854,14 @@ local function run(ctx)
     if (_.padEffective & _.PAD_RIGHT) ~= 0 then
       ctx.pathPickerSel = math.min(#parts, ctx.pathPickerSel + maxVis)
     end
-    if not isConfigOpenTarget(ctx) and (_.padEffective & _.PAD_SQUARE) ~= 0 and #parts > 0 then
+    if allowPatinfo and (_.padEffective & _.PAD_SQUARE) ~= 0 and #parts > 0 then
       local p = parts[ctx.pathPickerSel]
       if not p then p = {} end
       local partFull = p.full or ("hdd0:" .. (p.name or ""))
       local val = partFull .. ":PATINFO"
       if applyBootPathAndReturn(ctx, val) then
       elseif applyBblHotkeyPathAndReturn(ctx, val) then
+      elseif applyBblIrxPathAndReturn(ctx, val) then
       elseif ctx.pathPickerForEntryIdx then
         local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
         if ctx.pathPickerEditIdx then
@@ -963,6 +1026,8 @@ local function run(ctx)
               ctx.pathPickerWildcardMode = "boot"
             elseif ctx.pathPickerBblHotkeyKey then
               ctx.pathPickerWildcardMode = "bbl_hotkey"
+            elseif ctx.pathPickerBblIrxIdx then
+              ctx.pathPickerWildcardMode = "bbl_irx"
             elseif ctx.pathPickerForEntryIdx then
               ctx.pathPickerWildcardMode = "entry"
             elseif ctx.isAddPath then
@@ -972,6 +1037,7 @@ local function run(ctx)
             end
           elseif applyBootPathAndReturn(ctx, val) then
           elseif applyBblHotkeyPathAndReturn(ctx, val) then
+          elseif applyBblIrxPathAndReturn(ctx, val) then
           elseif ctx.pathPickerForEntryIdx then
             local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
             if ctx.pathPickerEditIdx then

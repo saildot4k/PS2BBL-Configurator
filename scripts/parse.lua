@@ -212,6 +212,7 @@ local BBL_HOTKEYS = {
 }
 local BBL_MAX_ENTRIES = 10
 local BBL_MAX_ARGS_PER_ENTRY = 8
+local BBL_MAX_IRX_ENTRIES = 10
 
 function config_parse.getBblHotkeys()
   return BBL_HOTKEYS
@@ -223,6 +224,152 @@ end
 
 function config_parse.getBblMaxArgsPerEntry()
   return BBL_MAX_ARGS_PER_ENTRY
+end
+
+function config_parse.getBblMaxIrxEntries()
+  return BBL_MAX_IRX_ENTRIES
+end
+
+local function bblIrxKey(entryIdx)
+  return "LOAD_IRX_E" .. tostring(entryIdx or "")
+end
+
+local function isValidBblIrxIdx(entryIdx)
+  return type(entryIdx) == "number" and entryIdx >= 1 and entryIdx <= BBL_MAX_IRX_ENTRIES
+end
+
+function config_parse.getBblIrxEntryIndices(lines)
+  local byIdx = {}
+  for _, entry in ipairs(lines or {}) do
+    if entry.key then
+      local n = entry.key:match("^LOAD_IRX_E(%d+)$")
+      if n then
+        local idx = tonumber(n)
+        if idx and idx >= 1 and idx <= BBL_MAX_IRX_ENTRIES then
+          byIdx[idx] = not not entry.comment
+        end
+      end
+    end
+  end
+  local out = {}
+  for idx, disabled in pairs(byIdx) do
+    out[#out + 1] = { idx = idx, disabled = disabled }
+  end
+  table.sort(out, function(a, b) return a.idx < b.idx end)
+  return out
+end
+
+function config_parse.getBblIrxEntry(lines, entryIdx)
+  if not isValidBblIrxIdx(entryIdx) then return nil, false end
+  local value, commented = config_parse.getWithComment(lines, bblIrxKey(entryIdx))
+  return value, commented and true or false
+end
+
+function config_parse.setBblIrxEntry(lines, entryIdx, value, disabled)
+  if not isValidBblIrxIdx(entryIdx) then return false end
+  local key = bblIrxKey(entryIdx)
+  local insertAt = nil
+  local i = 1
+  while i <= #lines do
+    if lines[i].key == key then
+      if not insertAt then insertAt = i end
+      table.remove(lines, i)
+    else
+      i = i + 1
+    end
+  end
+  if value == nil then return true end
+  local newEntry = { key = key, value = value or "", comment = disabled and true or nil }
+  if insertAt then
+    table.insert(lines, insertAt, newEntry)
+  else
+    table.insert(lines, newEntry)
+  end
+  return true
+end
+
+function config_parse.setBblIrxEntryDisabled(lines, entryIdx, disabled)
+  local value = config_parse.getBblIrxEntry(lines, entryIdx)
+  if value == nil then return false end
+  return config_parse.setBblIrxEntry(lines, entryIdx, value, disabled)
+end
+
+function config_parse.removeBblIrxEntry(lines, entryIdx)
+  if not isValidBblIrxIdx(entryIdx) then return false end
+  local key = bblIrxKey(entryIdx)
+  local removed = false
+  local i = 1
+  while i <= #lines do
+    if lines[i].key == key then
+      table.remove(lines, i)
+      removed = true
+    else
+      i = i + 1
+    end
+  end
+  return removed
+end
+
+function config_parse.changeBblIrxEntryIndex(lines, oldIdx, newIdx)
+  if not isValidBblIrxIdx(oldIdx) or not isValidBblIrxIdx(newIdx) then return false end
+  if oldIdx == newIdx then return true end
+  local newValue = config_parse.getBblIrxEntry(lines, newIdx)
+  if newValue ~= nil then return false end
+  local oldKey = bblIrxKey(oldIdx)
+  local newKey = bblIrxKey(newIdx)
+  for _, entry in ipairs(lines or {}) do
+    if entry.key == oldKey then
+      entry.key = newKey
+      return true
+    end
+  end
+  return false
+end
+
+function config_parse.insertBblIrxEntryBelow(lines, belowIdx, value, disabled)
+  local entries = config_parse.getBblIrxEntryIndices(lines)
+  if #entries == 0 then
+    config_parse.setBblIrxEntry(lines, 1, value == nil and "" or value, disabled)
+    return 1
+  end
+  local insertIdx = tonumber(belowIdx) and (belowIdx + 1) or 1
+  if insertIdx < 1 then insertIdx = 1 end
+  if insertIdx > BBL_MAX_IRX_ENTRIES then insertIdx = BBL_MAX_IRX_ENTRIES end
+  local occupied = {}
+  for _, e in ipairs(entries) do
+    occupied[e.idx] = true
+  end
+  local gapIdx = insertIdx
+  while gapIdx <= BBL_MAX_IRX_ENTRIES and occupied[gapIdx] do
+    gapIdx = gapIdx + 1
+  end
+  if gapIdx > BBL_MAX_IRX_ENTRIES then
+    return nil
+  end
+  for idx = gapIdx - 1, insertIdx, -1 do
+    config_parse.changeBblIrxEntryIndex(lines, idx, idx + 1)
+  end
+  config_parse.setBblIrxEntry(lines, insertIdx, value == nil and "" or value, disabled)
+  return insertIdx
+end
+
+function config_parse.swapBblIrxEntryContent(lines, idxA, idxB)
+  if not isValidBblIrxIdx(idxA) or not isValidBblIrxIdx(idxB) then return false end
+  if idxA == idxB then return true end
+  local keyA = bblIrxKey(idxA)
+  local keyB = bblIrxKey(idxB)
+  local entryA, entryB = nil, nil
+  for _, entry in ipairs(lines or {}) do
+    if entry.key == keyA then
+      entryA = entry
+    elseif entry.key == keyB then
+      entryB = entry
+    end
+  end
+  if not entryA or not entryB then return false end
+  entryA.value, entryB.value = entryB.value, entryA.value
+  entryA.comment, entryB.comment = entryB.comment, entryA.comment
+  return true
 end
 
 local function canonicalBblHotkeyId(keyId)

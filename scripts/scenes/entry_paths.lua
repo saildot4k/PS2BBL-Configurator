@@ -106,6 +106,8 @@ local function run(ctx)
     for _, item in ipairs(pathHints or {}) do
       if item.pad ~= "select" then
         filtered[#filtered + 1] = item
+      else
+        filtered[#filtered + 1] = { pad = "", label = "", row = item.row }
       end
     end
     pathHints = filtered
@@ -130,9 +132,14 @@ local function run(ctx)
     ctx.pathPickerReturnState = "entry_paths"
     ctx.state = "path_picker"
   end
-  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 and not isBoot and ctx.entryPathSel >= 1 and ctx.entryPathSel <= pathRows and type(paths[ctx.entryPathSel]) == "table" then
-    _.config_parse.setPathDisabled(ctx.lines, ctx.entryIdx, ctx.entryPathSel, not paths[ctx.entryPathSel].disabled)
-    ctx.configModified = true
+  local function toggleSelectedPathDisabled()
+    if not isBoot and ctx.entryPathSel >= 1 and ctx.entryPathSel <= pathRows and type(paths[ctx.entryPathSel]) == "table" then
+      _.config_parse.setPathDisabled(ctx.lines, ctx.entryIdx, ctx.entryPathSel, not paths[ctx.entryPathSel].disabled)
+      ctx.configModified = true
+    end
+  end
+  if (_.padEffective & _.PAD_TRIANGLE) ~= 0 then
+    toggleSelectedPathDisabled()
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then
     if isBoot and (hasArgsPaths or hasSpecialArgsPath) and ctx.entryPathSel == argsRow then

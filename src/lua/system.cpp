@@ -161,6 +161,38 @@ static int lua_dir(lua_State *L) {
 
   int fd = fileXioDopen(path);
   if (fd < 0) {
+    vfs_dirent_t vfsEntries[MAX_DIR_FILES];
+    size_t numVfsEntries = 0;
+
+    if (vfs_available()) {
+      numVfsEntries = vfs_listdir(path, vfsEntries, MAX_DIR_FILES);
+      if (numVfsEntries == 0 && boot_path && boot_path[0] != '\0') {
+        size_t bootLen = strlen(boot_path);
+        if (strncmp(path, boot_path, bootLen) == 0) {
+          numVfsEntries = vfs_listdir(path + bootLen, vfsEntries, MAX_DIR_FILES);
+        }
+      }
+    }
+
+    if (numVfsEntries > 0) {
+      lua_newtable(L);
+      for (size_t i = 0; i < numVfsEntries; i++) {
+        lua_pushnumber(L, (lua_Number)(i + 1));
+        lua_newtable(L);
+        lua_pushstring(L, "name");
+        lua_pushstring(L, vfsEntries[i].name);
+        lua_settable(L, -3);
+        lua_pushstring(L, "directory");
+        lua_pushboolean(L, vfsEntries[i].directory);
+        lua_settable(L, -3);
+        lua_pushstring(L, "size");
+        lua_pushnumber(L, (lua_Number)vfsEntries[i].size);
+        lua_settable(L, -3);
+        lua_settable(L, -3);
+      }
+      return 1;
+    }
+
     lua_pushnil(L);
     return 1;
   }
