@@ -1,15 +1,5 @@
 --[[ PS2BBL/PSXBBL LOAD_IRX_E# editor. ]]
 
-local function filterHintItems(items, allow)
-  local out = {}
-  for _, item in ipairs(items or {}) do
-    if allow[item.pad] then
-      out[#out + 1] = item
-    end
-  end
-  return out
-end
-
 local function beginIrxPathEdit(_, ctx, entryIdx, disabled)
   ctx.editKey = nil
   ctx.isAddPath = false
@@ -169,23 +159,13 @@ local function run(ctx)
     if ctx.bblIrxSel > total - 1 then ctx.bblIrxSel = math.max(1, total - 1) end
   end
 
-  local hints = _.menu_str.irx_hint_items or {}
+  local hints = _.menu_str.irx_hint_items_with_disable or _.menu_str.irx_hint_items or {}
   if total > 0 then
     local selected = entries[ctx.bblIrxSel]
-    hints = selected.disabled and (_.menu_str.irx_hint_items_with_enable or hints) or
-        (_.menu_str.irx_hint_items_with_disable or hints)
+    if selected.disabled then
+      hints = _.menu_str.irx_hint_items_with_enable or hints
+    end
   end
-  local allow = {
-    circle = true,
-    start = true,
-    select = canAddEntry,
-    cross = total > 0,
-    triangle = total > 0,
-    square = total > 0,
-    L1 = total > 1 and ctx.bblIrxSel >= 2,
-    R1 = total > 1 and ctx.bblIrxSel <= (total - 1),
-  }
-  hints = filterHintItems(hints, allow)
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hints, nil, _.DIM, _.w - 2 * _.MARGIN_X)
 
   if (_.padEffective & _.PAD_START) ~= 0 then
