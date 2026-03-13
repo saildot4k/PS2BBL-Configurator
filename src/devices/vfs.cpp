@@ -82,3 +82,82 @@ const void *vfs_get(const char *path, size_t *out_size) {
   }
   return NULL;
 }
+
+size_t vfs_listdir(const char *path, vfs_dirent_t *out_entries, size_t max_entries) {
+  if (!path || !out_entries || max_entries == 0 || !vfs_available())
+    return 0;
+
+  size_t prefix_len = 0;
+  path = vfs_normalize_path(path, &prefix_len);
+
+  char prefix[256];
+  if (prefix_len >= sizeof(prefix))
+    return 0;
+  memcpy(prefix, path, prefix_len);
+  prefix[prefix_len] = '\0';
+
+  while (prefix_len > 0 && prefix[prefix_len - 1] == '/') {
+    prefix[--prefix_len] = '\0';
+  }
+  if (strcmp(prefix, ".") == 0) {
+    prefix[0] = '\0';
+    prefix_len = 0;
+  }
+
+  uint32_t num = _lw((u32)vfs_blob + 4);
+  const uint8_t *ptr = vfs_blob + 8;
+  size_t out_count = 0;
+
+  for (uint32_t i = 0; i < num; i++) {
+    uint32_t len = _lw((u32)ptr);
+    const char *entry_path = (const char *)(ptr + 4);
+    const char *remainder = entry_path;
+    bool is_directory = false;
+    uint32_t entry_size = _lw((u32)(ptr + 4 + len + 4));
+
+    if (prefix_len > 0) {
+      if (strncmp(entry_path, prefix, prefix_len) != 0) {
+        ptr += 4 + len + 4 + 4;
+        continue;
+      }
+      remainder = entry_path + prefix_len;
+      if (*remainder == '\0' || *remainder != '/') {
+        ptr += 4 + len + 4 + 4;
+        continue;
+      }
+      remainder++;
+    }
+
+    if (*remainder == '\0') {
+      ptr += 4 + len + 4 + 4;
+      continue;
+    }
+
+    const char *slash = strchr(remainder, '/');
+    size_t name_len = slash ? (size_t)(slash - remainder) : strlen(remainder);
+    if (name_len == 0 || name_len >= sizeof(out_entries[0].name)) {
+      ptr += 4 + len + 4 + 4;
+      continue;
+    }
+    is_directory = (slash != NULL);
+
+    bool exists = false;
+    for (size_t j = 0; j < out_count; j++) {
+      if (strncmp(out_entries[j].name, remainder, name_len) == 0 && out_entries[j].name[name_len] == '\0') {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists && out_count < max_entries) {
+      memcpy(out_entries[out_count].name, remainder, name_len);
+      out_entries[out_count].name[name_len] = '\0';
+      out_entries[out_count].directory = is_directory;
+      out_entries[out_count].size = is_directory ? 0 : entry_size;
+      out_count++;
+    }
+
+    ptr += 4 + len + 4 + 4;
+  }
+
+  return out_count;
+}
