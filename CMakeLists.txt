@@ -51,14 +51,14 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/embed.cmake)
 # Git version for splash (git describe --always --dirty --tags --exclude nightly)
 find_package(Git QUIET)
 if(GIT_FOUND)
-    execute_process(
+  execute_process(
         COMMAND ${GIT_EXECUTABLE} describe --always --dirty --tags --exclude nightly
         OUTPUT_VARIABLE GIT_VERSION
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
-    execute_process(
+  execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --short=12 HEAD
         OUTPUT_VARIABLE GIT_COMMIT
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -66,16 +66,16 @@ if(GIT_FOUND)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 else()
-    set(GIT_VERSION "unknown")
-    set(GIT_COMMIT "unknown")
+  set(GIT_VERSION "unknown")
+  set(GIT_COMMIT "unknown")
 endif()
 
 if(NOT GIT_VERSION)
-    set(GIT_VERSION "unknown")
+  set(GIT_VERSION "unknown")
 endif()
 
 if(NOT GIT_COMMIT)
-    set(GIT_COMMIT "unknown")
+  set(GIT_COMMIT "unknown")
 endif()
 
 # App version shown in UI/splash:
@@ -83,27 +83,27 @@ endif()
 # - can be overridden by CI/release jobs (e.g. 1.2.0)
 set(APP_VERSION_OVERRIDE "" CACHE STRING "Optional override for displayed app version (e.g. 1.2.0)")
 if(APP_VERSION_OVERRIDE STREQUAL "")
-    set(APP_VERSION_VALUE "${GIT_VERSION}")
+  set(APP_VERSION_VALUE "${GIT_VERSION}")
 else()
-    set(APP_VERSION_VALUE "${APP_VERSION_OVERRIDE}")
+  set(APP_VERSION_VALUE "${APP_VERSION_OVERRIDE}")
 endif()
 if(APP_VERSION_VALUE STREQUAL "")
-    set(APP_VERSION_VALUE "unknown")
+  set(APP_VERSION_VALUE "unknown")
 endif()
 
 add_definitions(-DAPP_VERSION=\"${APP_VERSION_VALUE}\")
 add_definitions(-DLUA_USE_PS2)
 
 if(ENABLE_DEBUG)
-    add_definitions(-DDEBUG)
+  add_definitions(-DDEBUG)
 endif()
 
 if(EMBED_VFS)
-    add_definitions(-DEMBED_VFS)
+  add_definitions(-DEMBED_VFS)
 endif()
 
 if(POWERPC_UART)
-    add_definitions(-DPOWERPC_UART)
+  add_definitions(-DPOWERPC_UART)
 endif()
 
 # Compiler flags (match Makefile)
@@ -150,13 +150,13 @@ target_link_libraries(${EE_BIN}
 # - Release date is generated at build time (ordinal format)
 set(SAS_TITLE_VERSION "" CACHE STRING "Optional override for SAS/title.cfg Version field; defaults to app display version")
 if(SAS_TITLE_VERSION STREQUAL "")
-    set(SAS_TITLE_VERSION_VALUE "${APP_VERSION_VALUE}")
+  set(SAS_TITLE_VERSION_VALUE "${APP_VERSION_VALUE}")
 else()
-    set(SAS_TITLE_VERSION_VALUE "${SAS_TITLE_VERSION}")
+  set(SAS_TITLE_VERSION_VALUE "${SAS_TITLE_VERSION}")
 endif()
 
 if(SAS_TITLE_VERSION_VALUE STREQUAL "")
-    set(SAS_TITLE_VERSION_VALUE "unknown")
+  set(SAS_TITLE_VERSION_VALUE "unknown")
 endif()
 
 set(SAS_TITLE_SOURCE "${CMAKE_SOURCE_DIR}/SAS/title.cfg")
@@ -181,7 +181,7 @@ add_custom_command(
 )
 
 if(EMBED_VFS)
-    add_custom_command(
+  add_custom_command(
         TARGET ${EE_BIN}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTDIR}/
@@ -201,7 +201,7 @@ if(EMBED_VFS)
         COMMENT "Copying ELF and SAS assets to release directory root"
     )
 else()
-    add_custom_command(
+  add_custom_command(
         TARGET ${EE_BIN}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTDIR}/

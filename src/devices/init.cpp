@@ -36,11 +36,11 @@ IRX_DEFINE(ppctty);
 IRX_DEFINE(iomanX);
 IRX_DEFINE(fileXio);
 IRX_DEFINE(sio2man);
-IRX_DEFINE(mcman_1400);
+IRX_DEFINE(mcman);
 IRX_DEFINE(extflash);
 IRX_DEFINE(xfromman);
 IRX_DEFINE(mcserv);
-IRX_DEFINE(padman_1400);
+IRX_DEFINE(padman);
 IRX_DEFINE(usbd_mini);
 IRX_DEFINE(bdm);
 IRX_DEFINE(bdmfs_fatfs);
@@ -69,22 +69,23 @@ static ModuleListEntry moduleList[] = {
     INT_MODULE(iomanX, NULL, Device_Basic),
     INT_MODULE(fileXio, NULL, Device_Basic),
     INT_MODULE(sio2man, NULL, Device_Basic),
-    INT_MODULE(mcman_1400, NULL, Device_Basic),
-    // XFROM (DESR external flash)
-    INT_MODULE(extflash, NULL, Device_XFROM),
-    INT_MODULE(xfromman, NULL, Device_XFROM),
+    INT_MODULE(mcman, NULL, Device_Basic),
     INT_MODULE(mcserv, NULL, Device_Basic),
-    INT_MODULE(padman_1400, NULL, Device_Basic),
+    INT_MODULE(padman, NULL, Device_Basic),
     // MMCE
     INT_MODULE(mmceman, NULL, Device_MMCE),
+    // DEV9
+    INT_MODULE(ps2dev9, NULL, Device_HDD | Device_XFROM),
     // BDM
     INT_MODULE(bdm, NULL, Device_USB | Device_HDD | Device_MX4SIO),
     INT_MODULE(bdmfs_fatfs, NULL, Device_USB | Device_HDD | Device_MX4SIO),
     // HDD
-    INT_MODULE(ps2dev9, NULL, Device_HDD),
     INT_MODULE(ata_bd, NULL, Device_HDD),
     INT_MODULE(ps2hdd, get_ps2hdd_args, Device_HDD),
     INT_MODULE(ps2fs, get_ps2fs_args, Device_HDD),
+    // XFROM (DESR external flash)
+    INT_MODULE(extflash, NULL, Device_XFROM),
+    INT_MODULE(xfromman, NULL, Device_XFROM),
     // USB
     INT_MODULE(usbd_mini, NULL, Device_USB),
     INT_MODULE(usbmass_bd_mini, NULL, Device_USB),

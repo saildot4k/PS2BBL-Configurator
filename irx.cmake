@@ -3,11 +3,11 @@ set(IRX_FILES
     iomanX
     fileXio
     sio2man
-    mcman-1400
+    mcman
     extflash
     xfromman
     mcserv
-    padman-1400
+    padman
     usbd_mini
     bdm
     bdmfs_fatfs
@@ -24,13 +24,13 @@ set(LOCAL_IRX_FILES mmceman)
 
 # Optional IRX
 if(POWERPC_UART)
-    list(APPEND IRX_FILES ppctty)
+  list(APPEND IRX_FILES ppctty)
 endif()
 
 # PS2SDK IRX -> bin2c -> _irx.c
 foreach(IRX_FILE ${IRX_FILES})
-    string(REPLACE "-" "_" irx_name_clean ${IRX_FILE})
-    add_custom_command(
+  string(REPLACE "-" "_" irx_name_clean ${IRX_FILE})
+  add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${irx_name_clean}_irx.c"
         COMMAND $ENV{PS2SDK}/bin/bin2c
                 $ENV{PS2SDK}/iop/irx/${IRX_FILE}.irx
@@ -39,13 +39,13 @@ foreach(IRX_FILE ${IRX_FILES})
         DEPENDS $ENV{PS2SDK}/iop/irx/${IRX_FILE}.irx
         COMMENT "Converting ${IRX_FILE}.irx with bin2c"
     )
-    list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/${irx_name_clean}_irx.c")
+  list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/${irx_name_clean}_irx.c")
 endforeach()
 
 # Local IRX -> bin2c -> _irx.c
 foreach(IRX_FILE ${LOCAL_IRX_FILES})
-    set(local_irx_path "${CMAKE_CURRENT_SOURCE_DIR}/modules/${IRX_FILE}.irx")
-    add_custom_command(
+  set(local_irx_path "${CMAKE_CURRENT_SOURCE_DIR}/modules/${IRX_FILE}.irx")
+  add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${IRX_FILE}_irx.c"
         COMMAND $ENV{PS2SDK}/bin/bin2c
                 "${local_irx_path}"
@@ -54,5 +54,5 @@ foreach(IRX_FILE ${LOCAL_IRX_FILES})
         DEPENDS "${local_irx_path}"
         COMMENT "Converting local ${IRX_FILE}.irx with bin2c"
     )
-    list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/${IRX_FILE}_irx.c")
+  list(APPEND SOURCES "${CMAKE_CURRENT_BINARY_DIR}/${IRX_FILE}_irx.c")
 endforeach()
