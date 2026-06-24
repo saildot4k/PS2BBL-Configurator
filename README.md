@@ -18,6 +18,8 @@ Choose `Free McBoot`, `Free HDBoot`, `OSDMenu`, `HOSDMenu`, `OSDMenu MBR`, `PS2B
 
 - [PS2BBL Extended repository](https://github.com/saildot4k/PlayStation2-Basic-BootLoader-Extended) for usage and installation.
 
+- Hold __SELECT__ while booting to force all devices/choices to be shown. Your configuration file is still applied for hiding/showing apps to configure.
+
 
 <details>
 
