@@ -198,7 +198,7 @@ function config_options.getLocations(context, fileType, chosenMcSlot, selectedDe
       return { "mc0:/SYS-CONF/OSDGSM.CNF", "mc1:/SYS-CONF/OSDGSM.CNF", "pfs0:/osdmenu/OSDGSM.CNF" }
     end
     if context == "osdmenu" then
-      return buildOsdmenuLocations("OSDGSM.CNF", chosenMcSlot, selectedDevice, false)
+      return buildOsdmenuLocations("OSDGSM.CNF", chosenMcSlot, selectedDevice, true)
     end
     if context == "mbr" then
       return buildMbrLocations("OSDGSM.CNF", selectedDevice)

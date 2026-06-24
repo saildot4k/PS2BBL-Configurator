@@ -423,10 +423,35 @@ local function includeMainEntry(id)
   return enabled == true
 end
 
+local MAIN_ENTRY_DEFAULT_DESCRIPTIONS = {
+  freemcboot = "v1.966",
+  freehddboot = "v1.966",
+  osdmenu = "v1.3.0",
+  mbr = "v1.3.0",
+  hosdmenu = "v1.3.0",
+  ps2bbl = "v2.0.0",
+  psxbbl = "v2.0.0",
+}
+
+local function getMainEntryDescription(main_str, id)
+  local key = tostring(id or "")
+  if key == "" then return "" end
+  local descs = main_str and main_str.main_entry_descriptions
+  if type(descs) == "table" and type(descs[key]) == "string" then
+    return descs[key]
+  end
+  local directKey = "main_" .. key .. "_desc"
+  if type(main_str and main_str[directKey]) == "string" then
+    return main_str[directKey]
+  end
+  return MAIN_ENTRY_DEFAULT_DESCRIPTIONS[key] or ""
+end
+
 local function buildMainEntries(main_str)
   local out = {}
   local function addEntry(entry)
     if includeMainEntry(entry.id) then
+      entry.desc = entry.desc or getMainEntryDescription(main_str, entry.id)
       out[#out + 1] = entry
     end
   end
@@ -844,6 +869,38 @@ local function runMain(s, pad)
     dt(s.font, s.drawMode, M, MY + sc(22), 0.75, main_str.main_sub or "", common.DIM_COLOR)
     local hintItems = buildMainBaseHintItems(main_str)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, hintItems or {}, nil, common.DIM_COLOR)
+    local selectedEntry = s.mainEntries and s.mainEntries[s.mainSel]
+    local descText = tostring((selectedEntry and selectedEntry.desc) or "")
+    if descText ~= "" then
+      local hintTypography = common.getHintTypography(s.font, s.drawMode)
+      local hintDrawScale = hintTypography.drawScale
+      local hintFont = hintTypography.font
+      local hintTextH = hintTypography.textHeight
+      local hintColor = common.UNSELECTED_COLOR or common.DIM_COLOR or common.WHITE
+      local descMaxW = (s.w or 640) - (M * 2)
+      local descRawW = (common.calcTextWidth and common.calcTextWidth(hintFont, descText, hintDrawScale)) or
+          (#descText * 8)
+      local useTicker = descRawW > descMaxW
+      if useTicker then
+        if common.fitListRowText then
+          descText = common.fitListRowText(s, "main_desc_" .. tostring(selectedEntry.id or ""), hintFont, descText,
+            descMaxW, hintDrawScale, true, { holdStart = 55, stepFrames = 16, holdEnd = 85 })
+        elseif common.truncateTextToWidth then
+          descText = common.truncateTextToWidth(hintFont, descText, descMaxW, hintDrawScale)
+        end
+      end
+      local tw = (common.calcTextWidth and common.calcTextWidth(hintFont, descText, hintDrawScale)) or
+          (#descText * 8)
+      local x
+      if useTicker then
+        x = M
+      else
+        local startCenterX = common.getHintStartCenterX and common.getHintStartCenterX(s, (s.w or 640) - (2 * M))
+        x = startCenterX and math.floor(startCenterX - (tw / 2) + 0.5) or common.centerX(s, tw)
+      end
+      dt(hintFont, s.drawMode, x, s.DESC_Y_BOTTOM or (H - common.PAD_HINT_TOTAL_H), hintDrawScale, descText,
+        hintColor, hintTextH)
+    end
     for i, label in ipairs(s.main) do
       local y = MY + sc(50) + (i - 1) * L
       local col = (i == s.mainSel) and SE or common.UNSELECTED_COLOR
@@ -1711,10 +1768,6 @@ local function runSelectConfig(s, pad)
       options = {
         { label = main_str.select_config_osdmbr_cnf or "OSDMBR.CNF", fileType = "osdmbr_cnf" },
         { label = main_str.select_config_osdgsm_cnf or "OSDGSM.CNF", fileType = "osdgsm_cnf" },
-      }
-    elseif s.context == "osdmenu" and s.osdmenuConfigDevice == "xfrom" then
-      options = {
-        { label = main_str.select_config_osdmenu_cnf or "OSDMENU.CNF", fileType = "osdmenu_cnf" },
       }
     else
       options = {
