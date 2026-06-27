@@ -1507,10 +1507,10 @@ local function buildBblSourceOptions(s, iniFileType)
     addDevice("mmce", dev_str.mmce_1 or "MMCE in slot 2", { "mmce1:/PS2BBL/CONFIG.INI" }, "mmce1:", nil, "mmce")
   end
   if presence.usb0 then
-    addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "mass:/PS2BBL/CONFIG.INI" }, nil, "usb0", "usb")
+    addDevice("usb", dev_str.usb_storage_0 or "USB Mass Storage 1", { "usb0:/PS2BBL/CONFIG.INI" }, nil, "usb0", "usb")
   end
   if presence.usb1 then
-    addDevice("usb", dev_str.usb_storage_1 or "USB Mass Storage 2", { "mass1:/PS2BBL/CONFIG.INI" }, nil, "usb1", "usb")
+    addDevice("usb", dev_str.usb_storage_1 or "USB Mass Storage 2", { "usb1:/PS2BBL/CONFIG.INI" }, nil, "usb1", "usb")
   end
   addDevice("mx4sio", dev_str.mx4sio_sd or "MX4SIO", { "mx4sio:/PS2BBL/CONFIG.INI" }, nil, "mx4sio", "mx4sio")
   if not hideRuntimeHddDevices() then

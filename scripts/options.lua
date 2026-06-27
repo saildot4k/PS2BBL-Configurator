@@ -57,7 +57,9 @@ local function buildPs2BblIniLocations()
   appendUnique(out, "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI")
   appendUnique(out, "hdd1:__sysconf:pfs:/PS2BBL/CONFIG.INI")
   appendUnique(out, "mx4sio:/PS2BBL/CONFIG.INI")
-  appendUnique(out, "mass:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "usb0:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "usb1:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "usb:/PS2BBL/CONFIG.INI")
   appendUnique(out, "mc1:/SYS-CONF/PS2BBL.INI")
   appendUnique(out, "mc0:/SYS-CONF/PS2BBL.INI")
   return out
@@ -76,7 +78,9 @@ local function buildPsxBblIniLocations()
   appendUnique(out, "hdd0:__sysconf:pfs:/PS2BBL/CONFIG.INI")
   appendUnique(out, "hdd1:__sysconf:pfs:/PS2BBL/CONFIG.INI")
   appendUnique(out, "mx4sio:/PS2BBL/CONFIG.INI")
-  appendUnique(out, "mass:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "usb0:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "usb1:/PS2BBL/CONFIG.INI")
+  appendUnique(out, "usb:/PS2BBL/CONFIG.INI")
   return out
 end
 

@@ -132,14 +132,63 @@ local function isBblIrxPath(path)
   return s ~= "" and s:lower():match("%.irx$") ~= nil, s
 end
 
+local function normalizeBdmRoot(prefix)
+  if type(prefix) ~= "string" or prefix == "" then return nil end
+  return (prefix:sub(-1) == ":") and prefix or (prefix .. ":")
+end
+
+local function bdmPathFromRoot(root, rest)
+  root = normalizeBdmRoot(root)
+  if not root then return nil end
+  rest = tostring(rest or ""):gsub("^/+", "")
+  if rest == "" then return root .. "/" end
+  return root .. "/" .. rest
+end
+
+local function bdmRestFromPath(path, root)
+  root = normalizeBdmRoot(root)
+  if not root then return nil end
+  local p = tostring(path or "")
+  if p == root or p == root .. "/" then return "" end
+  if p:sub(1, #root) ~= root then return nil end
+  return p:sub(#root + 1):gsub("^/+", "")
+end
+
+local function isIndexedUsbPath(path)
+  return tostring(path or ""):match("^usb%d:") ~= nil
+end
+
+local function bdmAccessPathForBrowse(ctx, path)
+  if not (ctx and ctx.pathPickerBdmBrowseRoot and ctx.pathPickerBdmMountpoint) then return path end
+  local rest = bdmRestFromPath(path, ctx.pathPickerBdmBrowseRoot)
+  if rest == nil then return path end
+  return bdmPathFromRoot(ctx.pathPickerBdmMountpoint, rest) or path
+end
+
+local function mapBdmEntriesToBrowse(ctx, entries)
+  if not (ctx and ctx.pathPickerBdmBrowseRoot and ctx.pathPickerBdmMountpoint) then return entries end
+  if type(entries) ~= "table" then return entries end
+  for i = 1, #entries do
+    local e = entries[i]
+    if e and e.full then
+      local rest = bdmRestFromPath(e.full, ctx.pathPickerBdmMountpoint)
+      if rest ~= nil then
+        e.full = bdmPathFromRoot(ctx.pathPickerBdmBrowseRoot, rest) or e.full
+      end
+    end
+  end
+  return entries
+end
+
 local function listBrowseEntries(ctx, path)
   local _ = ctx._
+  local accessPath = bdmAccessPathForBrowse(ctx, path)
   if isConfigOpenTarget(ctx) then
     local fileType = tostring(ctx and ctx.fileType or "")
     local browsePathLower = tostring(path or ""):lower()
     local allowPsxBblIni = (fileType == "psxbbl_ini") and
         (browsePathLower:match("^mc0:/") or browsePathLower:match("^mc1:/"))
-    local raw = _.file_selector.listDirectory(path) or {}
+    local raw = _.file_selector.listDirectory(accessPath) or {}
     local out = {}
     for i = 1, #raw do
       local e = raw[i]
@@ -152,19 +201,20 @@ local function listBrowseEntries(ctx, path)
         end
       end
     end
-    return out
+    return mapBdmEntriesToBrowse(ctx, out)
   end
   local exts = ctx.pathPickerFileExts
   if type(exts) == "table" and #exts > 0 and _.common and _.common.listDirectoryFiltered then
-    return _.common.listDirectoryFiltered(path, _.file_selector, { extensions = exts })
+    return mapBdmEntriesToBrowse(ctx, _.common.listDirectoryFiltered(accessPath, _.file_selector, { extensions = exts }))
   end
-  return _.listDirectoryElfOnly(path)
+  return mapBdmEntriesToBrowse(ctx, _.listDirectoryElfOnly(accessPath))
 end
 
 local function clearPickerTransient(ctx)
   ctx.pathList = nil
   ctx.pathBrowsePath = nil
   ctx.pathPickerBdmPrefix = nil
+  ctx.pathPickerBdmBrowseRoot = nil
   ctx.pathPickerBdmMountpoint = nil
   ctx.pathPickerBrowseSelStack = nil
 end
@@ -776,6 +826,7 @@ local function applyManualPath(ctx, val)
   ctx.pathPickerReturnState = nil
   ctx.pathPickerInsertBelow = nil
   ctx.pathPickerBdmPrefix = nil
+  ctx.pathPickerBdmBrowseRoot = nil
   ctx.pathPickerBdmMountpoint = nil
   clearConfigOpenPickerState(ctx)
 end
@@ -889,6 +940,23 @@ local function normalizeBdmPrefixForPathPickerContext(ctx, prefix)
   return prefix
 end
 
+local function setBdmBrowseState(ctx, e, mp)
+  local _ = ctx._
+  local mpNorm = (mp:sub(-1) == ":") and mp or (mp .. ":")
+  local savePrefix = normalizeBdmPrefixForPathPickerContext(ctx,
+    _.file_selector.getBdmPathPrefix(e.deviceId, ctx.pathPickerContext, ctx.fileType))
+  local browsePrefix = e.bdmBrowsePrefix
+  if (not browsePrefix or browsePrefix == "") and _.file_selector.getBdmBrowsePrefix then
+    browsePrefix = _.file_selector.getBdmBrowsePrefix(e.deviceId)
+  end
+  browsePrefix = browsePrefix or savePrefix or e.deviceId
+  ctx.pathPickerBdmMountpoint = mpNorm
+  ctx.pathPickerBdmBrowseRoot = normalizeBdmRoot(browsePrefix)
+  ctx.pathPickerBdmPrefix = savePrefix or browsePrefix
+  ctx.pathBrowsePath = bdmPathFromRoot(ctx.pathPickerBdmBrowseRoot, "")
+  return ctx.pathBrowsePath
+end
+
 local function beginBrowseForDevice(ctx, e)
   if not e then return end
   local _ = ctx._
@@ -930,11 +998,7 @@ local function beginBrowseForDevice(ctx, e)
       if System and System.loadModules then System.loadModules(e.deviceType) end
       local mp = (System and System.getDeviceMountpoint) and System.getDeviceMountpoint(e.deviceId) or nil
       if mp and mp ~= "" then
-        local mpNorm = (mp:sub(-1) == ":") and mp or (mp .. ":")
-        ctx.pathPickerBdmMountpoint = mpNorm
-        ctx.pathPickerBdmPrefix = normalizeBdmPrefixForPathPickerContext(ctx,
-          _.file_selector.getBdmPathPrefix(e.deviceId, ctx.pathPickerContext))
-        ctx.pathBrowsePath = (mp:sub(-1) == ":") and (mp .. "/") or mp
+        setBdmBrowseState(ctx, e, mp)
         ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
         ctx.pathPickerSub = "browse"
         ctx.pathPickerSel = 1
@@ -978,9 +1042,13 @@ local function run(ctx)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.path_str.wildcard_confirm_hint, nil, _.DIM_COLOR,
       _.w - 2 * _.MARGIN_X)
     local function applyAndExit(chosenVal)
-      ctx._configModifiedCache = nil
-      ctx.configModified = true
-      if mode == "single" then
+      if mode ~= "config_open" then
+        ctx._configModifiedCache = nil
+        ctx.configModified = true
+      end
+      if mode == "config_open" then
+        applyConfigOpenPathAndReturn(ctx, chosenVal)
+      elseif mode == "single" then
         _.config_parse.set(ctx.lines, ctx.editKey, chosenVal)
         ctx.state = "editor"
       elseif mode == "bbl_hotkey" then
@@ -1024,6 +1092,7 @@ local function run(ctx)
       ctx.pathPickerPendingPath = nil
       ctx.pathPickerWildcardMode = nil
       ctx.pathPickerBdmPrefix = nil
+      ctx.pathPickerBdmBrowseRoot = nil
       ctx.pathPickerBdmMountpoint = nil
       if ctx.pfs0Mounted and System.fileXioUmount then System.fileXioUmount("pfs0:") end
       if ctx.pfs1Mounted and System.fileXioUmount then System.fileXioUmount("pfs1:") end
@@ -1103,11 +1172,11 @@ local function run(ctx)
           ctx.pathPickerModulesLoaded = nil
           ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
           ctx.pathPickerLoadedDeviceTypes[load.deviceType] = true
-          local mpNorm = (mp:sub(-1) == ":") and mp or (mp .. ":")
-          ctx.pathPickerBdmMountpoint = mpNorm
-          ctx.pathPickerBdmPrefix = normalizeBdmPrefixForPathPickerContext(ctx,
-            _.file_selector.getBdmPathPrefix(load.deviceId, ctx.pathPickerContext))
-          ctx.pathBrowsePath = (mp:sub(-1) == ":") and (mp .. "/") or mp
+          local bdmEntry = {
+            deviceId = load.deviceId,
+            bdmBrowsePrefix = (_.file_selector.getBdmBrowsePrefix and _.file_selector.getBdmBrowsePrefix(load.deviceId)) or nil,
+          }
+          setBdmBrowseState(ctx, bdmEntry, mp)
           ctx.pathList = listBrowseEntries(ctx, ctx.pathBrowsePath)
           ctx.pathPickerSub = "browse"
           ctx.pathPickerSel = 1
@@ -1503,7 +1572,7 @@ local function run(ctx)
         else
           ctx.state = "editor"
         end
-        ctx.pathList = nil; ctx.pathBrowsePath = nil; ctx.pathPickerBdmPrefix = nil; ctx.pathPickerBdmMountpoint = nil
+        ctx.pathList = nil; ctx.pathBrowsePath = nil; ctx.pathPickerBdmPrefix = nil; ctx.pathPickerBdmBrowseRoot = nil; ctx.pathPickerBdmMountpoint = nil
         ctx.pfs0Mounted = nil; ctx.pfs1Mounted = nil
       end
     end
@@ -1597,7 +1666,7 @@ local function run(ctx)
       end
       ctx._configModifiedCache = nil
       ctx.configModified = true
-      ctx.pathList = nil; ctx.pathBrowsePath = nil; ctx.pathPickerBdmPrefix = nil; ctx.pathPickerBdmMountpoint = nil
+      ctx.pathList = nil; ctx.pathBrowsePath = nil; ctx.pathPickerBdmPrefix = nil; ctx.pathPickerBdmBrowseRoot = nil; ctx.pathPickerBdmMountpoint = nil
       ctx.pathPickerSub = "device"
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 and #parts > 0 then
@@ -1727,6 +1796,12 @@ local function run(ctx)
       if partPath then
         val = pfsToPartitionPath(val, partPath) or val
       end
+      if _.file_selector.canWildcard and _.file_selector.canWildcard(val) and isIndexedUsbPath(val) then
+        ctx.pathPickerPendingPath = val
+        ctx.pathPickerWildcardConfirm = true
+        ctx.pathPickerWildcardMode = "config_open"
+        return true
+      end
       return applyConfigOpenPathAndReturn(ctx, val) == true
     end
 
@@ -1782,10 +1857,9 @@ local function run(ctx)
           local rawPath = e.full and e.full:gsub("/$", "") or e.full
           local partPath = ctx.pfs1Mounted or ctx.pfs0Mounted
           local val = (partPath and pfsToPartitionPath(rawPath, partPath)) or rawPath
-          if ctx.pathPickerBdmPrefix and ctx.pathPickerBdmMountpoint and rawPath then
-            local mp = ctx.pathPickerBdmMountpoint
-            if rawPath == mp or rawPath:sub(1, #mp) == mp then
-              local rest = rawPath:sub(#mp + 1):gsub("^/", "")
+          if ctx.pathPickerBdmPrefix and ctx.pathPickerBdmBrowseRoot and rawPath then
+            local rest = bdmRestFromPath(rawPath, ctx.pathPickerBdmBrowseRoot)
+            if rest ~= nil then
               val = ctx.pathPickerBdmPrefix .. ":" .. (rest ~= "" and "/" .. rest or "")
             end
           end
@@ -1793,7 +1867,12 @@ local function run(ctx)
             return
           end
           local openedConfig = false
-          if applyConfigOpenPathAndReturn(ctx, val) then
+          if isConfigOpenTarget(ctx) and _.file_selector.canWildcard and _.file_selector.canWildcard(val) and
+              isIndexedUsbPath(val) then
+            ctx.pathPickerPendingPath = val
+            ctx.pathPickerWildcardConfirm = true
+            ctx.pathPickerWildcardMode = "config_open"
+          elseif applyConfigOpenPathAndReturn(ctx, val) then
             openedConfig = true
           elseif _.file_selector.canWildcard and _.file_selector.canWildcard(val) then
             ctx.pathPickerPendingPath = val
@@ -1832,7 +1911,7 @@ local function run(ctx)
             _.config_parse.set(ctx.lines, ctx.editKey, val)
             ctx.state = "editor"
           end
-          if not openedConfig then
+          if not openedConfig and not (ctx.pathPickerWildcardConfirm and ctx.pathPickerWildcardMode == "config_open") then
             ctx._configModifiedCache = nil
             ctx.configModified = true
             if not ctx.pathPickerWildcardConfirm then
@@ -1874,6 +1953,7 @@ local function run(ctx)
             ctx.pathPickerSub = "device"
             ctx.pathPickerBrowseSelStack = nil
             ctx.pathPickerBdmPrefix = nil
+            ctx.pathPickerBdmBrowseRoot = nil
             ctx.pathPickerBdmMountpoint = nil
             ctx.pathList = getPickerDevices(ctx, _)
             ctx.pathBrowsePath = nil
@@ -1898,6 +1978,7 @@ local function run(ctx)
         ctx.pathPickerSub = "device"
         ctx.pathPickerBrowseSelStack = nil
         ctx.pathPickerBdmPrefix = nil
+        ctx.pathPickerBdmBrowseRoot = nil
         ctx.pathPickerBdmMountpoint = nil
         ctx.pathList = getPickerDevices(ctx, _)
         ctx.pathBrowsePath = nil
