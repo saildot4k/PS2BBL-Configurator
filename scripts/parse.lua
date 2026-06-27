@@ -466,21 +466,7 @@ end
 function config_parse.migrateOsdmenuBootOption(lines)
   if not lines then return false end
 
-  local skipLogo = config_parse.get(lines, "OSDSYS_Skip_Logo")
-  local innerBrowser = config_parse.get(lines, "OSDSYS_Inner_Browser")
-  local hasLegacyBootKeys = skipLogo ~= nil or innerBrowser ~= nil
   local changed = false
-
-  if hasLegacyBootKeys and config_parse.get(lines, "OSDSYS_boot") == nil then
-    local boot = "clock"
-    if tostring(innerBrowser or "") == "1" then
-      boot = "browser"
-    elseif tostring(skipLogo or "") == "0" then
-      boot = "opening"
-    end
-    config_parse.set(lines, "OSDSYS_boot", boot)
-    changed = true
-  end
 
   local removeKeys = {
     OSDSYS_Skip_Logo = true,
@@ -2244,6 +2230,10 @@ function config_parse.regenerateForSave(lines, fileType, options)
 
   if fileType == "osdmenu_cnf" then
     config_parse.migrateOsdmenuBootOption(lines)
+    if config_parse.get(lines, "OSDSYS_boot") == nil then
+      local bootDefault = (type(opt.getOsdmenuDefault) == "function" and opt.getOsdmenuDefault("OSDSYS_boot")) or "clock"
+      config_parse.set(lines, "OSDSYS_boot", bootDefault)
+    end
     normalizeMenuEntryArgsInPlace()
     return config_parse.regenerateLines(lines, opt.osdmenu_cnf_categories or {}, true, nil, nil, true)
   end
