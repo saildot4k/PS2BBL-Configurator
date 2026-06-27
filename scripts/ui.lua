@@ -1071,6 +1071,111 @@ local function getSceneTransitionRuntime()
   return transitionType, transitionFrames
 end
 
+local function getPageTransitionDirectionFromPad(padMask)
+  local mask = tonumber(padMask) or 0
+  if (mask & PAD_CIRCLE) ~= 0 then
+    return "out"
+  end
+  if (mask & PAD_CROSS) ~= 0 then
+    return "in"
+  end
+  return "in"
+end
+
+local function scenePagePart(value)
+  if value == nil then return "" end
+  return tostring(value)
+end
+
+local function getVisibleScenePageKey(ctx, sceneName)
+  if type(ctx) ~= "table" then return nil end
+  local scene = tostring(sceneName or ctx.state or "")
+  if scene == "" then return nil end
+
+  if scene == "select_config" then
+    local context = tostring(ctx.context or "")
+    if context == "osdmenu" then
+      if not ctx.osdmenuConfigDevice then
+        return "select_config:osdmenu:device"
+      end
+      return "select_config:osdmenu:file:" .. scenePagePart(ctx.osdmenuConfigDevice) .. ":" ..
+          scenePagePart(ctx.chosenMcSlot)
+    elseif context == "mbr" then
+      if not ctx.mbrConfigDevice then
+        return "select_config:mbr:device"
+      end
+      return "select_config:mbr:file:" .. scenePagePart(ctx.mbrConfigDevice)
+    elseif context == "hosdmenu" then
+      return "select_config:hosdmenu:file"
+    elseif context == "freemcboot" or context == "freehddboot" then
+      return "select_config:" .. context .. ":file"
+    elseif context == "ps2bbl" or context == "psxbbl" then
+      return "select_config:" .. context .. ":device"
+    end
+    return "select_config:" .. context .. ":" .. scenePagePart(ctx.fileType)
+  end
+
+  if scene == "choose_load" then
+    local count = (type(ctx.loadChoices) == "table") and #ctx.loadChoices or 0
+    return "choose_load:" .. scenePagePart(ctx.context) .. ":" .. scenePagePart(ctx.fileType) .. ":" ..
+        tostring(count)
+  end
+
+  if scene == "path_picker" then
+    if ctx.pathPickerLoading then
+      local load = ctx.pathPickerLoading
+      local id = ""
+      if type(load) == "table" then
+        id = load.deviceId or load.hddRoot or load.deviceType or ""
+      end
+      return "path_picker:loading:" .. scenePagePart(id)
+    end
+    if ctx.pathPickerLoadingTimeoutMsg then
+      return "path_picker:timeout:" .. scenePagePart(ctx.pathPickerLoadingTimeoutMsg)
+    end
+
+    local sub = tostring(ctx.pathPickerSub or "")
+    if sub == "browse" then
+      return "path_picker:browse:" .. scenePagePart(ctx.pathBrowsePath)
+    elseif sub == "partitions" then
+      return "path_picker:partitions:" .. scenePagePart(ctx.pathBrowsePath)
+    elseif sub == "device" then
+      return "path_picker:device:" .. scenePagePart(ctx.pathPickerContext) .. ":" ..
+          scenePagePart(ctx.pathPickerTarget)
+    end
+    return "path_picker:" .. sub
+  end
+
+  return scene
+end
+
+local function updateVisibleScenePageTransition(ctx, sceneName)
+  if type(ctx) ~= "table" then return end
+  local key = getVisibleScenePageKey(ctx, sceneName)
+  if not key then return end
+  local scene = tostring(sceneName or ctx.state or "")
+  if ctx._lastVisibleScenePageScene ~= scene then
+    ctx._lastVisibleScenePageScene = scene
+    ctx._lastVisibleScenePageKey = key
+    return
+  end
+  if ctx._lastVisibleScenePageKey == key then return end
+  ctx._lastVisibleScenePageKey = key
+  ctx._sceneEpoch = (tonumber(ctx._sceneEpoch) or 0) + 1
+  if common.isSceneTransitionInActive and common.isSceneTransitionInActive(ctx) then
+    return
+  end
+  local transitionType, transitionFrames = getSceneTransitionRuntime()
+  if common.shouldRunSceneTransition and not common.shouldRunSceneTransition(transitionType, transitionFrames) then
+    return
+  end
+  if common.beginSceneTransitionIn then
+    common.beginSceneTransitionIn(ctx, transitionType, transitionFrames, {
+      direction = getPageTransitionDirectionFromPad(ctx._lastPadEffective),
+    })
+  end
+end
+
 local function applyStartupSceneTransitionCnf()
   local transitionType = STARTUP_CFG and STARTUP_CFG.scene_transition or nil
   local transitionFrames = STARTUP_CFG and STARTUP_CFG.scene_transition_frames or nil
@@ -1726,7 +1831,11 @@ local function mainLoop()
   ctx.font, ctx.drawMode, ctx.drawListRow = font, drawMode, drawListRow
   ctx.drawBackgroundLayer = drawSelectionOverlayLogo
   ctx._preSceneFrameHook = function(c, sceneName)
-    return updateKatamariEasterEggTrigger(c, sceneName)
+    if updateKatamariEasterEggTrigger(c, sceneName) then
+      return true
+    end
+    updateVisibleScenePageTransition(c, sceneName)
+    return false
   end
   ctx.main = {
     (strings.main.main_freemcboot or "FreeMCBoot"),
