@@ -2268,6 +2268,13 @@ local function mainLoop()
     return t == "slide" or t == "whip_pan" or t == "zoom" or t == "flip_horizontal" or t == "flip_vertical"
   end
 
+  local function isTransientModuleLoadingScene(c, sceneName)
+    if sceneName == "initHdd" then return true end
+    if sceneName ~= "path_picker" or type(c) ~= "table" then return false end
+    if c.pathPickerLoading or c.pathPickerLoadingTimeoutMsg then return true end
+    return c.pathPickerLockedDevice and not c.pathPickerLockedDeviceStarted
+  end
+
   local sceneSelectionSpecs = {
     main = {
       { field = "mainSel", top = 1 },
@@ -2484,6 +2491,14 @@ local function mainLoop()
     if type(prevScene) ~= "string" or type(nextScene) ~= "string" or prevScene == nextScene then return end
     if prevScene == KATAMARI_EASTER_EGG_STATE or nextScene == KATAMARI_EASTER_EGG_STATE then
       c.sceneTransitionIn = nil
+      return c
+    end
+    if isTransientModuleLoadingScene(c, prevScene) or isTransientModuleLoadingScene(c, nextScene) or
+        (prevScene == "path_picker" and c._lastVisibleScenePageWasTransient) then
+      c.sceneTransitionIn = nil
+      if prevScene == "path_picker" then
+        c._lastVisibleScenePageWasTransient = nil
+      end
       return c
     end
     local direction = getSceneNavigationDirection(c, nextScene)
