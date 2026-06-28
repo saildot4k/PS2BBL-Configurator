@@ -1142,7 +1142,13 @@ local function updateVisibleScenePageTransition(ctx, sceneName)
   local key = getVisibleScenePageKey(ctx, sceneName)
   if not key then return end
   local scene = tostring(sceneName or ctx.state or "")
+  if scene == "initHdd" then
+    ctx.sceneTransitionIn = nil
+    ctx._lastVisibleScenePageWasTransient = true
+    return
+  end
   if scene == "path_picker" and (ctx.pathPickerLoading or ctx.pathPickerLoadingTimeoutMsg) then
+    ctx.sceneTransitionIn = nil
     ctx._lastVisibleScenePageWasTransient = true
     return
   end
@@ -2515,6 +2521,14 @@ local function mainLoop()
         nextScene = "open"
       end
       state = c.state
+      if isTransientModuleLoadingScene(c, prevScene) or isTransientModuleLoadingScene(c, nextScene) or
+          (prevScene == "path_picker" and c._lastVisibleScenePageWasTransient) then
+        c.sceneTransitionIn = nil
+        if prevScene == "path_picker" then
+          c._lastVisibleScenePageWasTransient = nil
+        end
+        return c
+      end
     end
     local transitionType, transitionFrames = getSceneTransitionRuntime()
     local normalizedType = transitionType
