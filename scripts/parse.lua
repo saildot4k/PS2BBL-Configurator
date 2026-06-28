@@ -623,6 +623,39 @@ function config_parse.setBootPathDisabled(lines, key, pathNum, disabled, opts)
   return false
 end
 
+-- When a boot-key parent is disabled, enabling one child path should:
+-- 1) enable the parent and all child lines,
+-- 2) then keep only the selected path enabled and disable other defined paths.
+function config_parse.enableBootPathFromDisabledParent(lines, key, pathNum)
+  local selectedPath = math.floor(tonumber(pathNum) or 0)
+  local paths = config_parse.getBootPathEntries(lines, key)
+  if selectedPath < 1 or selectedPath > #paths then return false end
+
+  local changed = false
+  if config_parse.isBootKeyDisabled(lines, key) then
+    config_parse.setBootKeyDisabled(lines, key, false)
+    changed = true
+  end
+
+  for i = 1, #paths do
+    local shouldDisable = (i ~= selectedPath)
+    local item = paths[i] or {}
+    local currentDisabled = item.disabled and true or false
+    local currentComment = item.comment
+    local normalizedComment = (currentComment == 2) and 2 or (currentComment and true or nil)
+    local desiredComment = shouldDisable and true or nil
+    if currentDisabled ~= shouldDisable or normalizedComment ~= desiredComment then
+      changed = true
+    end
+    item.disabled = shouldDisable
+    item.comment = desiredComment
+    paths[i] = item
+  end
+
+  config_parse.setBootPathEntries(lines, key, paths)
+  return changed
+end
+
 -- OSDMBR.CNF: boot_auto, boot_start, etc. can have multiple path lines.
 function config_parse.getBootPaths(lines, key, opts)
   local out = {}

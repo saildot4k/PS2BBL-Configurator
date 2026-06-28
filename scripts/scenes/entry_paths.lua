@@ -232,8 +232,7 @@ local function run(ctx)
   local argsRowSelected = isBoot and (hasArgsPaths or hasSpecialArgsPath) and ctx.entryPathSel == argsRow
   local selectedPathDisabled = hasPathSelection and type(paths[ctx.entryPathSel]) == "table" and
       ((parentPathsDisabled or paths[ctx.entryPathSel].disabled) and true or false)
-  local canTogglePathDisabled = hasPathSelection and type(paths[ctx.entryPathSel]) == "table" and
-      ((not isBoot) or (not parentPathsDisabled))
+  local canTogglePathDisabled = hasPathSelection and type(paths[ctx.entryPathSel]) == "table"
   local crossLabel = ""
   if ctx.entryPathGrab then
     crossLabel = (_.menu_str.confirm_label or "Confirm")
@@ -303,7 +302,20 @@ local function run(ctx)
     local current = (parentPathsDisabled or (paths[ctx.entryPathSel].disabled and true or false)) and true or false
     local target = not current
     if isBoot then
-      if parentPathsDisabled then return end
+      if parentPathsDisabled then
+        if not target then
+          local changed = _.config_parse.enableBootPathFromDisabledParent and
+              _.config_parse.enableBootPathFromDisabledParent(ctx.lines, ctx.bootKey, ctx.entryPathSel)
+          if changed then
+            ctx.entryPathsBootKeyDisabledTag = tostring(ctx.bootKey or "")
+            ctx.entryPathsBootKeyDisabledOverride = false
+            ctx.entryArgsBootKeyDisabledTag = tostring(ctx.bootKey or "")
+            ctx.entryArgsBootKeyDisabledOverride = false
+            markConfigMutated()
+          end
+        end
+        return
+      end
       _.config_parse.setBootPathDisabled(ctx.lines, ctx.bootKey, ctx.entryPathSel, target, bootKeyOpts)
       markConfigMutated()
       return

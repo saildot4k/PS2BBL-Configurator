@@ -13,19 +13,33 @@ local function applyBootPathAndReturn(ctx, val)
   if not ctx.pathPickerBootKey or not ctx.lines then return nil end
   local _ = ctx._
   local bootOpts = bootKeyPickerOpts(ctx)
+  local bootKey = ctx.pathPickerBootKey
+  local parentWasDisabled = (ctx.pathPickerBootKeyDisabled == true) or
+      ((_.config_parse.isBootKeyDisabled and _.config_parse.isBootKeyDisabled(ctx.lines, bootKey)) and true or false)
+  local selectedPathIdx = nil
   if ctx.pathPickerEditIdx then
-    local paths = _.config_parse.getBootPathEntries(ctx.lines, ctx.pathPickerBootKey, bootOpts) or {}
+    local paths = _.config_parse.getBootPathEntries(ctx.lines, bootKey, bootOpts) or {}
     local item = paths[ctx.pathPickerEditIdx]
     if type(item) == "table" then
       item.value = val
+      item.disabled = false
+      item.comment = nil
     else
       paths[ctx.pathPickerEditIdx] = { value = val, disabled = false }
     end
-    _.config_parse.setBootPathEntries(ctx.lines, ctx.pathPickerBootKey, paths, bootOpts)
+    selectedPathIdx = ctx.pathPickerEditIdx
+    _.config_parse.setBootPathEntries(ctx.lines, bootKey, paths, bootOpts)
   elseif ctx.pathPickerInsertBelow then
-    _.config_parse.insertBootPathBelow(ctx.lines, ctx.pathPickerBootKey, ctx.pathPickerInsertBelow, val, bootOpts)
+    selectedPathIdx = _.config_parse.insertBootPathBelow(ctx.lines, bootKey, ctx.pathPickerInsertBelow, val, bootOpts)
   else
-    _.config_parse.insertBootPathBelow(ctx.lines, ctx.pathPickerBootKey, 0x7fffffff, val, bootOpts)
+    selectedPathIdx = _.config_parse.insertBootPathBelow(ctx.lines, bootKey, 0x7fffffff, val, bootOpts)
+  end
+  if parentWasDisabled and selectedPathIdx and _.config_parse.enableBootPathFromDisabledParent then
+    _.config_parse.enableBootPathFromDisabledParent(ctx.lines, bootKey, selectedPathIdx)
+    ctx.entryPathsBootKeyDisabledTag = tostring(bootKey or "")
+    ctx.entryPathsBootKeyDisabledOverride = false
+    ctx.entryArgsBootKeyDisabledTag = tostring(bootKey or "")
+    ctx.entryArgsBootKeyDisabledOverride = false
   end
   ctx.state = ctx.pathPickerReturnState or "editor"
   ctx.pathPickerBootKey = nil
@@ -43,8 +57,13 @@ local function applyBblHotkeyPathAndReturn(ctx, val)
   local _ = ctx._
   local slot = tonumber(ctx.pathPickerBblHotkeySlot)
   if not slot then return nil end
-  _.config_parse.setBblHotkeyPath(ctx.lines, ctx.pathPickerBblHotkeyKey, slot, val,
-    ctx.pathPickerBblHotkeyDisabled and true or false)
+  local key = ctx.pathPickerBblHotkeyKey
+  local parentWasDisabled = (_.config_parse.isBblHotkeyDisabled and _.config_parse.isBblHotkeyDisabled(ctx.lines, key)) and
+      true or false
+  _.config_parse.setBblHotkeyPath(ctx.lines, key, slot, val, false)
+  if parentWasDisabled and _.config_parse.enableBblHotkeySlotFromDisabledParent then
+    _.config_parse.enableBblHotkeySlotFromDisabledParent(ctx.lines, key, slot)
+  end
   ctx.state = ctx.pathPickerReturnState or "bbl_hotkey_entry"
   ctx.pathPickerBblHotkeyKey = nil
   ctx.pathPickerBblHotkeySlot = nil
@@ -59,7 +78,7 @@ local function applyBblIrxPathAndReturn(ctx, val)
   local _ = ctx._
   local entryIdx = tonumber(ctx.pathPickerBblIrxIdx)
   if not entryIdx then return nil end
-  _.config_parse.setBblIrxEntry(ctx.lines, entryIdx, val, ctx.pathPickerBblIrxDisabled and true or false)
+  _.config_parse.setBblIrxEntry(ctx.lines, entryIdx, val, false)
   ctx.state = ctx.pathPickerReturnState or "bbl_irx_entries"
   ctx.pathPickerBblIrxIdx = nil
   ctx.pathPickerBblIrxDisabled = nil
@@ -525,10 +544,11 @@ local function setMenuEntryPathValue(paths, editIdx, val)
     if type(item) == "table" then
       item.value = val
       item.disabled = false
+      item.comment = nil
     else
       paths[editIdx] = { value = val, disabled = false }
     end
-    return
+    return editIdx
   end
   local firstEmptyIdx = getFirstEmptyPathIndex(paths)
   if firstEmptyIdx then
@@ -536,12 +556,36 @@ local function setMenuEntryPathValue(paths, editIdx, val)
     if type(item) == "table" then
       item.value = val
       item.disabled = false
+      item.comment = nil
     else
       paths[firstEmptyIdx] = { value = val, disabled = false }
     end
-    return
+    return firstEmptyIdx
   end
   table.insert(paths, { value = val, disabled = false })
+  return #paths
+end
+
+local function applyMenuEntryPathAndReturn(ctx, val, opts)
+  if not ctx.pathPickerForEntryIdx or not ctx.lines then return nil end
+  local _ = ctx._
+  local entryIdx = ctx.pathPickerForEntryIdx
+  local paths = _.config_parse.getMenuEntryPaths(ctx.lines, entryIdx)
+  local pathIdx = setMenuEntryPathValue(paths, ctx.pathPickerEditIdx, val)
+  _.config_parse.setMenuEntryPaths(ctx.lines, entryIdx, paths)
+  if pathIdx and _.config_parse.isMenuEntryDisabled and _.config_parse.isMenuEntryDisabled(ctx.lines, entryIdx) and
+      _.config_parse.enableMenuEntryPathFromDisabledParent then
+    _.config_parse.enableMenuEntryPathFromDisabledParent(ctx.lines, entryIdx, pathIdx)
+  end
+  if opts and opts.noargs then
+    _.config_parse.setMenuEntryArgs(ctx.lines, entryIdx, {})
+  end
+  ctx.entryIdx = entryIdx
+  ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
+  ctx.pathPickerForEntryIdx = nil
+  ctx.pathPickerEditIdx = nil
+  ctx.pathPickerReturnState = nil
+  return true
 end
 
 local function hasFmcbSingleUseDuplicateInTarget(ctx, pathVal, targetIndex, takenMap)
@@ -805,14 +849,7 @@ local function applyManualPath(ctx, val)
   if applyBootPathAndReturn(ctx, val) then
   elseif applyBblHotkeyPathAndReturn(ctx, val) then
   elseif applyBblIrxPathAndReturn(ctx, val) then
-  elseif ctx.pathPickerForEntryIdx then
-    local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-    setMenuEntryPathValue(paths, ctx.pathPickerEditIdx, val)
-    _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
-    ctx.entryIdx = ctx.pathPickerForEntryIdx
-    ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
-    ctx.pathPickerForEntryIdx = nil
-    ctx.pathPickerEditIdx = nil
+  elseif applyMenuEntryPathAndReturn(ctx, val) then
   elseif ctx.isAddPath then
     local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or ctx.addPathKey
     _.config_parse.append(ctx.lines, key, val)
@@ -1052,35 +1089,11 @@ local function run(ctx)
         _.config_parse.set(ctx.lines, ctx.editKey, chosenVal)
         ctx.state = "editor"
       elseif mode == "bbl_hotkey" then
-        local slot = tonumber(ctx.pathPickerBblHotkeySlot)
-        if slot then
-          _.config_parse.setBblHotkeyPath(ctx.lines, ctx.pathPickerBblHotkeyKey, slot, chosenVal,
-            ctx.pathPickerBblHotkeyDisabled and true or false)
-        end
-        ctx.state = ctx.pathPickerReturnState or "bbl_hotkey_entry"
-        ctx.pathPickerBblHotkeyKey = nil
-        ctx.pathPickerBblHotkeySlot = nil
-        ctx.pathPickerBblHotkeyDisabled = nil
-        ctx.pathPickerReturnState = nil
+        applyBblHotkeyPathAndReturn(ctx, chosenVal)
       elseif mode == "bbl_irx" then
-        local entryIdx = tonumber(ctx.pathPickerBblIrxIdx)
-        if entryIdx then
-          _.config_parse.setBblIrxEntry(ctx.lines, entryIdx, chosenVal, ctx.pathPickerBblIrxDisabled and true or false)
-        end
-        ctx.state = ctx.pathPickerReturnState or "bbl_irx_entries"
-        ctx.pathPickerBblIrxIdx = nil
-        ctx.pathPickerBblIrxDisabled = nil
-        ctx.pathPickerReturnState = nil
-        ctx.pathPickerFileExts = nil
+        applyBblIrxPathAndReturn(ctx, chosenVal)
       elseif mode == "entry" then
-        local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-        setMenuEntryPathValue(paths, ctx.pathPickerEditIdx, chosenVal)
-        _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
-        ctx.entryIdx = ctx.pathPickerForEntryIdx
-        ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
-        ctx.pathPickerForEntryIdx = nil
-        ctx.pathPickerEditIdx = nil
-        ctx.pathPickerReturnState = nil
+        applyMenuEntryPathAndReturn(ctx, chosenVal)
       elseif mode == "add" then
         local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or ctx.addPathKey
         _.config_parse.append(ctx.lines, key, chosenVal)
@@ -1488,17 +1501,7 @@ local function run(ctx)
                         _.config_parse.setBblHotkeyArgs(ctx.lines, bblKey, bblSlot, {})
                       end
                     elseif applyBblIrxPathAndReturn(ctx, pathVal) then
-                    elseif ctx.pathPickerForEntryIdx then
-                      local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-                      setMenuEntryPathValue(paths, ctx.pathPickerEditIdx, pathVal)
-                      _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
-                      if e.noargs then _.config_parse.setMenuEntryArgs(ctx.lines, ctx.pathPickerForEntryIdx, {}) end
-                      ctx.entryIdx = ctx.pathPickerForEntryIdx
-                      ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or
-                          "menu_entry_edit"
-                      ctx.pathPickerForEntryIdx = nil
-                      ctx.pathPickerEditIdx = nil
-                      ctx.pathPickerReturnState = nil
+                    elseif applyMenuEntryPathAndReturn(ctx, pathVal, { noargs = e.noargs }) then
                     elseif ctx.isAddPath then
                       local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or
                           ctx.addPathKey
@@ -1649,14 +1652,7 @@ local function run(ctx)
       if applyBootPathAndReturn(ctx, val) then
       elseif applyBblHotkeyPathAndReturn(ctx, val) then
       elseif applyBblIrxPathAndReturn(ctx, val) then
-      elseif ctx.pathPickerForEntryIdx then
-        local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-        setMenuEntryPathValue(paths, ctx.pathPickerEditIdx, val)
-        _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
-        ctx.entryIdx = ctx.pathPickerForEntryIdx
-        ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
-        ctx.pathPickerForEntryIdx = nil; ctx.pathPickerEditIdx = nil
-        ctx.pathPickerReturnState = nil
+      elseif applyMenuEntryPathAndReturn(ctx, val) then
       elseif ctx.isAddPath then
         local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or ctx.addPathKey
         _.config_parse.append(ctx.lines, key, val)
@@ -1893,15 +1889,7 @@ local function run(ctx)
           elseif applyBootPathAndReturn(ctx, val) then
           elseif applyBblHotkeyPathAndReturn(ctx, val) then
           elseif applyBblIrxPathAndReturn(ctx, val) then
-          elseif ctx.pathPickerForEntryIdx then
-            local paths = _.config_parse.getMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx)
-            setMenuEntryPathValue(paths, ctx.pathPickerEditIdx, val)
-            _.config_parse.setMenuEntryPaths(ctx.lines, ctx.pathPickerForEntryIdx, paths)
-            ctx.entryIdx = ctx.pathPickerForEntryIdx
-            ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
-            ctx.pathPickerForEntryIdx = nil
-            ctx.pathPickerEditIdx = nil
-            ctx.pathPickerReturnState = nil
+          elseif applyMenuEntryPathAndReturn(ctx, val) then
           elseif ctx.isAddPath then
             local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or
                 ctx.addPathKey
