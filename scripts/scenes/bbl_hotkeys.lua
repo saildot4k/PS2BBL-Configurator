@@ -46,9 +46,9 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
         local canon = canonicalHotkeyId(nameId, hotkeySet)
         local s = canon and summary[canon] or nil
         if s then
-          if not s.disabledSeen then
-            s.disabled = entry.comment and true or false
-            s.disabledSeen = true
+          s.disabledSeen = true
+          if entry.comment then
+            s.disabled = true
           end
           if s.name == "" then
             s.name = entry.value or ""
@@ -60,9 +60,9 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
           local canon = canonicalHotkeyId(pathId, hotkeySet)
           local s = canon and summary[canon] or nil
           if s then
-            if not s.disabledSeen then
-              s.disabled = entry.comment and true or false
-              s.disabledSeen = true
+            s.disabledSeen = true
+            if entry.comment == 2 then
+              s.disabled = true
             end
             local slot = tonumber(slotStr)
             if slot and slot >= 1 and slot <= cap then
@@ -84,9 +84,11 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
           if argId then
             local canon = canonicalHotkeyId(argId, hotkeySet)
             local s = canon and summary[canon] or nil
-            if s and not s.disabledSeen then
-              s.disabled = entry.comment and true or false
+            if s then
               s.disabledSeen = true
+              if entry.comment == 2 then
+                s.disabled = true
+              end
             end
           end
         end
@@ -112,6 +114,11 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
       end
       s.pathCount = pathCount
       s.activePathCount = activePathCount
+      if activePathCount > 0 then
+        s.disabled = false
+      elseif pathCount > 0 then
+        s.disabled = true
+      end
       s.slotState = nil
     end
   end

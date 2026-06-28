@@ -1652,6 +1652,9 @@ local function run(ctx)
         ((_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10)
     local autoSlotData = (isAutoSlotRow and autoSlotNum and _.config_parse.getBblHotkeySlot) and
         cachedGetBblHotkeySlot(ctx.lines, "AUTO", autoSlotNum) or nil
+    local autoSlotParentDisabled = (isAutoSlotRow and _.config_parse.isBblHotkeyDisabled and
+        _.config_parse.isBblHotkeyDisabled(ctx.lines, "AUTO")) and true or false
+    local autoSlotEffectiveDisabled = (autoSlotParentDisabled or (autoSlotData and autoSlotData.disabled)) and true or false
 
     local function esrKey(slot)
       return "ESR_Path_E" .. tostring(slot or "")
@@ -1966,7 +1969,7 @@ local function run(ctx)
         {
           pad = autoSlotHasPresence(autoSlotData) and "triangle" or "",
           label = autoSlotHasPresence(autoSlotData) and
-              ((autoSlotData.disabled and (_.menu_str.enable_label or "Enable")) or
+              ((autoSlotEffectiveDisabled and (_.menu_str.enable_label or "Enable")) or
                 (_.menu_str.disable_label or "Disable")) or "",
           row = 1
         },
@@ -2602,8 +2605,15 @@ local function run(ctx)
         local slotNum = tonumber(o.bblEntrySlot)
         local slot = _.config_parse.getBblHotkeySlot and _.config_parse.getBblHotkeySlot(ctx.lines, "AUTO", slotNum) or nil
         if autoSlotHasPresence(slot) then
-          local changed = _.config_parse.setBblHotkeySlotDisabled and
-              _.config_parse.setBblHotkeySlotDisabled(ctx.lines, "AUTO", slotNum, not slot.disabled)
+          local slotDisabled = (slot and slot.disabled) and true or false
+          local effectiveDisabled = (autoSlotParentDisabled or slotDisabled) and true or false
+          local changed = false
+          if autoSlotParentDisabled and effectiveDisabled and _.config_parse.enableBblHotkeySlotFromDisabledParent then
+            changed = _.config_parse.enableBblHotkeySlotFromDisabledParent(ctx.lines, "AUTO", slotNum) and true or false
+          else
+            changed = _.config_parse.setBblHotkeySlotDisabled and
+                _.config_parse.setBblHotkeySlotDisabled(ctx.lines, "AUTO", slotNum, not slotDisabled) or false
+          end
           if changed then
             markConfigMutated(ctx)
           end
