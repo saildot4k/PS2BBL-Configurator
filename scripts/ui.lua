@@ -1122,18 +1122,6 @@ local function getVisibleScenePageKey(ctx, sceneName)
   end
 
   if scene == "path_picker" then
-    if ctx.pathPickerLoading then
-      local load = ctx.pathPickerLoading
-      local id = ""
-      if type(load) == "table" then
-        id = load.deviceId or load.hddRoot or load.deviceType or ""
-      end
-      return "path_picker:loading:" .. scenePagePart(id)
-    end
-    if ctx.pathPickerLoadingTimeoutMsg then
-      return "path_picker:timeout:" .. scenePagePart(ctx.pathPickerLoadingTimeoutMsg)
-    end
-
     local sub = tostring(ctx.pathPickerSub or "")
     if sub == "browse" then
       return "path_picker:browse:" .. scenePagePart(ctx.pathBrowsePath)
@@ -1154,8 +1142,17 @@ local function updateVisibleScenePageTransition(ctx, sceneName)
   local key = getVisibleScenePageKey(ctx, sceneName)
   if not key then return end
   local scene = tostring(sceneName or ctx.state or "")
+  if scene == "path_picker" and (ctx.pathPickerLoading or ctx.pathPickerLoadingTimeoutMsg) then
+    ctx._lastVisibleScenePageWasTransient = true
+    return
+  end
   if ctx._lastVisibleScenePageScene ~= scene then
     ctx._lastVisibleScenePageScene = scene
+    ctx._lastVisibleScenePageKey = key
+    return
+  end
+  if ctx._lastVisibleScenePageWasTransient then
+    ctx._lastVisibleScenePageWasTransient = nil
     ctx._lastVisibleScenePageKey = key
     return
   end
