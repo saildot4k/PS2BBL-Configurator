@@ -296,6 +296,23 @@ local function clearLoadChoiceState(s)
   s.loadReturnState = nil
 end
 
+local function clearSelectConfigAutoBackState(s)
+  if not s then return end
+  s.chosenMcSlotAuto = nil
+  s.osdmenuConfigDeviceAuto = nil
+  s.mbrConfigDeviceAuto = nil
+  s.selectConfigSourceAuto = nil
+  s.pendingKnownPathAuto = nil
+  s.editorBackStateOverride = nil
+end
+
+local function clearAutoSourceBackState(s)
+  if not s then return end
+  s.selectConfigSourceAuto = nil
+  s.pendingKnownPathAuto = nil
+  s.editorBackStateOverride = nil
+end
+
 local function detectMainCnfFilter()
   local configured = (_G.CONFIG_UI and _G.CONFIG_UI.startupMainFilter) or nil
   if type(configured) == "table" then
@@ -850,6 +867,7 @@ local function runMain(s, pad)
     s.mbrConfigDeviceSel = nil
     s.osdmenuConfigDevice = nil
     s.osdmenuConfigDeviceSel = nil
+    clearSelectConfigAutoBackState(s)
     clearLoadChoiceState(s)
     clearPathPickerState(s)
     s.state = entry.state
@@ -1311,7 +1329,11 @@ local function runChooseMc(s, pad)
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
   elseif #slots == 1 then
     s.chosenMcSlot = slots[1]
-    if s.context == "osdmenu" then s.osdmenuConfigDevice = "mc" end
+    s.chosenMcSlotAuto = true
+    if s.context == "osdmenu" then
+      s.osdmenuConfigDevice = "mc"
+      s.osdmenuConfigDeviceAuto = true
+    end
     s.state = nextStateAfterMcSelection(s)
   else
     dt(s.font, s.drawMode, M, MY, 1.1, main_str.select_memory_card, common.WHITE)
@@ -1333,7 +1355,11 @@ local function runChooseMc(s, pad)
     end
     if (pad & PAD_CROSS) ~= 0 then
       s.chosenMcSlot = slots[s.mcSel]
-      if s.context == "osdmenu" then s.osdmenuConfigDevice = "mc" end
+      s.chosenMcSlotAuto = nil
+      if s.context == "osdmenu" then
+        s.osdmenuConfigDevice = "mc"
+        s.osdmenuConfigDeviceAuto = nil
+      end
       s.state = nextStateAfterMcSelection(s)
     end
     if (pad & PAD_CIRCLE) ~= 0 then s.state = "main" end
@@ -1356,17 +1382,9 @@ local function appendUniquePath(paths, path)
 end
 
 getPresentMcSlotsCached = function(s)
-  local sceneEpoch = (s and s._sceneEpoch) or 0
-  local cache = s and s.presentMcSlotsCache or nil
-  if cache and cache.sceneEpoch == sceneEpoch and type(cache.slots) == "table" then
-    return cache.slots
-  end
   local slots = (common.getPresentMcSlots and common.getPresentMcSlots()) or {}
   if s then
-    s.presentMcSlotsCache = {
-      sceneEpoch = sceneEpoch,
-      slots = slots,
-    }
+    s.presentMcSlotsCache = nil
   end
   return slots
 end
@@ -1427,34 +1445,38 @@ end
 
 local function getSelectConfigDevicePresence(s)
   local sceneEpoch = (s and s._sceneEpoch) or 0
-  local cache = s and s.selectConfigDevicePresenceCache or nil
-  if cache and cache.sceneEpoch == sceneEpoch then
-    return cache
-  end
 
   local launch = getLaunchSlotInfo(s)
+  local mc0, mc1 = false, false
   local usb0, usb1 = true, true
-  local mmce0, mmce1 = true, true
+  local slots = getPresentMcSlotsCached(s)
+  for i = 1, #slots do
+    if slots[i] == 0 then
+      mc0 = true
+    elseif slots[i] == 1 then
+      mc1 = true
+    end
+  end
+  local mmce0, mmce1 = mc0, mc1
 
-  -- We only know slot-level state for the currently booted removable family.
-  -- Other families stay visible and are lazy-loaded only after user confirms.
+  -- MC drivers are already loaded, so MC/MMCE slot visibility can be decided up front.
+  -- Other removable families stay visible and are lazy-loaded only after user confirms.
   if launch.family == "usb" and (launch.slot == 0 or launch.slot == 1) then
     usb0 = (launch.slot == 0)
     usb1 = (launch.slot == 1)
-  elseif launch.family == "mmce" and (launch.slot == 0 or launch.slot == 1) then
-    mmce0 = (launch.slot == 0)
-    mmce1 = (launch.slot == 1)
   end
 
   local out = {
     sceneEpoch = sceneEpoch,
+    mc0 = mc0,
+    mc1 = mc1,
     mmce0 = mmce0,
     mmce1 = mmce1,
     usb0 = usb0,
     usb1 = usb1,
   }
   if s then
-    s.selectConfigDevicePresenceCache = out
+    s.selectConfigDevicePresenceCache = nil
   end
   return out
 end
@@ -1665,6 +1687,16 @@ local function runSelectConfig(s, pad)
         drawNoCompatibleDevices()
         return
       end
+      if #options == 1 then
+        local pick = options[1]
+        s.osdmenuConfigDevice = pick.device
+        s.chosenMcSlot = pick.slot
+        s.osdmenuConfigDeviceAuto = true
+        s.chosenMcSlotAuto = (pick.slot ~= nil) and true or nil
+        clearLoadChoiceState(s)
+        clearPathPickerState(s)
+        return
+      end
 
       local sel = getOsdmenuConfigDeviceSel(s)
       if sel < 1 then sel = 1 end
@@ -1695,6 +1727,8 @@ local function runSelectConfig(s, pad)
         if pick and pick.device then
           s.osdmenuConfigDevice = pick.device
           s.chosenMcSlot = pick.slot
+          s.osdmenuConfigDeviceAuto = nil
+          s.chosenMcSlotAuto = nil
           clearLoadChoiceState(s)
           clearPathPickerState(s)
           return
@@ -1716,6 +1750,24 @@ local function runSelectConfig(s, pad)
       end
       if #options == 0 then
         drawNoCompatibleDevices()
+        return
+      end
+      local function chooseMbrDevice(pick)
+        if not (pick and pick.device) then return false end
+        s.mbrConfigDevice = pick.device
+        clearLoadChoiceState(s)
+        clearPathPickerState(s)
+        if pick.device == "hdd" and not s.hddReady then
+          s.initHddSuccessState = "select_config"
+          s.initHddCancelState = "select_config"
+          s.state = "initHdd"
+          s.initHddPhase = "load"
+        end
+        return true
+      end
+      if #options == 1 then
+        s.mbrConfigDeviceAuto = true
+        chooseMbrDevice(options[1])
         return
       end
       local sel = getMbrConfigDeviceSel(s)
@@ -1743,17 +1795,8 @@ local function runSelectConfig(s, pad)
       setMbrConfigDeviceSel(s, sel)
 
       if (pad & PAD_CROSS) ~= 0 then
-        local pick = options[sel]
-        if pick and pick.device then
-          s.mbrConfigDevice = pick.device
-          clearLoadChoiceState(s)
-          clearPathPickerState(s)
-          if pick.device == "hdd" and not s.hddReady then
-            s.initHddSuccessState = "select_config"
-            s.initHddCancelState = "select_config"
-            s.state = "initHdd"
-            s.initHddPhase = "load"
-          end
+        s.mbrConfigDeviceAuto = nil
+        if chooseMbrDevice(options[sel]) then
           return
         end
       end
@@ -1779,6 +1822,17 @@ local function runSelectConfig(s, pad)
     if sel < 1 then sel = 1 end
     if sel > #options then sel = #options end
     setSelectConfigSel(s, sel)
+
+    if #options == 1 then
+      local pick = options[1]
+      if pick and pick.fileType then
+        s.fileType = pick.fileType
+        clearLoadChoiceState(s)
+        clearPathPickerState(s)
+        s.state = "open"
+        return
+      end
+    end
 
     dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM_COLOR)
@@ -1810,10 +1864,25 @@ local function runSelectConfig(s, pad)
     end
     if (pad & PAD_CIRCLE) ~= 0 then
       if s.context == "mbr" then
+        if s.mbrConfigDeviceAuto then
+          s.mbrConfigDevice = nil
+          s.mbrConfigDeviceAuto = nil
+          s.state = "main"
+          return
+        end
         s.mbrConfigDevice = nil
       elseif s.context == "osdmenu" then
+        if s.osdmenuConfigDeviceAuto then
+          s.osdmenuConfigDevice = nil
+          s.osdmenuConfigDeviceAuto = nil
+          s.chosenMcSlot = nil
+          s.chosenMcSlotAuto = nil
+          s.state = "main"
+          return
+        end
         s.osdmenuConfigDevice = nil
         s.chosenMcSlot = nil
+        s.chosenMcSlotAuto = nil
       else
         s.state = "main"
       end
@@ -1825,17 +1894,56 @@ local function runSelectConfig(s, pad)
     local options = buildFreemcbootSourceOptions(s, s.context)
     if s.pendingKnownPathPick then
       local pendingPick = s.pendingKnownPathPick
+      local pendingAuto = s.pendingKnownPathAuto
       s.pendingKnownPathPick = nil
+      s.pendingKnownPathAuto = nil
+      if pendingAuto then
+        s.selectConfigSourceAuto = true
+        s.editorBackStateOverride = "main"
+      end
       if applyKnownPathPick(s, pendingPick, main_str, { directOpenSingle = true }) then
         return
       end
     end
+    local function chooseFreemcbootSource(pick, autoSelected)
+      s.fileType = "freemcboot_cnf"
+      clearPathPickerState(s)
+      if pick and pick.action == "known_paths" then
+        if autoSelected then
+          s.selectConfigSourceAuto = true
+          s.editorBackStateOverride = "main"
+        else
+          clearAutoSourceBackState(s)
+        end
+        if pickUsesHdd(pick) and not s.hddReady then
+          s.pendingKnownPathPick = pick
+          s.pendingKnownPathAuto = autoSelected and true or nil
+          s.initHddSuccessState = "select_config"
+          s.initHddCancelState = "select_config"
+          s.state = "initHdd"
+          s.initHddPhase = "load"
+          return true
+        end
+        applyKnownPathPick(s, pick, main_str, { directOpenSingle = true })
+        return true
+      end
+      return false
+    end
+    if #options == 0 then
+      drawNoCompatibleDevices()
+      return
+    end
+    if #options == 1 then
+      chooseFreemcbootSource(options[1], true)
+      return
+    end
+
     local sel = getSelectConfigSel(s)
     if sel < 1 then sel = 1 end
     if sel > #options then sel = #options end
     setSelectConfigSel(s, sel)
 
-    dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_file, common.WHITE)
+    dt(s.font, s.drawMode, M, MY, 1.1, main_str.which_device or "Which device?", common.WHITE)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_select_circle_back_items, nil, common.DIM_COLOR)
     for i, opt in ipairs(options) do
       local y = MY + sc(50) + (i - 1) * L
@@ -1851,20 +1959,7 @@ local function runSelectConfig(s, pad)
     setSelectConfigSel(s, sel)
 
     if (pad & PAD_CROSS) ~= 0 then
-      local pick = options[sel]
-      s.fileType = "freemcboot_cnf"
-      clearPathPickerState(s)
-      if pick and pick.action == "known_paths" then
-        if pickUsesHdd(pick) and not s.hddReady then
-          s.pendingKnownPathPick = pick
-          s.initHddSuccessState = "select_config"
-          s.initHddCancelState = "select_config"
-          s.state = "initHdd"
-          s.initHddPhase = "load"
-          return
-        end
-        applyKnownPathPick(s, pick, main_str, { directOpenSingle = true })
-      end
+      chooseFreemcbootSource(options[sel], false)
     end
 
     if (pad & PAD_CIRCLE) ~= 0 then
@@ -1882,11 +1977,48 @@ local function runSelectConfig(s, pad)
   local options = buildBblSourceOptions(s, iniFileType)
   if s.pendingKnownPathPick then
     local pendingPick = s.pendingKnownPathPick
+    local pendingAuto = s.pendingKnownPathAuto
     s.pendingKnownPathPick = nil
+    s.pendingKnownPathAuto = nil
+    if pendingAuto then
+      s.selectConfigSourceAuto = true
+    end
     if applyKnownPathPick(s, pendingPick, main_str, { includeBrowseIni = true }) then
       return
     end
   end
+  local function chooseBblSource(pick, autoSelected)
+    s.fileType = iniFileType
+    clearPathPickerState(s)
+    if pick and pick.action == "known_paths" then
+      if autoSelected then
+        s.selectConfigSourceAuto = true
+      else
+        clearAutoSourceBackState(s)
+      end
+      if pickUsesHdd(pick) and not s.hddReady then
+        s.pendingKnownPathPick = pick
+        s.pendingKnownPathAuto = autoSelected and true or nil
+        s.initHddSuccessState = "select_config"
+        s.initHddCancelState = "select_config"
+        s.state = "initHdd"
+        s.initHddPhase = "load"
+        return true
+      end
+      applyKnownPathPick(s, pick, main_str, { includeBrowseIni = true })
+      return true
+    end
+    return false
+  end
+  if #options == 0 then
+    drawNoCompatibleDevices()
+    return
+  end
+  if #options == 1 then
+    chooseBblSource(options[1], true)
+    return
+  end
+
   local sel = getSelectConfigSel(s)
   if sel < 1 then sel = 1 end
   if sel > #options then sel = #options end
@@ -1916,20 +2048,7 @@ local function runSelectConfig(s, pad)
   setSelectConfigSel(s, sel)
 
   if (pad & PAD_CROSS) ~= 0 then
-    local pick = options[sel]
-    s.fileType = iniFileType
-    clearPathPickerState(s)
-    if pick and pick.action == "known_paths" then
-      if pickUsesHdd(pick) and not s.hddReady then
-        s.pendingKnownPathPick = pick
-        s.initHddSuccessState = "select_config"
-        s.initHddCancelState = "select_config"
-        s.state = "initHdd"
-        s.initHddPhase = "load"
-        return
-      end
-      applyKnownPathPick(s, pick, main_str, { includeBrowseIni = true })
-    end
+    chooseBblSource(options[sel], false)
   end
 
   if (pad & PAD_CIRCLE) ~= 0 then
@@ -2019,6 +2138,17 @@ local function runInitHdd(s, pad)
     dt(s.font, s.drawMode, math.max(M, cx), cy, 1.1, msg, common.WHITE)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.circle_back_items, nil, common.DIM_COLOR)
     if (pad & PAD_CIRCLE) ~= 0 then
+      if s.selectConfigSourceAuto or s.pendingKnownPathAuto or s.mbrConfigDeviceAuto then
+        s.mbrConfigDevice = nil
+        s.mbrConfigDeviceAuto = nil
+        clearAutoSourceBackState(s)
+        s.state = "main"
+        s.initHddPhase = nil
+        s.initHddSuccessState = nil
+        s.initHddCancelState = nil
+        s.pendingKnownPathPick = nil
+        return
+      end
       if s.context == "mbr" and s.initHddCancelState == "select_config" then
         s.mbrConfigDevice = nil
       end
@@ -2336,7 +2466,12 @@ local function runChooseLoad(s, pad)
     end
   end
   if (pad & PAD_CIRCLE) ~= 0 then
-    s.state = s.loadReturnState or "select_config"
+    if s.selectConfigSourceAuto then
+      s.state = "main"
+      clearAutoSourceBackState(s)
+    else
+      s.state = s.loadReturnState or "select_config"
+    end
     clearLoadChoiceState(s)
   end
 end

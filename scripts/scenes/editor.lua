@@ -61,6 +61,9 @@ local function osdmbrBootKeyHasEntries(ctx, _, key)
 end
 
 local function getEditorBackState(ctx)
+  if ctx and type(ctx.editorBackStateOverride) == "string" and ctx.editorBackStateOverride ~= "" then
+    return ctx.editorBackStateOverride
+  end
   local context = ctx and ctx.context or nil
   local fileType = ctx and ctx.fileType or nil
   local commonRef = ctx and ctx._ and ctx._.common or nil
