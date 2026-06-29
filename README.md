@@ -1,4 +1,4 @@
-![logo](https://raw.githubusercontent.com/saildot4k/R3CONFIGURATOR/refs/heads/main/res/title.png)
+![logo](https://raw.githubusercontent.com/saildot4k/R3CONFIGURATOR/refs/heads/v1.3.X/res/title.png)
 
 A PlayStation 2 GUI application for editing config files for:  
 - FMCB, FHDB 
