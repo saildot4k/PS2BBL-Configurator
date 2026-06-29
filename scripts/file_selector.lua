@@ -37,6 +37,36 @@ local function hideRuntimeHddDevices()
   return runtimePlatform().hideHddDevices == true
 end
 
+local function getPresentMcMap()
+  local runtime = _G and _G.CONFIG_UI
+  local common = runtime and runtime.common
+  if not (common and common.getPresentMcSlots) then return nil end
+  local ok, slots = pcall(common.getPresentMcSlots)
+  if not ok or type(slots) ~= "table" then return nil end
+  local present = {}
+  for i = 1, #slots do
+    local slot = tonumber(slots[i])
+    if slot == 0 or slot == 1 then
+      present[slot] = true
+    end
+  end
+  return present
+end
+
+local function isMcBackedStaticPresent(s)
+  if not s then return true end
+  local slot = nil
+  if s.name == "mc0:" or s.name == "mmce0:" then
+    slot = 0
+  elseif s.name == "mc1:" or s.name == "mmce1:" then
+    slot = 1
+  end
+  if slot == nil then return true end
+  local present = getPresentMcMap()
+  if not present then return true end
+  return present[slot] == true
+end
+
 -- Static devices (fixed mountpoints). descKey = key in strings.devices for label (so lang cycle works).
 local STATIC = {
   { name = "mc0:",   descKey = "memory_card_1", mbr = true },
@@ -289,6 +319,7 @@ function file_selector.getDevices(context, opts)
   local function addStatic(out, addedStatic, s, opts)
     if not s then return end
     opts = opts or {}
+    if not isMcBackedStaticPresent(s) then return end
     if s.deviceType == "hdd" and hideRuntimeHddDevices() then return end
     if opts.isMbr and not s.mbr then return end
     if s.mbrOnly and not (opts.isMbr or opts.includeMbrOnly) then return end
@@ -362,8 +393,10 @@ function file_selector.getDevices(context, opts)
     local out = {}
     for i = 1, 2 do
       local s = STATIC[i]
-      local desc = (s.descKey and dev[s.descKey]) or s.name
-      table.insert(out, withFlags({ name = s.name, desc = desc, deviceType = s.deviceType }))
+      if isMcBackedStaticPresent(s) then
+        local desc = (s.descKey and dev[s.descKey]) or s.name
+        table.insert(out, withFlags({ name = s.name, desc = desc, deviceType = s.deviceType }))
+      end
     end
     return out
   end
