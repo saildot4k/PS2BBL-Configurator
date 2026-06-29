@@ -1071,6 +1071,114 @@ local function getSceneTransitionRuntime()
   return transitionType, transitionFrames
 end
 
+local function getPageTransitionDirectionFromPad(padMask)
+  local mask = tonumber(padMask) or 0
+  if (mask & PAD_CIRCLE) ~= 0 then
+    return "out"
+  end
+  if (mask & PAD_CROSS) ~= 0 then
+    return "in"
+  end
+  return "in"
+end
+
+local function scenePagePart(value)
+  if value == nil then return "" end
+  return tostring(value)
+end
+
+local function getVisibleScenePageKey(ctx, sceneName)
+  if type(ctx) ~= "table" then return nil end
+  local scene = tostring(sceneName or ctx.state or "")
+  if scene == "" then return nil end
+
+  if scene == "select_config" then
+    local context = tostring(ctx.context or "")
+    if context == "osdmenu" then
+      if not ctx.osdmenuConfigDevice then
+        return "select_config:osdmenu:device"
+      end
+      return "select_config:osdmenu:file:" .. scenePagePart(ctx.osdmenuConfigDevice) .. ":" ..
+          scenePagePart(ctx.chosenMcSlot)
+    elseif context == "mbr" then
+      if not ctx.mbrConfigDevice then
+        return "select_config:mbr:device"
+      end
+      return "select_config:mbr:file:" .. scenePagePart(ctx.mbrConfigDevice)
+    elseif context == "hosdmenu" then
+      return "select_config:hosdmenu:file"
+    elseif context == "freemcboot" or context == "freehddboot" then
+      return "select_config:" .. context .. ":file"
+    elseif context == "ps2bbl" or context == "psxbbl" then
+      return "select_config:" .. context .. ":device"
+    end
+    return "select_config:" .. context .. ":" .. scenePagePart(ctx.fileType)
+  end
+
+  if scene == "choose_load" then
+    local count = (type(ctx.loadChoices) == "table") and #ctx.loadChoices or 0
+    return "choose_load:" .. scenePagePart(ctx.context) .. ":" .. scenePagePart(ctx.fileType) .. ":" ..
+        tostring(count)
+  end
+
+  if scene == "path_picker" then
+    local sub = tostring(ctx.pathPickerSub or "")
+    if sub == "browse" then
+      return "path_picker:browse:" .. scenePagePart(ctx.pathBrowsePath)
+    elseif sub == "partitions" then
+      return "path_picker:partitions:" .. scenePagePart(ctx.pathBrowsePath)
+    elseif sub == "device" then
+      return "path_picker:device:" .. scenePagePart(ctx.pathPickerContext) .. ":" ..
+          scenePagePart(ctx.pathPickerTarget)
+    end
+    return "path_picker:" .. sub
+  end
+
+  return scene
+end
+
+local function updateVisibleScenePageTransition(ctx, sceneName)
+  if type(ctx) ~= "table" then return end
+  local key = getVisibleScenePageKey(ctx, sceneName)
+  if not key then return end
+  local scene = tostring(sceneName or ctx.state or "")
+  if scene == "initHdd" then
+    ctx.sceneTransitionIn = nil
+    ctx._lastVisibleScenePageWasTransient = true
+    return
+  end
+  if scene == "path_picker" and (ctx.pathPickerLoading or ctx.pathPickerLoadingTimeoutMsg) then
+    ctx.sceneTransitionIn = nil
+    ctx._lastVisibleScenePageWasTransient = true
+    return
+  end
+  if ctx._lastVisibleScenePageScene ~= scene then
+    ctx._lastVisibleScenePageScene = scene
+    ctx._lastVisibleScenePageKey = key
+    return
+  end
+  if ctx._lastVisibleScenePageWasTransient then
+    ctx._lastVisibleScenePageWasTransient = nil
+    ctx._lastVisibleScenePageKey = key
+    return
+  end
+  if ctx._lastVisibleScenePageKey == key then return end
+  ctx._lastVisibleScenePageKey = key
+  ctx._sceneEpoch = (tonumber(ctx._sceneEpoch) or 0) + 1
+  if common.isSceneTransitionInActive and common.isSceneTransitionInActive(ctx) then
+    return
+  end
+  local transitionType, transitionFrames = getSceneTransitionRuntime()
+  if common.shouldRunSceneTransition and not common.shouldRunSceneTransition(transitionType, transitionFrames) then
+    return
+  end
+  if common.beginSceneTransitionIn then
+    common.beginSceneTransitionIn(ctx, transitionType, transitionFrames, {
+      direction = getPageTransitionDirectionFromPad(ctx._lastPadEffective),
+    })
+  end
+end
+
 local function applyStartupSceneTransitionCnf()
   local transitionType = STARTUP_CFG and STARTUP_CFG.scene_transition or nil
   local transitionFrames = STARTUP_CFG and STARTUP_CFG.scene_transition_frames or nil
@@ -1726,7 +1834,11 @@ local function mainLoop()
   ctx.font, ctx.drawMode, ctx.drawListRow = font, drawMode, drawListRow
   ctx.drawBackgroundLayer = drawSelectionOverlayLogo
   ctx._preSceneFrameHook = function(c, sceneName)
-    return updateKatamariEasterEggTrigger(c, sceneName)
+    if updateKatamariEasterEggTrigger(c, sceneName) then
+      return true
+    end
+    updateVisibleScenePageTransition(c, sceneName)
+    return false
   end
   ctx.main = {
     (strings.main.main_freemcboot or "FreeMCBoot"),
@@ -2162,6 +2274,13 @@ local function mainLoop()
     return t == "slide" or t == "whip_pan" or t == "zoom" or t == "flip_horizontal" or t == "flip_vertical"
   end
 
+  local function isTransientModuleLoadingScene(c, sceneName)
+    if sceneName == "initHdd" then return true end
+    if sceneName ~= "path_picker" or type(c) ~= "table" then return false end
+    if c.pathPickerLoading or c.pathPickerLoadingTimeoutMsg then return true end
+    return c.pathPickerLockedDevice and not c.pathPickerLockedDeviceStarted
+  end
+
   local sceneSelectionSpecs = {
     main = {
       { field = "mainSel", top = 1 },
@@ -2380,6 +2499,14 @@ local function mainLoop()
       c.sceneTransitionIn = nil
       return c
     end
+    if isTransientModuleLoadingScene(c, prevScene) or isTransientModuleLoadingScene(c, nextScene) or
+        (prevScene == "path_picker" and c._lastVisibleScenePageWasTransient) then
+      c.sceneTransitionIn = nil
+      if prevScene == "path_picker" then
+        c._lastVisibleScenePageWasTransient = nil
+      end
+      return c
+    end
     local direction = getSceneNavigationDirection(c, nextScene)
     -- Some scene changes (notably * -> open) are one-shot loaders that can
     -- immediately resolve to editor/choose_load. Resolve once up-front so
@@ -2394,6 +2521,14 @@ local function mainLoop()
         nextScene = "open"
       end
       state = c.state
+      if isTransientModuleLoadingScene(c, prevScene) or isTransientModuleLoadingScene(c, nextScene) or
+          (prevScene == "path_picker" and c._lastVisibleScenePageWasTransient) then
+        c.sceneTransitionIn = nil
+        if prevScene == "path_picker" then
+          c._lastVisibleScenePageWasTransient = nil
+        end
+        return c
+      end
     end
     local transitionType, transitionFrames = getSceneTransitionRuntime()
     local normalizedType = transitionType

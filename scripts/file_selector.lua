@@ -7,7 +7,7 @@
     "fmcb_launch" = FreeMCBoot/FreeHDBoot launch-key paths
   Returns selected path string (and optional cdrom args table if cdrom chosen).
   Special entries: cdrom (Launch Disc), dvd (MBR only, DVD Player).
-  Option to convert mc/mmce path to wildcard (mc?, mmce?) at selection time.
+  Option to convert mc/mmce/usbN paths to wildcard (mc?, mmce?, usb:) at selection time.
   OSDMenu and MBR use the same lang strings (strings.devices) for device and special-entry labels.
 
   Path/device flags (noargs, exclusive, specialargs) unify handling across path_picker and entry_paths:
@@ -55,18 +55,34 @@ local BDM_OPTIONS = {
   { deviceId = "mx4sio", bdmType = "mx4sio", bdmPathPrefix = "mx4sio" },
 }
 
-local function bdmPrefixForContext(opt, context)
+local function isFreeBootContext(context, fileType)
+  return context == "fmcb_entry" or context == "fmcb_launch" or
+      context == "freemcboot" or context == "freehddboot" or
+      context == "freedvdboot" or
+      fileType == "freemcboot_cnf"
+end
+
+local function bdmPrefixForContext(opt, context, fileType)
   if not opt then return nil end
   if (context == "mbr" or context == "osdmenu" or context == "path_only" or context == "config_ini") and
       opt.bdmType == "ata" and opt.deviceId then
     return opt.deviceId
   end
-  if opt.bdmType == "usb" and (context == "osdmenu" or context == "mbr") then
-    return "usb"
+  if opt.bdmType == "usb" then
+    if isFreeBootContext(context, fileType) then return opt.bdmPathPrefix end
+    return opt.deviceId
   end
-  if opt.bdmType == "mx4sio" and (context == "osdmenu" or context == "mbr") then
+  if opt.bdmType == "mx4sio" then
     return "mx4sio"
   end
+  return opt.bdmPathPrefix
+end
+
+local function bdmBrowsePrefix(opt)
+  if not opt then return nil end
+  if opt.bdmType == "usb" and opt.deviceId then return opt.deviceId end
+  if opt.bdmType == "ata" and opt.deviceId then return opt.deviceId end
+  if opt.bdmType == "mx4sio" then return "mx4sio" end
   return opt.bdmPathPrefix
 end
 
@@ -314,7 +330,8 @@ function file_selector.getDevices(context, opts)
         desc = desc,
         deviceType = deviceType,
         deviceId = opt.deviceId,
-        bdmPathPrefix = bdmPrefixForContext(opt, context)
+        bdmPathPrefix = bdmPrefixForContext(opt, context, fileType),
+        bdmBrowsePrefix = bdmBrowsePrefix(opt)
       }))
     if addedBdm then addedBdm[opt.deviceId] = true end
   end
@@ -492,29 +509,39 @@ end
 
 -- BDM deviceId (ata0, usb0, usb1, mx4sio) -> path prefix for config.
 -- Optional context allows scene-specific prefix mapping.
-function file_selector.getBdmPathPrefix(deviceId, context)
+function file_selector.getBdmPathPrefix(deviceId, context, fileType)
   if not deviceId then return nil end
   for _, opt in ipairs(BDM_OPTIONS) do
-    if opt.deviceId == deviceId then return bdmPrefixForContext(opt, context) end
+    if opt.deviceId == deviceId then return bdmPrefixForContext(opt, context, fileType) end
   end
   return nil
 end
 
--- Convert path to wildcard form: mc0/ mc1 -> mc?, mmce0/ mmce1 -> mmce?.
+function file_selector.getBdmBrowsePrefix(deviceId)
+  if not deviceId then return nil end
+  for _, opt in ipairs(BDM_OPTIONS) do
+    if opt.deviceId == deviceId then return bdmBrowsePrefix(opt) end
+  end
+  return nil
+end
+
+-- Convert path to wildcard form: mc0/mc1 -> mc?, mmce0/mmce1 -> mmce?, usb0/usb1 -> usb:.
 function file_selector.toWildcard(path)
   if not path then return path end
   path = path:gsub("^mc0:", "mc?:")
   path = path:gsub("^mc1:", "mc?:")
   path = path:gsub("^mmce0:", "mmce?:")
   path = path:gsub("^mmce1:", "mmce?:")
+  path = path:gsub("^usb0:", "usb:")
+  path = path:gsub("^usb1:", "usb:")
   return path
 end
 
--- Check if path is mc0/mc1 or mmce0/mmce1 (can offer wildcard).
+-- Check if path is mc0/mc1, mmce0/mmce1, or usb0/usb1 (can offer wildcard).
 function file_selector.canWildcard(path)
   if not path then return false end
   local p = pathPrefix(path)
-  return p == "mc0:" or p == "mc1:" or p == "mmce0:" or p == "mmce1:"
+  return p == "mc0:" or p == "mc1:" or p == "mmce0:" or p == "mmce1:" or p == "usb0:" or p == "usb1:"
 end
 
 -- Resolve logical deviceId (ata0, usb0, usb1, mx4sio) to current mountpoint (e.g. mass0:). Returns nil if not found.

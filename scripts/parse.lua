@@ -466,21 +466,7 @@ end
 function config_parse.migrateOsdmenuBootOption(lines)
   if not lines then return false end
 
-  local skipLogo = config_parse.get(lines, "OSDSYS_Skip_Logo")
-  local innerBrowser = config_parse.get(lines, "OSDSYS_Inner_Browser")
-  local hasLegacyBootKeys = skipLogo ~= nil or innerBrowser ~= nil
   local changed = false
-
-  if hasLegacyBootKeys and config_parse.get(lines, "OSDSYS_boot") == nil then
-    local boot = "clock"
-    if tostring(innerBrowser or "") == "1" then
-      boot = "browser"
-    elseif tostring(skipLogo or "") == "0" then
-      boot = "opening"
-    end
-    config_parse.set(lines, "OSDSYS_boot", boot)
-    changed = true
-  end
 
   local removeKeys = {
     OSDSYS_Skip_Logo = true,
@@ -520,13 +506,28 @@ local function isBootArgKeyFor(key, candidate)
 end
 
 function config_parse.isBootKeyDisabled(lines, key)
+  local sawPath = false
+  local sawActivePath = false
+  local sawArg = false
+  local sawActiveArg = false
   for _, entry in ipairs(lines or {}) do
     local k = entry and entry.key
-    if k and (k == key or isBootArgKeyFor(key, k)) then
-      return entry.comment and true or false
+    if k == key then
+      sawPath = true
+      if not entry.comment then
+        sawActivePath = true
+      end
+    elseif k and isBootArgKeyFor(key, k) then
+      sawArg = true
+      if not entry.comment then
+        sawActiveArg = true
+      end
     end
   end
-  return false
+  if sawPath then
+    return not sawActivePath
+  end
+  return sawArg and (not sawActiveArg)
 end
 
 function config_parse.setBootKeyDisabled(lines, key, disabled)
@@ -635,6 +636,39 @@ function config_parse.setBootPathDisabled(lines, key, pathNum, disabled, opts)
     end
   end
   return false
+end
+
+-- When a boot-key parent is disabled, enabling one child path should:
+-- 1) enable the parent and all child lines,
+-- 2) then keep only the selected path enabled and disable other defined paths.
+function config_parse.enableBootPathFromDisabledParent(lines, key, pathNum)
+  local selectedPath = math.floor(tonumber(pathNum) or 0)
+  local paths = config_parse.getBootPathEntries(lines, key)
+  if selectedPath < 1 or selectedPath > #paths then return false end
+
+  local changed = false
+  if config_parse.isBootKeyDisabled(lines, key) then
+    config_parse.setBootKeyDisabled(lines, key, false)
+    changed = true
+  end
+
+  for i = 1, #paths do
+    local shouldDisable = (i ~= selectedPath)
+    local item = paths[i] or {}
+    local currentDisabled = item.disabled and true or false
+    local currentComment = item.comment
+    local normalizedComment = (currentComment == 2) and 2 or (currentComment and true or nil)
+    local desiredComment = shouldDisable and true or nil
+    if currentDisabled ~= shouldDisable or normalizedComment ~= desiredComment then
+      changed = true
+    end
+    item.disabled = shouldDisable
+    item.comment = desiredComment
+    paths[i] = item
+  end
+
+  config_parse.setBootPathEntries(lines, key, paths)
+  return changed
 end
 
 -- OSDMBR.CNF: boot_auto, boot_start, etc. can have multiple path lines.
@@ -1091,20 +1125,47 @@ function config_parse.isBblHotkeyDisabled(lines, keyId)
   local ids = bblHotkeyIdVariants(keyId)
   if #ids == 0 then return false end
   local keySet = {}
+  local nameSet = {}
+  local pathSet = {}
   for i = 1, #ids do
     local id = ids[i]
-    keySet[bblNameKey(id)] = true
+    local nameKey = bblNameKey(id)
+    keySet[nameKey] = true
+    nameSet[nameKey] = true
     for slot = 1, BBL_MAX_ENTRIES do
-      keySet[bblPathKey(id, slot)] = true
+      local pathKey = bblPathKey(id, slot)
+      keySet[pathKey] = true
+      pathSet[pathKey] = true
       keySet[bblArgKey(id, slot)] = true
     end
   end
+  local sawEntry = false
+  local sawPath = false
+  local sawActivePath = false
+  local sawExplicitDisabled = false
   for _, entry in ipairs(lines or {}) do
     if entry.key and keySet[entry.key] then
-      return entry.comment and true or false
+      sawEntry = true
+      if nameSet[entry.key] and entry.comment then
+        sawExplicitDisabled = true
+      end
+      if pathSet[entry.key] then
+        sawPath = true
+        if not entry.comment then
+          sawActivePath = true
+        end
+        if entry.comment then
+          sawExplicitDisabled = true
+        end
+      elseif (not nameSet[entry.key]) and entry.comment == 2 then
+        sawExplicitDisabled = true
+      end
     end
   end
-  return false
+  if sawPath then
+    return not sawActivePath
+  end
+  return sawEntry and sawExplicitDisabled
 end
 
 function config_parse.setBblHotkeyDisabled(lines, keyId, disabled)
@@ -1317,10 +1378,9 @@ function config_parse.enableBblHotkeySlotFromDisabledParent(lines, keyId, entryI
 
   local changed = false
   if config_parse.isBblHotkeyDisabled(lines, keyId) then
-    if config_parse.setBblHotkeyDisabled(lines, keyId, false) then
-      changed = true
-    end
+    changed = true
   end
+  config_parse.setBblHotkeyDisabled(lines, keyId, false)
 
   for i = 1, BBL_MAX_ENTRIES do
     local slot = config_parse.getBblHotkeySlot(lines, keyId, i)
@@ -1594,7 +1654,7 @@ function config_parse.getMenuEntryIndices(lines)
       local n = entry.key:match("^name_OSDSYS_ITEM_(%d+)$")
       if n then
         local idx = tonumber(n)
-        byIdx[idx] = not not entry.comment
+        byIdx[idx] = config_parse.isMenuEntryDisabled(lines, idx)
       end
     end
   end
@@ -1643,9 +1703,26 @@ function config_parse.getMenuEntrySeparatorText(name)
   return trim(s:sub(3))
 end
 
--- True if the menu entry at idx is commented (disabled).
+local function hasActiveMenuEntryPath(lines, idx)
+  local idxStr = tostring(idx)
+  local pattern = "^path%d+_OSDSYS_ITEM_" .. idxStr .. "$"
+  for _, entry in ipairs(lines or {}) do
+    if entry.key and entry.key:match(pattern) and not entry.comment then
+      local value = trim(tostring(entry.value or ""))
+      if value ~= "" then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+-- True if the menu entry at idx is disabled. Any active child path enables the parent.
 function config_parse.isMenuEntryDisabled(lines, idx)
   local _, commented = config_parse.getWithComment(lines, "name_OSDSYS_ITEM_" .. tostring(idx))
+  if hasActiveMenuEntryPath(lines, idx) then
+    return false
+  end
   return commented and true or false
 end
 
@@ -2244,6 +2321,10 @@ function config_parse.regenerateForSave(lines, fileType, options)
 
   if fileType == "osdmenu_cnf" then
     config_parse.migrateOsdmenuBootOption(lines)
+    if config_parse.get(lines, "OSDSYS_boot") == nil then
+      local bootDefault = (type(opt.getOsdmenuDefault) == "function" and opt.getOsdmenuDefault("OSDSYS_boot")) or "clock"
+      config_parse.set(lines, "OSDSYS_boot", bootDefault)
+    end
     normalizeMenuEntryArgsInPlace()
     return config_parse.regenerateLines(lines, opt.osdmenu_cnf_categories or {}, true, nil, nil, true)
   end
