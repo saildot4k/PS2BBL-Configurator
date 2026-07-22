@@ -637,6 +637,9 @@ function common.formatDisplayPathWithCommands(_, pathVal)
   if up == "$OSDSYS" then return p.bbl_cmd_osdsys_label or "OSDSYS" end
   if up == "$HOSDSYS" then return ((_ and _.dev_str and _.dev_str.hosdsys) or "Browser 2.0 / HOSDMenu") end
   if up == "$PSBBN" then return ((_ and _.dev_str and _.dev_str.psbbn) or "PlayStation Broadband Navigator") end
+  if raw == "hdd0:__system:pfs:/p2lboot/osdboot.elf" then
+    return ((_ and _.dev_str and _.dev_str.ps2_linux_ntsc) or "PS2 Linux NTSC")
+  end
   if up == "$XOSD" then return ((_ and _.dev_str and _.dev_str.xosd) or "XOSD (PSX ONLY!)") end
   if up == "$OSDMENU" then return ((_ and _.dev_str and _.dev_str.osdmenu_psx) or "OSDMenu (PSX ONLY!)") end
   if up == "$CREDITS" then return p.bbl_cmd_credits_label or "Credits" end

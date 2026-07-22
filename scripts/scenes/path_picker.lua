@@ -579,6 +579,8 @@ local function applyMenuEntryPathAndReturn(ctx, val, opts)
   end
   if opts and opts.noargs then
     _.config_parse.setMenuEntryArgs(ctx.lines, entryIdx, {})
+  elseif opts and type(opts.args) == "table" then
+    _.config_parse.setMenuEntryArgs(ctx.lines, entryIdx, opts.args)
   end
   ctx.entryIdx = entryIdx
   ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -896,6 +898,12 @@ local function ensureBblCommandRows(ctx)
     cmdRows = {
       { name = "cdrom", desc = launchDiscLabel, special = "bbl_cmd", exclusive = true, noargs = true, specialargs = true },
       { name = "$OSDSYS", desc = p.bbl_cmd_osdsys_label or "OSDSYS", special = "bbl_cmd" },
+      {
+        name = "hdd0:__system:pfs:/p2lboot/osdboot.elf",
+        desc = (_.dev_str and _.dev_str.ps2_linux_ntsc) or "PS2 Linux NTSC",
+        special = "bbl_cmd",
+        args = { "--kernel", "pfs0:/p2lboot/ps2-linux-ntsc" },
+      },
       { name = "$CREDITS", desc = p.bbl_cmd_credits_label or "Credits", special = "bbl_cmd", exclusive = true },
       { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker_label or "Check HDD", special = "bbl_cmd", exclusive = true },
     }
@@ -1491,17 +1499,24 @@ local function run(ctx)
                   ctx.pfs1Mounted = nil
                   if ctx.pathPickerBootKey and ctx.lines then
                     local bootKey = ctx.pathPickerBootKey
-                    applyBootPathAndReturn(ctx, pathVal)
-                    if e.noargs then _.config_parse.setBootArgs(ctx.lines, bootKey, {}) end
+                    if applyBootPathAndReturn(ctx, pathVal) then
+                      if e.noargs then
+                        _.config_parse.setBootArgs(ctx.lines, bootKey, {})
+                      elseif type(e.args) == "table" then
+                        _.config_parse.setBootArgs(ctx.lines, bootKey, e.args)
+                      end
+                    end
                   else
                     local bblKey = ctx.pathPickerBblHotkeyKey
                     local bblSlot = tonumber(ctx.pathPickerBblHotkeySlot)
                     if applyBblHotkeyPathAndReturn(ctx, pathVal) then
                       if e.noargs and _.config_parse.setBblHotkeyArgs and bblKey and bblSlot then
                         _.config_parse.setBblHotkeyArgs(ctx.lines, bblKey, bblSlot, {})
+                      elseif type(e.args) == "table" and _.config_parse.setBblHotkeyArgs and bblKey and bblSlot then
+                        _.config_parse.setBblHotkeyArgs(ctx.lines, bblKey, bblSlot, e.args)
                       end
                     elseif applyBblIrxPathAndReturn(ctx, pathVal) then
-                    elseif applyMenuEntryPathAndReturn(ctx, pathVal, { noargs = e.noargs }) then
+                    elseif applyMenuEntryPathAndReturn(ctx, pathVal, { noargs = e.noargs, args = e.args }) then
                     elseif ctx.isAddPath then
                       local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or
                           ctx.addPathKey
