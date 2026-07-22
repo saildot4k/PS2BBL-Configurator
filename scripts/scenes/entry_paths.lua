@@ -196,7 +196,7 @@ local function run(ctx)
         linuxArgs = _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {}
       end
       if linuxArgs then
-        for _, item in ipairs(linuxArgs) do
+        for argIdx, item in ipairs(linuxArgs) do
           local value = type(item) == "table" and item.value or item
           if value == "pfs0:/p2lboot/ps2-linux-vga" then return _.dev_str.ps2_linux_vga or "PS2 Linux VGA" end
           if value == "pfs0:/p2lboot/ps2-linux-ntsc" then return _.dev_str.ps2_linux_ntsc or "PS2 Linux NTSC" end
