@@ -922,6 +922,13 @@ local function ensureBblCommandRows(ctx)
         args = { "--kernel", "pfs0:/p2lboot/ps2-linux-ntsc" },
         defaultName = true,
       },
+      {
+        name = "hdd0:__system:pfs:/p2lboot/osdboot.elf",
+        desc = (_.dev_str and _.dev_str.ps2_linux_vga) or "PS2 Linux VGA",
+        special = "bbl_cmd",
+        args = { "--kernel", "pfs0:/p2lboot/ps2-linux-vga" },
+        defaultName = true,
+      },
       { name = "$CREDITS", desc = p.bbl_cmd_credits_label or "Credits", special = "bbl_cmd", exclusive = true },
       { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker_label or "Check HDD", special = "bbl_cmd", exclusive = true },
     }
