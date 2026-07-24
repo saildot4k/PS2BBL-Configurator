@@ -126,38 +126,6 @@ local PS2_LINUX_VGA_ARGS = { "--kernel", "pfs0:/p2lboot/ps2-linux-vga" }
 local SPECIAL = {
   { name = "$HOSDSYS", descKey = "hosdsys",     special = "hosdsys",  contexts = "mbr" },
   { name = "$PSBBN",   descKey = "psbbn",       special = "psbbn",    contexts = "mbr" },
-  {
-    name = PS2_LINUX_OSDBOOT_PATH,
-    descKey = "ps2_linux_ntsc",
-    special = "ps2_linux_ntsc",
-    contexts = "mbr",
-    args = PS2_LINUX_NTSC_ARGS,
-    defaultName = true,
-  },
-  {
-    name = PS2_LINUX_OSDBOOT_PATH,
-    descKey = "ps2_linux_vga",
-    special = "ps2_linux_vga",
-    contexts = "mbr",
-    args = PS2_LINUX_VGA_ARGS,
-    defaultName = true,
-  },
-  {
-    name = PS2_LINUX_OSDBOOT_PATH,
-    descKey = "ps2_linux_ntsc",
-    special = "ps2_linux_ntsc",
-    contexts = "osdmenu",
-    args = PS2_LINUX_NTSC_ARGS,
-    defaultName = true,
-  },
-  {
-    name = PS2_LINUX_OSDBOOT_PATH,
-    descKey = "ps2_linux_vga",
-    special = "ps2_linux_vga",
-    contexts = "osdmenu",
-    args = PS2_LINUX_VGA_ARGS,
-    defaultName = true,
-  },
   { name = "$XOSD",    descKey = "xosd",        helperKey = "mbr_cmd_xosd",    special = "xosd",     contexts = "mbr" },
   { name = "$OSDMENU", descKey = "osdmenu_psx", helperKey = "mbr_cmd_osdmenu", special = "osdmenu",  contexts = "mbr" },
   { name = "OSDSYS",   descKey = "osd",         special = "osdsys",   contexts = { "osdmenu", "fmcb_entry", "fmcb_launch" }, noargs = true, exclusive = true },
@@ -166,7 +134,43 @@ local SPECIAL = {
   { name = "POWEROFF", descKey = "shutdown",    special = "poweroff", contexts = { "osdmenu", "fmcb_entry", "fmcb_launch" }, noargs = true, exclusive = true },
   { name = "cdrom",    descKey = "launch_disc", special = "cdrom",    contexts = { "osdmenu", "mbr" }, noargs = true, exclusive = true, specialargs = true },
   { name = "dvd",      descKey = "dvd_player",  special = "dvd",      contexts = "mbr",                noargs = true, exclusive = true },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_ntsc",
+    special = "ps2_linux_ntsc",
+    contexts = "mbr",
+    args = PS2_LINUX_NTSC_ARGS,
+    defaultName = true,
+  },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_vga",
+    special = "ps2_linux_vga",
+    contexts = "mbr",
+    args = PS2_LINUX_VGA_ARGS,
+    defaultName = true,
+  },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_ntsc",
+    special = "ps2_linux_ntsc",
+    contexts = "osdmenu",
+    args = PS2_LINUX_NTSC_ARGS,
+    defaultName = true,
+  },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_vga",
+    special = "ps2_linux_vga",
+    contexts = "osdmenu",
+    args = PS2_LINUX_VGA_ARGS,
+    defaultName = true,
+  },
 }
+
+local function isPs2LinuxSpecial(s)
+  return s and (s.special == "ps2_linux_ntsc" or s.special == "ps2_linux_vga")
+end
 
 local function getFlagsByName(name)
   if not name or name == "" then return nil end
@@ -508,9 +512,11 @@ function file_selector.getDevices(context, opts)
     addBdm(out, addedBdm, opt, addOpts)
   end
   local deferredMbrSpecials = {}
+  local deferredLinuxSpecials = {}
   local function appendSpecial(s)
     if not s then return end
     if not isRuntimePsx() and (s.name == "$XOSD" or s.name == "$OSDMENU") then return end
+    if isPs2LinuxSpecial(s) and hideRuntimeHddDevices() then return end
     local desc = (s.descKey and dev[s.descKey]) or s.name
     local helper = (s.helperKey and pathStrings[s.helperKey]) or nil
     if isFmcbContext and s.name == "POWEROFF" then
@@ -527,7 +533,9 @@ function file_selector.getDevices(context, opts)
   end
   for _, s in ipairs(SPECIAL) do
     if inContext(s.contexts, context) then
-      if isMbr and (s.name == "$XOSD" or s.name == "$OSDMENU") then
+      if isPs2LinuxSpecial(s) then
+        deferredLinuxSpecials[#deferredLinuxSpecials + 1] = s
+      elseif isMbr and (s.name == "$XOSD" or s.name == "$OSDMENU") then
         deferredMbrSpecials[#deferredMbrSpecials + 1] = s
       else
         appendSpecial(s)
@@ -535,6 +543,9 @@ function file_selector.getDevices(context, opts)
     end
   end
   for _, s in ipairs(deferredMbrSpecials) do
+    appendSpecial(s)
+  end
+  for _, s in ipairs(deferredLinuxSpecials) do
     appendSpecial(s)
   end
   return out

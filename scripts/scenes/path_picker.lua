@@ -2,6 +2,16 @@
 
 local actions_menu = dofile("scripts/scenes/actions_menu.lua")
 
+local function hideRuntimeHddDevices(ctx)
+  local _ = ctx and ctx._
+  if _ and _.common and _.common.hideRuntimeHddDevices then
+    return _.common.hideRuntimeHddDevices()
+  end
+  local runtime = _G and _G.CONFIG_UI
+  local platform = runtime and runtime.runtimePlatform
+  return type(platform) == "table" and platform.hideHddDevices == true
+end
+
 local function bootKeyPickerOpts(ctx)
   if not ctx then return nil end
   if ctx.pathPickerBootKeyDisabled == nil then return nil end
@@ -915,23 +925,25 @@ local function ensureBblCommandRows(ctx)
     cmdRows = {
       { name = "cdrom", desc = launchDiscLabel, special = "bbl_cmd", exclusive = true, noargs = true, specialargs = true },
       { name = "$OSDSYS", desc = p.bbl_cmd_osdsys_label or "OSDSYS", special = "bbl_cmd" },
-      {
+      { name = "$CREDITS", desc = p.bbl_cmd_credits_label or "Credits", special = "bbl_cmd", exclusive = true },
+      { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker_label or "Check HDD", special = "bbl_cmd", exclusive = true },
+    }
+    if not hideRuntimeHddDevices(ctx) then
+      cmdRows[#cmdRows + 1] = {
         name = "hdd0:__system:pfs:/p2lboot/osdboot.elf",
         desc = (_.dev_str and _.dev_str.ps2_linux_ntsc) or "PS2 Linux NTSC",
         special = "bbl_cmd",
         args = { "--kernel", "pfs0:/p2lboot/ps2-linux-ntsc" },
         defaultName = true,
-      },
-      {
+      }
+      cmdRows[#cmdRows + 1] = {
         name = "hdd0:__system:pfs:/p2lboot/osdboot.elf",
         desc = (_.dev_str and _.dev_str.ps2_linux_vga) or "PS2 Linux VGA",
         special = "bbl_cmd",
         args = { "--kernel", "pfs0:/p2lboot/ps2-linux-vga" },
         defaultName = true,
-      },
-      { name = "$CREDITS", desc = p.bbl_cmd_credits_label or "Credits", special = "bbl_cmd", exclusive = true },
-      { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker_label or "Check HDD", special = "bbl_cmd", exclusive = true },
-    }
+      }
+    end
   end
   for i = 1, #cmdRows do
     table.insert(ctx.pathList, cmdRows[i])
