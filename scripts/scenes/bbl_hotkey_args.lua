@@ -140,12 +140,14 @@ local function run(ctx)
   local entryPath = (slotData and slotData.path) or ""
   local hasCdrom = arg_presets.hasCdromPath(entryPath)
   local isNhddlElfPath = arg_presets.isNhddlElfPath(entryPath)
+  local isDkwdrvElfPath = arg_presets.isDkwdrvElfPath(entryPath)
   local usedKnown, usedModes = arg_presets.collectUsedArgs(args)
   local profileState = arg_profiles.resolve({
     surface = "bbl_hotkey",
     context = ctx.context,
     fileType = ctx.fileType,
     hasNhddlPath = isNhddlElfPath,
+    hasDkwdrvPath = isDkwdrvElfPath,
   })
   local presetRows = arg_profiles.buildAddRows(profileState)
   if not arg_presets.pathsSupportPatinfo(entryPath) then

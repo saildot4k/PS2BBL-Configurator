@@ -188,6 +188,22 @@ local function run(ctx)
     if p == "dvd" then return _.dev_str.dvd_player end
     if (p or ""):upper() == "$HOSDSYS" then return _.dev_str.hosdsys end
     if (p or ""):upper() == "$PSBBN" then return _.dev_str.psbbn end
+    if p == "hdd0:__system:pfs:/p2lboot/osdboot.elf" then
+      local linuxArgs = nil
+      if isBoot and ctx.bootKey and _.config_parse.getBootArgEntries then
+        linuxArgs = _.config_parse.getBootArgEntries(ctx.lines, ctx.bootKey, bootKeyOpts) or {}
+      elseif (not isBoot) and ctx.entryIdx and _.config_parse.getMenuEntryArgs then
+        linuxArgs = _.config_parse.getMenuEntryArgs(ctx.lines, ctx.entryIdx) or {}
+      end
+      if linuxArgs then
+        for argIdx, item in ipairs(linuxArgs) do
+          local value = type(item) == "table" and item.value or item
+          if value == "pfs0:/p2lboot/ps2-linux-vga" then return _.dev_str.ps2_linux_vga or "PS2 Linux VGA" end
+          if value == "pfs0:/p2lboot/ps2-linux-ntsc" then return _.dev_str.ps2_linux_ntsc or "PS2 Linux NTSC" end
+        end
+      end
+      return _.dev_str.ps2_linux_ntsc or "PS2 Linux NTSC"
+    end
     if (p or ""):upper() == "$XOSD" then return _.dev_str.xosd or "XOSD (PSX ONLY!)" end
     if (p or ""):upper() == "$OSDMENU" then return _.dev_str.osdmenu_psx or "OSDMenu (PSX ONLY!)" end
     if p == "OSDSYS" or p == "osdsys" then return _.dev_str.osd end

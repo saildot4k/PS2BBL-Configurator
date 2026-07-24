@@ -134,6 +134,10 @@ local rowsNhddl = {
   makeRow("-udpfs_ip=<ip>", nil, "NHDDL UDPFS IP; pairs with -mode=udpfs.", { kind = "udpfs_ip", uniqueKey = "udpfs_ip" }),
 }
 
+local rowsDkwdrv = {
+  makeRow("-cdboot", "-cdboot", "Autoboot PS1 disc", { uniqueKey = "cdboot" }),
+}
+
 local rowsCdromLauncher = {
   makeRow("-nologo", "-nologo", "Launch disc directly, bypassing rom0:PS2LOGO.",
     { uniqueKey = "nologo", cdromOnly = true }),
@@ -176,6 +180,15 @@ appendRows(profiles.ps2bbl_nhddl.rows, rowsTitleApp)
 appendEgsmRows(profiles.ps2bbl_nhddl.rows, "ps2bbl")
 appendRows(profiles.ps2bbl_nhddl.rows, rowsDev9Patinfo)
 
+profiles.ps2bbl_dkwdrv = {
+  id = "ps2bbl_dkwdrv",
+  label = "PS2BBL/PSXBBL + DKWDRV",
+  menuTag = "DKWDRV",
+  usesDkwdrvArgs = true,
+  rows = {},
+}
+appendRows(profiles.ps2bbl_dkwdrv.rows, rowsDkwdrv)
+
 profiles.osdmenu_global = {
   id = "osdmenu_global",
   label = "OSDMenu Launcher",
@@ -201,6 +214,15 @@ appendEgsmRows(profiles.osdmenu_nhddl.rows, "osdmenu")
 appendRows(profiles.osdmenu_nhddl.rows, rowsDev9Patinfo)
 appendRows(profiles.osdmenu_nhddl.rows, rowsCdromLauncher)
 
+profiles.osdmenu_dkwdrv = {
+  id = "osdmenu_dkwdrv",
+  label = "OSDMenu + DKWDRV",
+  menuTag = "DKWDRV",
+  usesDkwdrvArgs = true,
+  rows = {},
+}
+appendRows(profiles.osdmenu_dkwdrv.rows, rowsDkwdrv)
+
 profiles.hosdmenu_global = cloneProfile(profiles.osdmenu_global)
 profiles.hosdmenu_global.id = "hosdmenu_global"
 profiles.hosdmenu_global.label = "HOSDMenu Launcher"
@@ -216,6 +238,11 @@ profiles.hosdmenu_nhddl.menuTag = "NHDDL"
 if EGSM_PROFILE_SUPPORT.hosdmenu then
   rewriteEgsmRows(profiles.hosdmenu_nhddl.rows, EGSM_ARG_KEY.hosdmenu)
 end
+
+profiles.hosdmenu_dkwdrv = cloneProfile(profiles.osdmenu_dkwdrv)
+profiles.hosdmenu_dkwdrv.id = "hosdmenu_dkwdrv"
+profiles.hosdmenu_dkwdrv.label = "HOSDMenu + DKWDRV"
+profiles.hosdmenu_dkwdrv.menuTag = "DKWDRV"
 
 profiles.osdmbr_global = {
   id = "osdmbr_global",
@@ -242,11 +269,20 @@ appendRows(profiles.osdmbr_nhddl.rows, rowsMbrLoader)
 appendRows(profiles.osdmbr_nhddl.rows, rowsMbrOnly)
 appendRows(profiles.osdmbr_nhddl.rows, rowsCdromLauncher)
 
+profiles.osdmbr_dkwdrv = {
+  id = "osdmbr_dkwdrv",
+  label = "OSDMenu MBR + DKWDRV",
+  menuTag = "DKWDRV",
+  usesDkwdrvArgs = true,
+  rows = {},
+}
+appendRows(profiles.osdmbr_dkwdrv.rows, rowsDkwdrv)
+
 local appProfileIds = {
-  ps2bbl = { "ps2bbl_generic", "ps2bbl_nhddl" },
-  osdmenu = { "osdmenu_global", "osdmenu_nhddl" },
-  hosdmenu = { "hosdmenu_global", "hosdmenu_nhddl" },
-  osdmbr = { "osdmbr_global", "osdmbr_nhddl" },
+  ps2bbl = { "ps2bbl_generic", "ps2bbl_nhddl", "ps2bbl_dkwdrv" },
+  osdmenu = { "osdmenu_global", "osdmenu_nhddl", "osdmenu_dkwdrv" },
+  hosdmenu = { "hosdmenu_global", "hosdmenu_nhddl", "hosdmenu_dkwdrv" },
+  osdmbr = { "osdmbr_global", "osdmbr_nhddl", "osdmbr_dkwdrv" },
 }
 
 local function inferAppKey(info)
@@ -275,15 +311,19 @@ local function getProfilesForApp(appKey)
   return out
 end
 
-local function getAutoProfileId(profileList, hasNhddlPath)
+local function getAutoProfileId(profileList, hasNhddlPath, hasDkwdrvPath)
   local fallback = (profileList[1] and profileList[1].id) or nil
-  if hasNhddlPath then
+  if hasDkwdrvPath then
+    for i = 1, #profileList do
+      if profileList[i].usesDkwdrvArgs then return profileList[i].id end
+    end
+  elseif hasNhddlPath then
     for i = 1, #profileList do
       if profileList[i].usesNhddlArgs then return profileList[i].id end
     end
   else
     for i = 1, #profileList do
-      if not profileList[i].usesNhddlArgs then return profileList[i].id end
+      if not profileList[i].usesNhddlArgs and not profileList[i].usesDkwdrvArgs then return profileList[i].id end
     end
   end
   return fallback
@@ -299,7 +339,8 @@ end
 function arg_profiles.resolve(info, overrideProfileId)
   local appKey = inferAppKey(info or {})
   local profileList = getProfilesForApp(appKey)
-  local autoId = getAutoProfileId(profileList, not not (info and info.hasNhddlPath))
+  local autoId = getAutoProfileId(profileList, not not (info and info.hasNhddlPath),
+    not not (info and info.hasDkwdrvPath))
   local autoProfile = resolveProfileById(profileList, autoId)
 
   local activeProfile = autoProfile
