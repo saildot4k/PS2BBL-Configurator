@@ -121,15 +121,35 @@ end
 -- Optional: noargs, exclusive, specialargs (specialargs is ignored unless exclusive is set).
 local PS2_LINUX_OSDBOOT_PATH = "hdd0:__system:pfs:/p2lboot/osdboot.elf"
 local PS2_LINUX_NTSC_ARGS = { "--kernel", "pfs0:/p2lboot/ps2-linux-ntsc" }
-local PS2_LINUX_NTSC_MBR_ARGS = { "--kernel", "pfs0:/p2lboot/ps2-linux-ntsc", "-noflags" }
-local PS2_LINUX_VGA_OSDBOOT_ARGS = { "--kernel", "pfs0:/p2lboot/ps2-linux-vga", "-noflags" }
+local PS2_LINUX_VGA_ARGS = { "--kernel", "pfs0:/p2lboot/ps2-linux-vga" }
 
 local SPECIAL = {
   { name = "$HOSDSYS", descKey = "hosdsys",     special = "hosdsys",  contexts = "mbr" },
   { name = "$PSBBN",   descKey = "psbbn",       special = "psbbn",    contexts = "mbr" },
-  { name = PS2_LINUX_OSDBOOT_PATH, descKey = "ps2_linux_ntsc", special = "ps2_linux_ntsc", contexts = "mbr", args = PS2_LINUX_NTSC_MBR_ARGS },
-  { name = PS2_LINUX_OSDBOOT_PATH, descKey = "ps2_linux_vga",  special = "ps2_linux_vga",  contexts = "mbr", args = PS2_LINUX_VGA_OSDBOOT_ARGS },
-  { name = PS2_LINUX_OSDBOOT_PATH, descKey = "ps2_linux_ntsc", special = "ps2_linux_ntsc", contexts = "osdmenu", args = PS2_LINUX_NTSC_ARGS },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_ntsc",
+    special = "ps2_linux_ntsc",
+    contexts = "mbr",
+    args = PS2_LINUX_NTSC_ARGS,
+    defaultName = true,
+  },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_vga",
+    special = "ps2_linux_vga",
+    contexts = "mbr",
+    args = PS2_LINUX_VGA_ARGS,
+    defaultName = true,
+  },
+  {
+    name = PS2_LINUX_OSDBOOT_PATH,
+    descKey = "ps2_linux_ntsc",
+    special = "ps2_linux_ntsc",
+    contexts = "osdmenu",
+    args = PS2_LINUX_NTSC_ARGS,
+    defaultName = true,
+  },
   { name = "$XOSD",    descKey = "xosd",        helperKey = "mbr_cmd_xosd",    special = "xosd",     contexts = "mbr" },
   { name = "$OSDMENU", descKey = "osdmenu_psx", helperKey = "mbr_cmd_osdmenu", special = "osdmenu",  contexts = "mbr" },
   { name = "OSDSYS",   descKey = "osd",         special = "osdsys",   contexts = { "osdmenu", "fmcb_entry", "fmcb_launch" }, noargs = true, exclusive = true },
@@ -488,7 +508,14 @@ function file_selector.getDevices(context, opts)
     if isFmcbContext and s.name == "POWEROFF" then
       desc = "POWEROFF"
     end
-    table.insert(out, withFlags({ name = s.name, desc = desc, helper = helper, special = s.special, args = s.args }))
+    table.insert(out, withFlags({
+      name = s.name,
+      desc = desc,
+      helper = helper,
+      special = s.special,
+      args = s.args,
+      defaultName = s.defaultName,
+    }))
   end
   for _, s in ipairs(SPECIAL) do
     if inContext(s.contexts, context) then

@@ -484,6 +484,16 @@ local function getFirstEmptyPathIndex(paths)
   return nil
 end
 
+local function trimmedText(value)
+  return tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function defaultNameFromPickerEntry(entry)
+  if not (entry and entry.defaultName) then return nil end
+  local name = trimmedText(entry.presetName or entry.desc or "")
+  return (name ~= "") and name or nil
+end
+
 local function getManualPathPrefillValue(ctx)
   if not ctx then return "" end
   local _ = ctx._
@@ -581,6 +591,13 @@ local function applyMenuEntryPathAndReturn(ctx, val, opts)
     _.config_parse.setMenuEntryArgs(ctx.lines, entryIdx, {})
   elseif opts and type(opts.args) == "table" then
     _.config_parse.setMenuEntryArgs(ctx.lines, entryIdx, opts.args)
+  end
+  local defaultName = type(opts) == "table" and opts.defaultName or nil
+  if defaultName and _.config_parse.getMenuEntryName and _.config_parse.setMenuEntryName then
+    local currentName = _.config_parse.getMenuEntryName(ctx.lines, entryIdx) or ""
+    if trimmedText(currentName) == "" then
+      _.config_parse.setMenuEntryName(ctx.lines, entryIdx, defaultName)
+    end
   end
   ctx.entryIdx = entryIdx
   ctx.state = ctx.pathPickerReturnState or (ctx.pathPickerEditIdx and "entry_paths") or "menu_entry_edit"
@@ -903,6 +920,7 @@ local function ensureBblCommandRows(ctx)
         desc = (_.dev_str and _.dev_str.ps2_linux_ntsc) or "PS2 Linux NTSC",
         special = "bbl_cmd",
         args = { "--kernel", "pfs0:/p2lboot/ps2-linux-ntsc" },
+        defaultName = true,
       },
       { name = "$CREDITS", desc = p.bbl_cmd_credits_label or "Credits", special = "bbl_cmd", exclusive = true },
       { name = "$HDDCHECKER", desc = p.bbl_cmd_hddchecker_label or "Check HDD", special = "bbl_cmd", exclusive = true },
@@ -1507,6 +1525,7 @@ local function run(ctx)
                       end
                     end
                   else
+                    local defaultName = defaultNameFromPickerEntry(e)
                     local bblKey = ctx.pathPickerBblHotkeyKey
                     local bblSlot = tonumber(ctx.pathPickerBblHotkeySlot)
                     if applyBblHotkeyPathAndReturn(ctx, pathVal) then
@@ -1515,8 +1534,14 @@ local function run(ctx)
                       elseif type(e.args) == "table" and _.config_parse.setBblHotkeyArgs and bblKey and bblSlot then
                         _.config_parse.setBblHotkeyArgs(ctx.lines, bblKey, bblSlot, e.args)
                       end
+                      if defaultName and _.config_parse.getBblHotkeyName and _.config_parse.setBblHotkeyName and bblKey then
+                        local currentName = _.config_parse.getBblHotkeyName(ctx.lines, bblKey) or ""
+                        if trimmedText(currentName) == "" then
+                          _.config_parse.setBblHotkeyName(ctx.lines, bblKey, defaultName)
+                        end
+                      end
                     elseif applyBblIrxPathAndReturn(ctx, pathVal) then
-                    elseif applyMenuEntryPathAndReturn(ctx, pathVal, { noargs = e.noargs, args = e.args }) then
+                    elseif applyMenuEntryPathAndReturn(ctx, pathVal, { noargs = e.noargs, args = e.args, defaultName = defaultName }) then
                     elseif ctx.isAddPath then
                       local key = (ctx.addPathKey == "path1_OSDSYS_ITEM_1") and _.resolveNextOsdItemKey(ctx.lines) or
                           ctx.addPathKey
