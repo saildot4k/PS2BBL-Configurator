@@ -79,6 +79,7 @@ local function run(ctx)
 
   local hasCdrom = arg_presets.hasCdromPath(paths)
   local hasNhddlElfPath = arg_presets.hasNhddlElfPath(paths)
+  local hasDkwdrvElfPath = arg_presets.hasDkwdrvElfPath(paths)
 
   local function getArgs()
     if isBoot then
@@ -181,6 +182,7 @@ local function run(ctx)
       fileType = ctx.fileType,
       isBoot = isBoot,
       hasNhddlPath = hasNhddlElfPath,
+      hasDkwdrvPath = hasDkwdrvElfPath,
     })
     local outAddRows = arg_profiles.buildAddRows(outProfileState)
     if not arg_presets.pathsSupportPatinfo(paths) then
@@ -211,6 +213,7 @@ local function run(ctx)
       fileType = ctx.fileType or "",
       hasCdrom = hasCdrom and true or false,
       hasNhddlElfPath = hasNhddlElfPath and true or false,
+      hasDkwdrvElfPath = hasDkwdrvElfPath and true or false,
       args = outArgs,
       total = outTotal,
       usedKnown = outUsedKnown,
@@ -226,7 +229,8 @@ local function run(ctx)
         cache.isBoot == isBoot and cache.entryIdx == (ctx.entryIdx or 0) and cache.bootKey == (ctx.bootKey or "") and
         cache.context == (ctx.context or "") and cache.fileType == (ctx.fileType or "") and
         cache.hasCdrom == (hasCdrom and true or false) and
-        cache.hasNhddlElfPath == (hasNhddlElfPath and true or false) then
+        cache.hasNhddlElfPath == (hasNhddlElfPath and true or false) and
+        cache.hasDkwdrvElfPath == (hasDkwdrvElfPath and true or false) then
       return cache
     end
     cache = buildArgsModel()

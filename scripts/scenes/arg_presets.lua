@@ -51,12 +51,29 @@ function arg_presets.isNhddlElfPath(path)
   return s:match("nhddl%.elf$") ~= nil
 end
 
+function arg_presets.isDkwdrvElfPath(path)
+  local s = trimText(path):lower()
+  return s:match("dkwdrv%.elf$") ~= nil
+end
+
 function arg_presets.hasNhddlElfPath(pathsOrPath)
   if type(pathsOrPath) == "string" then
     return arg_presets.isNhddlElfPath(pathsOrPath)
   end
   for _, item in ipairs(pathsOrPath or {}) do
     if arg_presets.isNhddlElfPath(arg_presets.pathValue(item)) then
+      return true
+    end
+  end
+  return false
+end
+
+function arg_presets.hasDkwdrvElfPath(pathsOrPath)
+  if type(pathsOrPath) == "string" then
+    return arg_presets.isDkwdrvElfPath(pathsOrPath)
+  end
+  for _, item in ipairs(pathsOrPath or {}) do
+    if arg_presets.isDkwdrvElfPath(arg_presets.pathValue(item)) then
       return true
     end
   end
@@ -123,6 +140,7 @@ function arg_presets.collectUsedArgs(args)
     ps1fast = false,
     ps1smooth = false,
     ps1vneg = false,
+    cdboot = false,
   }
   local usedModes = {}
   for _, item in ipairs(args or {}) do
@@ -164,6 +182,8 @@ function arg_presets.collectUsedArgs(args)
       usedKnown.ps1smooth = true
     elseif a == "-ps1vneg" then
       usedKnown.ps1vneg = true
+    elseif a == "-cdboot" then
+      usedKnown.cdboot = true
     else
       local mv = a:match("^%-mode%s*=%s*(.+)$")
       if mv and mv ~= "" then
