@@ -111,8 +111,8 @@ local rowsMbrLoader = {
 }
 
 local rowsMbrOnly = {
-  makeRow("-noflags", "-noflags", "OSDMenu MBR: disable configured flags for this path (keep last).",
-    { uniqueKey = "noflags" }),
+  makeRow("-noflags", "-noflags", "Skip all disc and application launch modifiers.",
+    { uniqueKey = "noflags", descKey = "noflags" }),
   makeRow("-patinfo", "-patinfo", "PATINFO path: first remaining argument becomes target ELF path.",
     { uniqueKey = "patinfo" }),
 }

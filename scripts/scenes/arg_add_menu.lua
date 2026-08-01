@@ -15,6 +15,14 @@ local function buildDefaultHints(_)
   }
 end
 
+local function rowDescription(_, row, fallback)
+  if row and row.descKey and _ and _.strings and type(_.strings.arg_presets) == "table" then
+    local translated = _.strings.arg_presets[row.descKey]
+    if type(translated) == "string" and translated ~= "" then return translated end
+  end
+  return (row and row.desc) or fallback or ""
+end
+
 function arg_add_menu.run(ctx, opts)
   if not ctx or not opts then return false end
   local _ = ctx._
@@ -55,10 +63,13 @@ function arg_add_menu.run(ctx, opts)
     return row ~= nil and (not rowDisabled(row))
   end
 
-  local function moveSelection(step)
+  local function moveSelection(step, moveOpts)
     local idx = ctx[selKey] or 1
     for attempt = 1, #rows do
-      idx = _.common.wrapListSelection(idx, #rows, step)
+      idx = _.common.moveListSelection(idx, #rows, step, {
+        ctx = ctx,
+        allowRepeatWrap = moveOpts and moveOpts.allowRepeatWrap == true,
+      })
       if isSelectable(idx) then
         ctx[selKey] = idx
         return
@@ -68,13 +79,13 @@ function arg_add_menu.run(ctx, opts)
 
   ctx[selKey] = _.common.clampListSelection(ctx[selKey] or 1, #rows)
   if not isSelectable(ctx[selKey]) then
-    moveSelection(1)
+    moveSelection(1, { allowRepeatWrap = true })
   end
   ctx[scrollKey] = _.common.centeredListScroll(ctx[selKey], #rows, maxVisible)
 
   local title = opts.title or (_.menu_str.new_argument_prompt or "Add argument")
   local selectedRow = rows[ctx[selKey]]
-  local desc = (selectedRow and selectedRow.desc) or (opts.descDefault or "")
+  local desc = rowDescription(_, selectedRow, opts.descDefault)
   local startY = _.MARGIN_Y + _.scaleY(50)
 
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)

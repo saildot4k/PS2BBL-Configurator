@@ -115,10 +115,10 @@ local function run(ctx)
 
   if not ctx.egsmActionsOpen then
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.egsmSel = ctx.egsmSel - 1; if ctx.egsmSel < 1 then ctx.egsmSel = total end
+      ctx.egsmSel = _.common.moveListSelection(ctx.egsmSel, total, -1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.egsmSel = ctx.egsmSel + 1; if ctx.egsmSel > total then ctx.egsmSel = 1 end
+      ctx.egsmSel = _.common.moveListSelection(ctx.egsmSel, total, 1, { ctx = ctx })
     end
   end
 

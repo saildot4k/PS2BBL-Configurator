@@ -1165,6 +1165,10 @@ local function updateVisibleScenePageTransition(ctx, sceneName)
   if ctx._lastVisibleScenePageKey == key then return end
   ctx._lastVisibleScenePageKey = key
   ctx._sceneEpoch = (tonumber(ctx._sceneEpoch) or 0) + 1
+  if common.resetPadRepeatState then
+    local rawPad = common.peekRawPad and common.peekRawPad(0) or nil
+    common.resetPadRepeatState(ctx, rawPad)
+  end
   if common.isSceneTransitionInActive and common.isSceneTransitionInActive(ctx) then
     return
   end
@@ -1887,6 +1891,7 @@ local function mainLoop()
   local textInputReturnState, textInputCursor, textInputScroll = "menu_entry_edit", 1, 1
   local holdFrameCount = 0
   local holdRepeatCountdown = 0
+  local holdRepeatCount = 0
   local holdRepeatFps = 0
   local bootKey, pathPickerBootKey, pathPickerReturnState = nil, nil, nil
   local configModified, editorLeavePrompt, returnToSelectConfigAfterSave, returnToSelectConfigAfterSaveFlash = false, nil,
@@ -1921,8 +1926,8 @@ local function mainLoop()
     c.pathPickerEditIdx, c.argEditIdx = pathPickerEditIdx, argEditIdx
     c.textInputReturnState, c.textInputCursor, c.textInputScroll = textInputReturnState, textInputCursor, textInputScroll
     c.bootKey, c.pathPickerBootKey, c.pathPickerReturnState = bootKey, pathPickerBootKey, pathPickerReturnState
-    c.prevPad, c.holdFrameCount, c.holdRepeatCountdown, c.holdRepeatFps = prevPad, holdFrameCount,
-        holdRepeatCountdown, holdRepeatFps
+    c.prevPad, c.holdFrameCount, c.holdRepeatCountdown, c.holdRepeatCount, c.holdRepeatFps = prevPad, holdFrameCount,
+        holdRepeatCountdown, holdRepeatCount, holdRepeatFps
     c.configModified, c.editorLeavePrompt, c.returnToSelectConfigAfterSave, c.returnToSelectConfigAfterSaveFlash =
         configModified, editorLeavePrompt, returnToSelectConfigAfterSave, returnToSelectConfigAfterSaveFlash
     c.openExplicitPath = openExplicitPath
@@ -1956,8 +1961,8 @@ local function mainLoop()
     textInputReturnState, textInputCursor, textInputScroll = c.textInputReturnState, c.textInputCursor, c
         .textInputScroll
     bootKey, pathPickerBootKey, pathPickerReturnState = c.bootKey, c.pathPickerBootKey, c.pathPickerReturnState
-    prevPad, holdFrameCount, holdRepeatCountdown, holdRepeatFps = c.prevPad or prevPad, c.holdFrameCount or 0,
-        c.holdRepeatCountdown or 0, c.holdRepeatFps or 0
+    prevPad, holdFrameCount, holdRepeatCountdown, holdRepeatCount, holdRepeatFps = c.prevPad or prevPad,
+        c.holdFrameCount or 0, c.holdRepeatCountdown or 0, c.holdRepeatCount or 0, c.holdRepeatFps or 0
     configModified, editorLeavePrompt, returnToSelectConfigAfterSave, returnToSelectConfigAfterSaveFlash =
         c.configModified, c.editorLeavePrompt, c.returnToSelectConfigAfterSave, c.returnToSelectConfigAfterSaveFlash
     openExplicitPath = c.openExplicitPath
@@ -2020,6 +2025,7 @@ local function mainLoop()
     c.prevPad = prevPad
     c.holdFrameCount = holdFrameCount
     c.holdRepeatCountdown = holdRepeatCountdown
+    c.holdRepeatCount = holdRepeatCount
     c.holdRepeatFps = holdRepeatFps
     local rawPadEffective = common.getPadEffective(c)
     local padEffective = common.shouldBlockInputForSceneTransition(c) and 0 or rawPadEffective
@@ -2027,6 +2033,7 @@ local function mainLoop()
     prevPad = c.prevPad or prevPad
     holdFrameCount = c.holdFrameCount or 0
     holdRepeatCountdown = c.holdRepeatCountdown or 0
+    holdRepeatCount = c.holdRepeatCount or 0
     holdRepeatFps = c.holdRepeatFps or holdRepeatFps
     -- Epochs are used by scene-level caches:
     -- scene epoch bumps on state transitions; input epoch bumps after button activity.
@@ -2495,6 +2502,10 @@ local function mainLoop()
   local function runSceneTransitionOnStateChange(c, prevScene, nextScene)
     if not c then return end
     if type(prevScene) ~= "string" or type(nextScene) ~= "string" or prevScene == nextScene then return end
+    if common.resetPadRepeatState then
+      local rawPad = common.peekRawPad and common.peekRawPad(0) or nil
+      common.resetPadRepeatState(c, rawPad)
+    end
     if prevScene == KATAMARI_EASTER_EGG_STATE or nextScene == KATAMARI_EASTER_EGG_STATE then
       c.sceneTransitionIn = nil
       return c

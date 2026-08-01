@@ -153,10 +153,10 @@ local function run(ctx)
   end
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, cdromHints, nil, _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_UP) ~= 0 then
-    ctx.cdromOptSel = ctx.cdromOptSel - 1; if ctx.cdromOptSel < 1 then ctx.cdromOptSel = #opts end
+    ctx.cdromOptSel = _.common.moveListSelection(ctx.cdromOptSel, #opts, -1, { ctx = ctx })
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
-    ctx.cdromOptSel = ctx.cdromOptSel + 1; if ctx.cdromOptSel > #opts then ctx.cdromOptSel = 1 end
+    ctx.cdromOptSel = _.common.moveListSelection(ctx.cdromOptSel, #opts, 1, { ctx = ctx })
   end
   local function toggleSelectedOption()
     if #opts == 0 then return end

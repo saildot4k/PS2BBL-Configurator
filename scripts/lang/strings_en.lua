@@ -101,7 +101,9 @@ strings.menu_entries = {
   launch_disc_options = "Launch disc options",
   arguments = "Arguments",
   launch_key_label = "Launch Key",
+  launch_keys_label = "Launch Keys",
   channel_label = "Channel",
+  auto_label = "Auto",
   entry_name_prompt = "Entry name",
   add_entry_label = "New entry",
   launch_disc_options_title = "Launch disc options",
@@ -123,6 +125,8 @@ strings.menu_entries = {
   cancel_label = "Cancel",
   preset_label = "Preset",
   default_label = "Default",
+  patched_defaults_label = "Patched defaults",
+  ps2_defaults_label = "PS2 defaults",
   button_colors_label = "Button colors",
   cancel_move_label = "Cancel move",
   confirm_label = "Confirm",
@@ -253,6 +257,12 @@ strings.categories_osdmbr = {
   [3] = "Autoboot and launch keys",
 }
 
+strings.categories_bbl = {
+  [1] = "Global",
+  [2] = "Auto boot",
+  [3] = "Launch keys",
+}
+
 -- OSDMENU.CNF option labels and descriptions (by option key)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Force video mode", desc = "Force OSD video mode" },
@@ -261,6 +271,11 @@ strings.options_osdmenu = {
   OSDSYS_boot = {
     label = "Boot target",
     desc = "Boot directly to Main Menu",
+    enumDisplayMap = {
+      clock = "Clock",
+      opening = "Opening",
+      browser = "Browser",
+    },
     enumDescMap = {
       clock = "Boot directly to Main Menu",
       opening = "Boot directly to the save data history towers",
@@ -331,13 +346,47 @@ strings.options_osdmbr = {
   ps1drv_use_ps1vn = { label = "Use PS1VN", desc = "Use PS1 Video Mode Negator" },
   prefer_bbn = { label = "Prefer BBN", desc = "Load PSBBN when rebooting" },
   app_gameid = { label = "Application visual game ID", desc = "Display visual Game ID for ELF files" },
-  osd_screentype = { label = "OSD screen type", desc = "Force OSD screen type (4:3, 16:9, full)" },
-  osd_language = { label = "OSD language", desc = "Force OSD language. Unsupported selection will fall back to console default." },
+  osd_screentype = {
+    label = "OSD screen type",
+    desc = "Force OSD screen type (4:3, 16:9, full)",
+    enumDisplayMap = {
+      ["4:3"] = "4:3",
+      ["16:9"] = "16:9",
+      full = "Full",
+    },
+  },
+  osd_language = {
+    label = "OSD language",
+    desc = "Force OSD language. Unsupported selection will fall back to console default.",
+    enumDisplayMap = {
+      jap = "Japanese (Nihongo)",
+      eng = "English",
+      fre = "French",
+      spa = "Spanish",
+      ger = "German",
+      ita = "Italian",
+      dut = "Dutch",
+      por = "Portuguese",
+      rus = "Russian",
+      kor = "Korean",
+      tch = "Traditional Chinese",
+      sch = "Simplified Chinese",
+    },
+  },
 }
 
 strings.options_bbl = {
   VIDEO_MODE = { label = "Force video mode", desc = "Loader UI mode" },
-  LOGO_DISPLAY = { label = "Logo display", desc = "Logo/info display mode" },
+  LOGO_DISPLAY = {
+    label = "Logo display",
+    desc = "Logo/info display mode",
+    enumDisplayMap = {
+      ["0"] = "Off",
+      ["1"] = "Console info",
+      ["2"] = "Logo + info",
+      ["3"] = "Launch key name",
+    },
+  },
   OSDHISTORY_READ = { label = "OSD history read", desc = "Read previous OSD history state" },
   EJECT_TRAY = { label = "Eject tray", desc = "Eject tray before launch" },
   DISC_STOP = { label = "Disc stop", desc = "Stop disc after config is loaded" },
@@ -360,7 +409,19 @@ strings.options_r3configurator = {
   show_hosdmenu = { label = "Show HOSDMenu", desc = "Show HOSDMenu on main page." },
   show_ps2bbl = { label = "Show PS2BBL", desc = "Show PS2BBL on main page." },
   show_psxbbl = { label = "Show PSXBBL", desc = "Show PSXBBL on main page." },
-  scene_transition = { label = "Scene transition", desc = "Animation style for page changes." },
+  scene_transition = {
+    label = "Scene transition",
+    desc = "Animation style for page changes.",
+    enumDisplayMap = {
+      cut = "Cut",
+      slide = "Slide",
+      cross_dissolve = "Cross dissolve",
+      whip_pan = "Whip pan",
+      zoom = "Zoom",
+      flip_horizontal = "Flip horizontal",
+      flip_vertical = "Flip vertical",
+    },
+  },
   scene_transition_frames = { label = "Transition frames", desc = "Transition speed in frames (higher is slower)." },
   cross = { label = "Cross color", desc = "Cross helper text color." },
   square = { label = "Square color", desc = "Square helper text color." },
@@ -413,6 +474,11 @@ strings.cdrom_options = {
   ps1fast = { label = "PS1 fast loading", desc = "Force PS1 fast disc speed" },
   ps1smooth = { label = "PS1 texture smoothing", desc = "Force PS1 texture smoothing" },
   ps1vneg = { label = "Use PS1VN", desc = "Use PS1 Video Mode Negator" },
+}
+
+-- Argument preset descriptions (Add argument menu).
+strings.arg_presets = {
+  noflags = "Skip all disc and application launch modifiers.",
 }
 
 -- Text input (keyboard) hint. hint_items_title_id = same but no Caps (used for GSM title ID).

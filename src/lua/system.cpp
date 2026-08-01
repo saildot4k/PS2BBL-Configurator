@@ -787,6 +787,14 @@ static int lua_loadModules(lua_State *L) {
   return 1;
 }
 
+static int lua_resetIOP(lua_State *L) {
+  if (lua_gettop(L) != 0)
+    return luaL_error(L, "System.resetIOP takes no arguments.");
+  int r = device_init();
+  lua_pushinteger(L, r);
+  return 1;
+}
+
 static const luaL_Reg System_functions[] = {
     {"openFile", lua_openfile},
     {"readFile", lua_readfile},
@@ -812,6 +820,7 @@ static const luaL_Reg System_functions[] = {
     {"getLaunchDeviceFamily", lua_getLaunchDeviceFamily},
     {"listHddPartitions", lua_listHddPartitions},
     {"loadModules", lua_loadModules},
+    {"resetIOP", lua_resetIOP},
     {"fileXioMount", lua_fileXioMount},
     {"fileXioUmount", lua_fileXioUmount},
     {0, 0}};

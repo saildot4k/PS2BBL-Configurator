@@ -19,6 +19,33 @@ local function formatArgCount(n)
   return "(" .. tostring(count) .. " args)"
 end
 
+local function trimPathValue(pathVal)
+  return tostring(pathVal or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function formatLaunchPathSummary(_, paths)
+  local activePaths = {}
+  for i = 1, #(paths or {}) do
+    local item = paths[i]
+    local value = type(item) == "table" and item.value or item
+    local disabled = type(item) == "table" and item.disabled == true
+    if not disabled and trimPathValue(value) ~= "" then
+      activePaths[#activePaths + 1] = value
+    end
+  end
+
+  if #activePaths <= 0 then
+    return (_.common_str and _.common_str.empty) or "(empty)"
+  end
+  if #activePaths == 1 then
+    if _.common and _.common.formatDisplayPathWithCommands then
+      return _.common.formatDisplayPathWithCommands(_, activePaths[1])
+    end
+    return tostring(activePaths[1] or "")
+  end
+  return tostring(#activePaths) .. " paths"
+end
+
 local function getOsdmbrHotkeyPadName(key)
   local commonRef = _G and _G.CONFIG_UI and _G.CONFIG_UI.common
   if commonRef and commonRef.bootKeyToPadName then
@@ -94,7 +121,7 @@ local R3_BUTTON_COLOR_PRESET = {
   selected_dim = "003250",
   unselected = "C8C8C8",
   dim = "606060",
-  background = "141414",
+  background = "000000",
 }
 
 local R3_DEFAULT_COLOR_PRESET = {
@@ -106,7 +133,7 @@ local R3_DEFAULT_COLOR_PRESET = {
   selected_dim = "003250",
   unselected = "C8C8C8",
   dim = "606060",
-  background = "141414",
+  background = "000000",
 }
 
 local function parseR3HexColor(raw)
@@ -204,6 +231,18 @@ local function resolveOptionDescription(ctx, _, opt)
     end
   end
   return (textDef and textDef.desc) or opt.desc or ""
+end
+
+local function resolveOptionEnumDisplay(_, opt, raw)
+  local rawText = tostring(raw or "")
+  if rawText == "" then return rawText end
+  local key = opt and opt.key or nil
+  local textDef = (_.strings and _.strings.options and key and _.strings.options[key]) or nil
+  local enumDisplayMap = (textDef and textDef.enumDisplayMap) or (opt and opt.enumDisplayMap)
+  if type(enumDisplayMap) == "table" then
+    return enumDisplayMap[rawText] or enumDisplayMap[rawText:lower()] or enumDisplayMap[rawText:upper()] or rawText
+  end
+  return rawText
 end
 
 local function isDeviceAbsolutePath(path)
@@ -497,6 +536,7 @@ local function makeFrameParseCache(_, lines)
   local getWithCommentCache = {}
   local getMultiCache = {}
   local getBootPathsCache = {}
+  local getBootPathEntriesCache = {}
   local getBblSlotCache = {}
   local isBootKeyDisabledCache = {}
 
@@ -532,6 +572,13 @@ local function makeFrameParseCache(_, lines)
         getBootPathsCache[key] = _.config_parse.getBootPaths(lines, key)
       end
       return getBootPathsCache[key]
+    end,
+    getBootPathEntries = function(_ignored, key)
+      if key == nil then return {} end
+      if getBootPathEntriesCache[key] == nil then
+        getBootPathEntriesCache[key] = _.config_parse.getBootPathEntries(lines, key)
+      end
+      return getBootPathEntriesCache[key]
     end,
     getBblHotkeySlot = function(_ignored, keyId, slot)
       if keyId == nil or slot == nil then return nil end
@@ -1026,6 +1073,7 @@ local function run(ctx)
   local cachedGetWithComment = frameParse.getWithComment
   local cachedGetMulti = frameParse.getMulti
   local cachedGetBootPaths = frameParse.getBootPaths
+  local cachedGetBootPathEntries = frameParse.getBootPathEntries
   local cachedGetBblHotkeySlot = frameParse.getBblHotkeySlot
   local cachedIsBootKeyDisabled = frameParse.isBootKeyDisabled
   if _.common.handleLeaveSavePrompt(ctx, {
@@ -1169,6 +1217,8 @@ local function run(ctx)
         catLabel = (_.strings.categories_freemcboot and _.strings.categories_freemcboot[i]) or catLabel
       elseif ctx.fileType == "osdmbr_cnf" then
         catLabel = (_.strings.categories_osdmbr and _.strings.categories_osdmbr[i]) or catLabel
+      elseif ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini" then
+        catLabel = (_.strings.categories_bbl and _.strings.categories_bbl[i]) or catLabel
       end
       if _.common.fitListRowText then
         catLabel = _.common.fitListRowText(ctx, "editor_cat_row_" .. tostring(i), _.font, catLabel, maxCatLabelW,
@@ -1183,10 +1233,10 @@ local function run(ctx)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, categoryHints, nil,
       _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, -1)
+      ctx.optSel = _.common.moveListSelection(ctx.optSel, #cats, -1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, 1)
+      ctx.optSel = _.common.moveListSelection(ctx.optSel, #cats, 1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 and #cats > 0 then
       local cat = cats[ctx.optSel]
@@ -1265,6 +1315,7 @@ local function run(ctx)
       local lab = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or o.label
       lab = prettifyBblGlobalLabel(ctx, o, lab)
       local valDisplay
+      local bootPathSummary
       local optionDisabled = isTemporarilyDisabledEditorOption(ctx, _, o)
       if o.optType == "header" or o.optType == "action" then
         valDisplay = ""
@@ -1275,17 +1326,13 @@ local function run(ctx)
         valDisplay = (v == "1") and _.common_str.on or _.common_str.off
       elseif o.optType == "boot_paths" then
         bootKeyDisabled = cachedIsBootKeyDisabled(ctx.lines, o.key)
-        local paths = cachedGetBootPaths(ctx.lines, o.key)
-        local count = paths and #paths or 0
         if ctx.fileType == "osdmbr_cnf" then
-          if count <= 0 then
-            valDisplay = _.common_str.not_set
-          elseif count == 1 then
-            valDisplay = "(1 path)"
-          else
-            valDisplay = "(" .. tostring(count) .. " paths)"
-          end
+          local paths = cachedGetBootPathEntries(ctx.lines, o.key)
+          bootPathSummary = formatLaunchPathSummary(_, paths)
+          valDisplay = nil
         else
+          local paths = cachedGetBootPaths(ctx.lines, o.key)
+          local count = paths and #paths or 0
           if count <= 0 then
             valDisplay = ""
           else
@@ -1314,11 +1361,7 @@ local function run(ctx)
         end
       elseif o.optType == "enum" then
         local raw = cachedGet(ctx.lines, o.key) or o.default or ""
-        if raw ~= "" and o.enumDisplayMap and o.enumDisplayMap[raw] then
-          valDisplay = o.enumDisplayMap[raw]
-        else
-          valDisplay = raw
-        end
+        valDisplay = resolveOptionEnumDisplay(_, o, raw)
       elseif o.optType == "path" then
         local raw = cachedGet(ctx.lines, o.key) or o.default or ""
         valDisplay = _.common.formatDisplayPathWithCommands(_, raw)
@@ -1355,9 +1398,14 @@ local function run(ctx)
         end
       end
       if bootHotkeyIcon then
-        lab = (_.menu_str.launch_key_label or "Launch Key")
+        lab = bootPathSummary or (_.common_str.empty or "(empty)")
       end
-      if o.key == "NAME_AUTO" then
+      if ctx.fileType == "osdmbr_cnf" and o.optType == "boot_paths" and o.key == "boot_auto" then
+        inlineAutoRow = true
+        lab = ((_.menu_str and _.menu_str.auto_label) or "Auto") .. ": " ..
+            (bootPathSummary or (_.common_str.empty or "(empty)"))
+        valDisplay = ""
+      elseif o.key == "NAME_AUTO" then
         inlineAutoRow = true
         local nameVal = cachedGet(ctx.lines, o.key) or o.default or ""
         local nameDisp = (nameVal ~= "" and nameVal) or (_.common_str.name_not_defined or _.common_str.empty)
@@ -1449,7 +1497,8 @@ local function run(ctx)
         else
           _.Graphics.drawImage(bootHotkeyIcon, rowX, iconY)
         end
-        _.drawText(_.font, _.drawMode, rowX + bootHotkeyIconW + bootHotkeyIconGap, y, _.FONT_SCALE, lab, col)
+        _.drawText(_.font, _.drawMode, rowX + bootHotkeyIconW + bootHotkeyIconGap, y, _.FONT_SCALE,
+          formatBelForDisplay(lab), col)
       else
         lab = formatBelForDisplay(lab)
         _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
@@ -2050,8 +2099,8 @@ local function run(ctx)
             anchorPad = "triangle",
             anchorLabel = (_.menu_str.reset_label or "Reset"),
             rows = {
-              { id = "patched", label = "Patched Defaults" },
-              { id = "ps2", label = "PS2 Defaults" },
+              { id = "patched", label = (_.menu_str and _.menu_str.patched_defaults_label) or "Patched defaults" },
+              { id = "ps2", label = (_.menu_str and _.menu_str.ps2_defaults_label) or "PS2 defaults" },
             },
             rowStateKeyPrefix = "editor_osd_visual_restore_row_",
             onSelect = function(row)
@@ -2188,7 +2237,7 @@ local function run(ctx)
       if count <= 0 then return end
       local idx = _.common.clampListSelection(ctx.optSel or 1, count)
       for _scan = 1, count do
-        idx = _.common.wrapListSelection(idx, count, step)
+        idx = _.common.moveListSelection(idx, count, step, { ctx = ctx })
         local candidate = ctx.optList[idx]
         if candidate and candidate.optType ~= "header" and not isTemporarilyDisabledEditorOption(ctx, _, candidate) then
           ctx.optSel = idx

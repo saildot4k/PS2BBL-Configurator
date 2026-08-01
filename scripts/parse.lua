@@ -768,6 +768,74 @@ function config_parse.setBootArgEntries(lines, key, args, opts)
   end
 end
 
+local function isOsdmbrPsbbnPath(path)
+  return trim(tostring(path or "")):upper() == "$PSBBN"
+end
+
+local function isDev9Arg(value)
+  return trim(tostring(value or "")):match("^%-[Dd][Ee][Vv]9%s*=") ~= nil
+end
+
+local function cloneArgEntryWithValue(item, value)
+  local out = {}
+  if type(item) == "table" then
+    for k, v in pairs(item) do out[k] = v end
+  end
+  out.value = value
+  out.disabled = false
+  out.comment = nil
+  return out
+end
+
+function config_parse.applyOsdmbrBootAutoArgs(lines, key, opts)
+  if type(lines) ~= "table" or type(key) ~= "string" or key == "" then return false end
+  local paths = config_parse.getBootPathEntries(lines, key, opts) or {}
+  local needsDev9 = false
+  for i = 1, #paths do
+    local item = paths[i]
+    local path = type(item) == "table" and item.value or item
+    local disabled = type(item) == "table" and item.disabled == true
+    if not disabled then
+      if isOsdmbrPsbbnPath(path) then
+        needsDev9 = true
+      end
+    end
+  end
+  if not needsDev9 then return false end
+
+  local args = config_parse.getBootArgEntries(lines, key, opts) or {}
+  local out = {}
+  local changed = false
+  local wroteDev9 = false
+  for i = 1, #args do
+    local item = args[i]
+    local value = type(item) == "table" and item.value or item
+    if needsDev9 and isDev9Arg(value) then
+      if not wroteDev9 then
+        out[#out + 1] = cloneArgEntryWithValue(item, "-dev9=NICHDD")
+        wroteDev9 = true
+        local disabled = type(item) == "table" and item.disabled == true
+        if value ~= "-dev9=NICHDD" or disabled then changed = true end
+      else
+        changed = true
+      end
+    else
+      out[#out + 1] = item
+    end
+  end
+  if needsDev9 and not wroteDev9 then
+    out[#out + 1] = { value = "-dev9=NICHDD", disabled = false }
+    changed = true
+  end
+
+  local setOpts = { preserveOrder = false }
+  if type(opts) == "table" and opts.keyDisabledOverride ~= nil then
+    setOpts.keyDisabledOverride = opts.keyDisabledOverride and true or false
+  end
+  config_parse.setBootArgEntries(lines, key, out, setOpts)
+  return changed
+end
+
 function config_parse.insertBootArgBelow(lines, key, belowIdx, value, opts)
   local entries = config_parse.getBootArgEntries(lines, key, opts)
   local insertPos = tonumber(belowIdx) or 0
@@ -2308,6 +2376,13 @@ function config_parse.regenerateForSave(lines, fileType, options)
     end
   end
 
+  local function applyOsdmbrBootAutoArgsInPlace(osdmbrOpts)
+    local keys = bootKeysFromOptions(osdmbrOpts)
+    for i = 1, #keys do
+      config_parse.applyOsdmbrBootAutoArgs(lines, keys[i])
+    end
+  end
+
   local function normalizeBblArgsInPlace()
     for _, keyId in ipairs(BBL_KEYS_ALL) do
       for slot = 1, BBL_MAX_ENTRIES do
@@ -2347,6 +2422,7 @@ function config_parse.regenerateForSave(lines, fileType, options)
     return config_parse.regenerateLinesBbl(lines, opt)
   end
   if fileType == "osdmbr_cnf" then
+    applyOsdmbrBootAutoArgsInPlace(opt.osdmbr_cnf or {})
     normalizeBootArgsInPlace(opt.osdmbr_cnf or {})
     return config_parse.regenerateLinesMBR(lines, opt.osdmbr_cnf or {})
   end

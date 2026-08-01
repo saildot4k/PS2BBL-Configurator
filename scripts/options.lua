@@ -653,7 +653,7 @@ config_options.r3configurator_cnf = {
   { key = "selected_dim", optType = "color", default = "003250", label = "Selected dim color" },
   { key = "unselected", optType = "color", default = "C8C8C8", label = "Unselected color" },
   { key = "dim", optType = "color", default = "606060", label = "Dim color" },
-  { key = "background", optType = "color", default = "141414", label = "Background color" },
+  { key = "background", optType = "color", default = "000000", label = "Background color" },
 }
 
 -- Get default value for a single key from osdmenu_cnf_categories (nil if no default).

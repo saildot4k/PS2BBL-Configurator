@@ -209,12 +209,10 @@ local function run(ctx)
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hint, nil, _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
 
   if (_.padEffective & _.PAD_UP) ~= 0 then
-    ctx.bblEntryDetailSel = ctx.bblEntryDetailSel - 1
-    if ctx.bblEntryDetailSel < 1 then ctx.bblEntryDetailSel = #rows end
+    ctx.bblEntryDetailSel = _.common.moveListSelection(ctx.bblEntryDetailSel, #rows, -1, { ctx = ctx })
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
-    ctx.bblEntryDetailSel = ctx.bblEntryDetailSel + 1
-    if ctx.bblEntryDetailSel > #rows then ctx.bblEntryDetailSel = 1 end
+    ctx.bblEntryDetailSel = _.common.moveListSelection(ctx.bblEntryDetailSel, #rows, 1, { ctx = ctx })
   end
 
   if (_.padEffective & _.PAD_CROSS) ~= 0 then

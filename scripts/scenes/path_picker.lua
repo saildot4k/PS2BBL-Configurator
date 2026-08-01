@@ -51,6 +51,11 @@ local function applyBootPathAndReturn(ctx, val)
     ctx.entryArgsBootKeyDisabledTag = tostring(bootKey or "")
     ctx.entryArgsBootKeyDisabledOverride = false
   end
+  if _.config_parse.applyOsdmbrBootAutoArgs then
+    _.config_parse.applyOsdmbrBootAutoArgs(ctx.lines, bootKey)
+    ctx.entryArgsPathsCache = nil
+    ctx.entryArgsModelCache = nil
+  end
   ctx.state = ctx.pathPickerReturnState or "editor"
   ctx.pathPickerBootKey = nil
   ctx.pathPickerBootKeyDisabled = nil
@@ -120,9 +125,18 @@ local function pfsToPartitionPath(pfsPath, partitionPath)
   return part .. ":pfs:" .. rest
 end
 
--- IOP reset (mx4sio/mmce) unloads all device drivers; clear all loaded flags.
+-- IOP reset unloads all device drivers; clear all loaded flags.
 local function clearLoadedIfIopReset(ctx)
   ctx.pathPickerLoadedDeviceTypes = {}
+end
+
+local function resetIopForMc1AfterSlotDriver(ctx, e)
+  if not (ctx and e and e.name == "mc1:") then return end
+  local loaded = ctx.pathPickerLoadedDeviceTypes
+  if not (loaded and (loaded["mx4sio"] or loaded["mmce"])) then return end
+  if not (System and System.resetIOP) then return end
+  System.resetIOP()
+  clearLoadedIfIopReset(ctx)
 end
 
 local function isConfigOpenTarget(ctx)
@@ -1098,6 +1112,7 @@ local function beginBrowseForDevice(ctx, e)
     -- Static device (mc, mmce) without deviceId: use name as path. Load MMCE module when selecting mmce.
     ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
     if e.deviceType == "mmce" and ctx.pathPickerLoadedDeviceTypes["mx4sio"] then clearLoadedIfIopReset(ctx) end
+    resetIopForMc1AfterSlotDriver(ctx, e)
     if e.deviceType and System and System.loadModules then System.loadModules(e.deviceType) end
     local browsePath = e.name or ""
     if browsePath and browsePath ~= "" and browsePath:find(":") then
@@ -1479,7 +1494,7 @@ local function run(ctx)
         if (_.padEffective & _.PAD_UP) ~= 0 then
           local idx = ctx.pathPickerSel
           for _ = 1, totalCount do
-            idx = idx - 1; if idx < 1 then idx = totalCount end
+            idx = _.common.moveListSelection(idx, totalCount, -1, { ctx = ctx })
             if isSelectableDisplay(idx) then
               ctx.pathPickerSel = idx; break
             end
@@ -1488,7 +1503,7 @@ local function run(ctx)
         if (_.padEffective & _.PAD_DOWN) ~= 0 then
           local idx = ctx.pathPickerSel
           for _ = 1, totalCount do
-            idx = idx + 1; if idx > totalCount then idx = 1 end
+            idx = _.common.moveListSelection(idx, totalCount, 1, { ctx = ctx })
             if isSelectableDisplay(idx) then
               ctx.pathPickerSel = idx; break
             end
@@ -1541,6 +1556,9 @@ local function run(ctx)
                         _.config_parse.setBootArgs(ctx.lines, bootKey, {})
                       elseif type(e.args) == "table" then
                         _.config_parse.setBootArgs(ctx.lines, bootKey, e.args)
+                      end
+                      if _.config_parse.applyOsdmbrBootAutoArgs then
+                        _.config_parse.applyOsdmbrBootAutoArgs(ctx.lines, bootKey)
                       end
                     end
                   else
@@ -1687,10 +1705,10 @@ local function run(ctx)
           _.path_str.cross_open_circle_back_items)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, partHint, nil, _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #parts end
+      ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #parts, -1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.pathPickerSel = ctx.pathPickerSel + 1; if ctx.pathPickerSel > #parts then ctx.pathPickerSel = 1 end
+      ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #parts, 1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_LEFT) ~= 0 then
       ctx.pathPickerSel = math.max(1, ctx.pathPickerSel - maxVis)
@@ -1886,10 +1904,10 @@ local function run(ctx)
     end
     if #show > 0 then
       if (_.padEffective & _.PAD_UP) ~= 0 then
-        ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #show end
+        ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #show, -1, { ctx = ctx })
       end
       if (_.padEffective & _.PAD_DOWN) ~= 0 then
-        ctx.pathPickerSel = ctx.pathPickerSel + 1; if ctx.pathPickerSel > #show then ctx.pathPickerSel = 1 end
+        ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #show, 1, { ctx = ctx })
       end
       if (_.padEffective & _.PAD_LEFT) ~= 0 then
         ctx.pathPickerSel = math.max(1, ctx.pathPickerSel - maxVis)
