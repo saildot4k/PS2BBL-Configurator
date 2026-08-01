@@ -558,6 +558,7 @@ local function applyLanguageFileIndex(s, idx)
   local target = common.clampListSelection(idx or (C.langIndex or 1), #files)
   local newStrings = tryLoadStrings("scripts/lang/" .. files[target])
   if newStrings and type(newStrings) == "table" then
+    strings = newStrings
     C.strings = newStrings
     C.langIndex = target
     if _G.CONFIG_UI then

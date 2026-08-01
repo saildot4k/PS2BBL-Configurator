@@ -51,6 +51,11 @@ local function applyBootPathAndReturn(ctx, val)
     ctx.entryArgsBootKeyDisabledTag = tostring(bootKey or "")
     ctx.entryArgsBootKeyDisabledOverride = false
   end
+  if _.config_parse.applyOsdmbrBootAutoArgs then
+    _.config_parse.applyOsdmbrBootAutoArgs(ctx.lines, bootKey)
+    ctx.entryArgsPathsCache = nil
+    ctx.entryArgsModelCache = nil
+  end
   ctx.state = ctx.pathPickerReturnState or "editor"
   ctx.pathPickerBootKey = nil
   ctx.pathPickerBootKeyDisabled = nil
@@ -1541,6 +1546,9 @@ local function run(ctx)
                         _.config_parse.setBootArgs(ctx.lines, bootKey, {})
                       elseif type(e.args) == "table" then
                         _.config_parse.setBootArgs(ctx.lines, bootKey, e.args)
+                      end
+                      if _.config_parse.applyOsdmbrBootAutoArgs then
+                        _.config_parse.applyOsdmbrBootAutoArgs(ctx.lines, bootKey)
                       end
                     end
                   else

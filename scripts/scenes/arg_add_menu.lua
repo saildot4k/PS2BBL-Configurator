@@ -15,6 +15,14 @@ local function buildDefaultHints(_)
   }
 end
 
+local function rowDescription(_, row, fallback)
+  if row and row.descKey and _ and _.strings and type(_.strings.arg_presets) == "table" then
+    local translated = _.strings.arg_presets[row.descKey]
+    if type(translated) == "string" and translated ~= "" then return translated end
+  end
+  return (row and row.desc) or fallback or ""
+end
+
 function arg_add_menu.run(ctx, opts)
   if not ctx or not opts then return false end
   local _ = ctx._
@@ -74,7 +82,7 @@ function arg_add_menu.run(ctx, opts)
 
   local title = opts.title or (_.menu_str.new_argument_prompt or "Add argument")
   local selectedRow = rows[ctx[selKey]]
-  local desc = (selectedRow and selectedRow.desc) or (opts.descDefault or "")
+  local desc = rowDescription(_, selectedRow, opts.descDefault)
   local startY = _.MARGIN_Y + _.scaleY(50)
 
   _.drawText(_.font, _.drawMode, _.MARGIN_X, _.MARGIN_Y, 1, title, _.WHITE)

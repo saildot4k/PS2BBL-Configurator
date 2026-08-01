@@ -231,6 +231,18 @@ local function resolveOptionDescription(ctx, _, opt)
   return (textDef and textDef.desc) or opt.desc or ""
 end
 
+local function resolveOptionEnumDisplay(_, opt, raw)
+  local rawText = tostring(raw or "")
+  if rawText == "" then return rawText end
+  local key = opt and opt.key or nil
+  local textDef = (_.strings and _.strings.options and key and _.strings.options[key]) or nil
+  local enumDisplayMap = (textDef and textDef.enumDisplayMap) or (opt and opt.enumDisplayMap)
+  if type(enumDisplayMap) == "table" then
+    return enumDisplayMap[rawText] or enumDisplayMap[rawText:lower()] or enumDisplayMap[rawText:upper()] or rawText
+  end
+  return rawText
+end
+
 local function isDeviceAbsolutePath(path)
   local p = tostring(path or "")
   if p == "" then return false end
@@ -1194,6 +1206,8 @@ local function run(ctx)
         catLabel = (_.strings.categories_freemcboot and _.strings.categories_freemcboot[i]) or catLabel
       elseif ctx.fileType == "osdmbr_cnf" then
         catLabel = (_.strings.categories_osdmbr and _.strings.categories_osdmbr[i]) or catLabel
+      elseif ctx.fileType == "ps2bbl_ini" or ctx.fileType == "psxbbl_ini" then
+        catLabel = (_.strings.categories_bbl and _.strings.categories_bbl[i]) or catLabel
       end
       if _.common.fitListRowText then
         catLabel = _.common.fitListRowText(ctx, "editor_cat_row_" .. tostring(i), _.font, catLabel, maxCatLabelW,
@@ -1335,11 +1349,7 @@ local function run(ctx)
         end
       elseif o.optType == "enum" then
         local raw = cachedGet(ctx.lines, o.key) or o.default or ""
-        if raw ~= "" and o.enumDisplayMap and o.enumDisplayMap[raw] then
-          valDisplay = o.enumDisplayMap[raw]
-        else
-          valDisplay = raw
-        end
+        valDisplay = resolveOptionEnumDisplay(_, o, raw)
       elseif o.optType == "path" then
         local raw = cachedGet(ctx.lines, o.key) or o.default or ""
         valDisplay = _.common.formatDisplayPathWithCommands(_, raw)
@@ -1380,7 +1390,8 @@ local function run(ctx)
       end
       if ctx.fileType == "osdmbr_cnf" and o.optType == "boot_paths" and o.key == "boot_auto" then
         inlineAutoRow = true
-        lab = "Auto: " .. (bootPathSummary or (_.common_str.empty or "(empty)"))
+        lab = ((_.menu_str and _.menu_str.auto_label) or "Auto") .. ": " ..
+            (bootPathSummary or (_.common_str.empty or "(empty)"))
         valDisplay = ""
       elseif o.key == "NAME_AUTO" then
         inlineAutoRow = true
@@ -2076,8 +2087,8 @@ local function run(ctx)
             anchorPad = "triangle",
             anchorLabel = (_.menu_str.reset_label or "Reset"),
             rows = {
-              { id = "patched", label = "Patched Defaults" },
-              { id = "ps2", label = "PS2 Defaults" },
+              { id = "patched", label = (_.menu_str and _.menu_str.patched_defaults_label) or "Patched defaults" },
+              { id = "ps2", label = (_.menu_str and _.menu_str.ps2_defaults_label) or "PS2 defaults" },
             },
             rowStateKeyPrefix = "editor_osd_visual_restore_row_",
             onSelect = function(row)

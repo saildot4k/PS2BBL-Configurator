@@ -154,7 +154,7 @@ local function run(ctx)
     return
   end
 
-  local title = "Launch Keys"
+  local title = (_.menu_str and (_.menu_str.launch_keys_label or _.menu_str.launch_key_label)) or "Launch Keys"
   local isFmcb = (ctx.fileType == "freemcboot_cnf") or (ctx.context == "freehddboot")
   local maxEntries = isFmcb and ((_.config_options and _.config_options.FMCB_BBL_MAX_ENTRIES) or 3) or
       ((_.config_parse.getBblMaxEntries and _.config_parse.getBblMaxEntries()) or 10)

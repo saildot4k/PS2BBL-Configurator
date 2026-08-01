@@ -101,7 +101,9 @@ strings.menu_entries = {
   launch_disc_options = "Opcje uruchamiania dysku",
   arguments = "Argumenty",
   launch_key_label = "Klawisz uruchamiania",
+  launch_keys_label = "Klawisze uruchamiania",
   channel_label = "Kanał",
+  auto_label = "Auto",
   entry_name_prompt = "Nazwa wpisu",
   add_entry_label = "Nowy wpis",
   launch_disc_options_title = "Opcje uruchamiania dysku",
@@ -123,6 +125,8 @@ strings.menu_entries = {
   cancel_label = "Anuluj",
   preset_label = "Predef.",
   default_label = "Domyślny",
+  patched_defaults_label = "Domyślne po patchu",
+  ps2_defaults_label = "Domyślne PS2",
   button_colors_label = "Kolory przycisków",
   cancel_move_label = "Anuluj przenoszenie",
   confirm_label = "Potwierdź",
@@ -159,8 +163,8 @@ strings.path_picker = {
   bbl_cmd_osdsys_label = "OSDSYS",
   bbl_cmd_credits_label = "Tworcy",
   bbl_cmd_hddchecker_label = "Sprawdz HDD",
-  mbr_cmd_xosd = "Run PSX xosdmain.elf from hdd0:__system:pfs:/BIEXEC-SYSTEM/xosdmain.elf",
-  mbr_cmd_osdmenu = "Run OSDMenu from xfrom:/osdmenu/osdmenu.elf",
+  mbr_cmd_xosd = "Uruchom PSX xosdmain.elf z hdd0:__system:pfs:/BIEXEC-SYSTEM/xosdmain.elf",
+  mbr_cmd_osdmenu = "Uruchom OSDMenu z xfrom:/osdmenu/osdmenu.elf",
   enter_path_prompt = "Wprowadź ścieżkę",
   inactive_items_separator = "-- Pozycje poniżej są już użyte albo muszą być E1 --",
   exclusive_path_warning = "Ta ścieżka musi być pierwszą i jedyną ścieżką dla tego wpisu.",
@@ -198,21 +202,21 @@ strings.devices = {
   psbbn = "PlayStation Broadband Navigator",
   ps2_linux_ntsc = "PS2 Linux NTSC",
   ps2_linux_vga = "PS2 Linux VGA",
-  xosd = "XOSD (PSX ONLY!)",
-  osdmenu_psx = "OSDMenu (PSX ONLY!)",
+  xosd = "XOSD (tylko PSX!)",
+  osdmenu_psx = "OSDMenu (tylko PSX!)",
   usb_storage_0 = "Pamięć USB 1",
   usb_storage_1 = "Pamięć USB 2",
   mmce_0 = "MMCE w gnieździe 1",
   mmce_1 = "MMCE w gnieździe 2",
   mx4sio_sd = "MX4SIO",
   exfat_hdd_mass0 = "HDD sformatowany w exFAT",
-  exfat_hdd_mbr_0 = "exFAT-formatted HDD 1",
-  exfat_hdd_mbr_1 = "exFAT-formatted HDD 2",
+  exfat_hdd_mbr_0 = "HDD 1 sformatowany w exFAT",
+  exfat_hdd_mbr_1 = "HDD 2 sformatowany w exFAT",
   hdd = "HDD sformatowany w APA",
-  hdd_mbr_0 = "APA-formatted HDD 1",
-  hdd_mbr_1 = "APA-formatted HDD 2",
+  hdd_mbr_0 = "HDD 1 sformatowany w APA",
+  hdd_mbr_1 = "HDD 2 sformatowany w APA",
   hdd_1 = "HDD 2 sformatowany w APA",
-  xfrom = "XFROM (PSX ONLY!)",
+  xfrom = "XFROM (tylko PSX!)",
 }
 
 -- Wspólne tokeny
@@ -253,6 +257,12 @@ strings.categories_osdmbr = {
   [3] = "Autoboot i klawisze uruchamiania",
 }
 
+strings.categories_bbl = {
+  [1] = "Globalne",
+  [2] = "Autoboot",
+  [3] = "Klawisze uruchamiania",
+}
+
 -- Etykiety i opisy opcji OSDMENU.CNF (według klucza opcji)
 strings.options_osdmenu = {
   OSDSYS_video_mode = { label = "Wymuś tryb wideo", desc = "Wymuś tryb wideo OSD" },
@@ -261,6 +271,11 @@ strings.options_osdmenu = {
   OSDSYS_boot = {
     label = "Cel startu",
     desc = "Uruchom bezpośrednio menu główne",
+    enumDisplayMap = {
+      clock = "Menu główne",
+      opening = "Wieże historii",
+      browser = "Przeglądarka",
+    },
     enumDescMap = {
       clock = "Uruchom bezpośrednio menu główne",
       opening = "Uruchom bezpośrednio wieże historii zapisanych danych",
@@ -331,19 +346,53 @@ strings.options_osdmbr = {
   ps1drv_use_ps1vn = { label = "Użyj PS1VN", desc = "Użyj negatora trybu wideo PS1" },
   prefer_bbn = { label = "Preferuj BBN", desc = "Załaduj PSBBN przy ponownym uruchomieniu" },
   app_gameid = { label = "Wizualne ID gry aplikacji", desc = "Wyświetl wizualne ID gry dla plików ELF" },
-  osd_screentype = { label = "Typ ekranu OSD", desc = "Wymuś typ ekranu OSD (4:3, 16:9, pełny)" },
-  osd_language = { label = "Język OSD", desc = "Wymuś język OSD. Nieobsługiwany wybór powróci do domyślnego ustawienia konsoli." },
+  osd_screentype = {
+    label = "Typ ekranu OSD",
+    desc = "Wymuś typ ekranu OSD (4:3, 16:9, pełny)",
+    enumDisplayMap = {
+      ["4:3"] = "4:3",
+      ["16:9"] = "16:9",
+      full = "Pełny",
+    },
+  },
+  osd_language = {
+    label = "Język OSD",
+    desc = "Wymuś język OSD. Nieobsługiwany wybór powróci do domyślnego ustawienia konsoli.",
+    enumDisplayMap = {
+      jap = "Japoński (Nihongo)",
+      eng = "Angielski",
+      fre = "Francuski",
+      spa = "Hiszpański",
+      ger = "Niemiecki",
+      ita = "Włoski",
+      dut = "Niderlandzki",
+      por = "Portugalski",
+      rus = "Rosyjski",
+      kor = "Koreański",
+      tch = "Chiński tradycyjny",
+      sch = "Chiński uproszczony",
+    },
+  },
 }
 
 strings.options_bbl = {
   VIDEO_MODE = { label = "Wymuś tryb wideo", desc = "Tryb UI loadera" },
-  LOGO_DISPLAY = { label = "Wyświetlanie logo", desc = "Tryb wyświetlania logo/informacji" },
+  LOGO_DISPLAY = {
+    label = "Wyświetlanie logo",
+    desc = "Tryb wyświetlania logo/informacji",
+    enumDisplayMap = {
+      ["0"] = "Wyłączone",
+      ["1"] = "Info konsoli",
+      ["2"] = "Logo + info",
+      ["3"] = "Nazwa klawisza",
+    },
+  },
   OSDHISTORY_READ = { label = "Odczyt historii OSD", desc = "Odczytaj poprzedni stan historii OSD" },
   EJECT_TRAY = { label = "Wysuń tacę", desc = "Wysuń tackę przed uruchomieniem" },
-  DISC_STOP = { label = "Disc stop", desc = "Stop disc after config is loaded" },
+  DISC_STOP = { label = "Zatrzymanie dysku", desc = "Zatrzymaj dysk po wczytaniu konfiguracji" },
   _bbl_irx_entries = { label = "Edytuj wpisy IRX", desc = "Edytuj ścieżki modułów LOAD_IRX_E#" },
-  APP_GAMEID = { label = "Wizualne ID gry aplikacji", desc = "Game ID for RetroGem" },
-  CDROM_DISABLE_GAMEID = { label = "Wyłącz wizualne ID gry dysku", desc = "Disable RetroGem Game ID for DISCS" },
+  APP_GAMEID = { label = "Wizualne ID gry aplikacji", desc = "ID gry dla RetroGem" },
+  CDROM_DISABLE_GAMEID = { label = "Wyłącz wizualne ID gry dysku", desc = "Wyłącz ID gry RetroGem dla DYSKÓW" },
   app_gameid = { label = "Wizualne ID gry aplikacji", desc = "Wyświetl wizualne ID gry dla plików ELF" },
   cdrom_disable_gameid = { label = "Wyłącz wizualne ID gry dysku", desc = "Wyłącz wizualne ID gry dysku" },
 }
@@ -360,7 +409,19 @@ strings.options_r3configurator = {
   show_hosdmenu = { label = "Pokaż HOSDMenu", desc = "Pokaż HOSDMenu na stronie głównej." },
   show_ps2bbl = { label = "Pokaż PS2BBL", desc = "Pokaż PS2BBL na stronie głównej." },
   show_psxbbl = { label = "Pokaż PSXBBL", desc = "Pokaż PSXBBL na stronie głównej." },
-  scene_transition = { label = "Przejście sceny", desc = "Styl animacji dla zmian stron." },
+  scene_transition = {
+    label = "Przejście sceny",
+    desc = "Styl animacji dla zmian stron.",
+    enumDisplayMap = {
+      cut = "Cięcie",
+      slide = "Przesunięcie",
+      cross_dissolve = "Przenikanie",
+      whip_pan = "Szybkie przesunięcie",
+      zoom = "Zoom",
+      flip_horizontal = "Odbicie poziome",
+      flip_vertical = "Odbicie pionowe",
+    },
+  },
   scene_transition_frames = { label = "Klatki przejścia", desc = "Prędkość przejścia w klatkach (większa wartość = wolniej)." },
   cross = { label = "Kolor KRZYŻYK", desc = "Kolor tekstu pomocy KRZYŻYK." },
   square = { label = "Kolor KWADRAT", desc = "Kolor tekstu pomocy KWADRAT." },
@@ -413,6 +474,11 @@ strings.cdrom_options = {
   ps1fast = { label = "Szybkie ładowanie PS1", desc = "Wymuś szybką prędkość dysku PS1" },
   ps1smooth = { label = "Wygładzanie tekstur PS1", desc = "Wymuś wygładzanie tekstur PS1" },
   ps1vneg = { label = "Użyj PS1VN", desc = "Użyj negatora trybu wideo PS1" },
+}
+
+-- Opisy presetow argumentow.
+strings.arg_presets = {
+  noflags = "Pomiń wszystkie modyfikatory uruchamiania dysków i aplikacji.",
 }
 
 -- Podpowiedź wprowadzania tekstu (klawiatura). hint_items_title_id = to samo bez Caps (używane dla ID tytułu GSM).
