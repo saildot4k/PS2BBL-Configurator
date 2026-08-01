@@ -2246,9 +2246,10 @@ function common.listDirectoryElfOnly(path, file_selector)
 end
 
 common.REPEATABLE_MASK = common.PAD_UP | common.PAD_DOWN
-common.REPEAT_START_HZ = 5
-common.REPEAT_END_HZ = 12
-common.REPEAT_ACCEL_SECONDS = 3
+common.REPEAT_INITIAL_DELAY_MS = 400
+common.REPEAT_EARLY_DELAY_MS = 83
+common.REPEAT_FAST_DELAY_MS = 40
+common.REPEAT_EARLY_COUNT = 20
 common.REPEAT_FPS_SAMPLE_WINDOW = 8
 
 function common.getRepeatFps(ctx, nominalFps, opts)
@@ -2277,19 +2278,35 @@ function common.getRepeatFps(ctx, nominalFps, opts)
   return math.max(1, cached)
 end
 
-function common.getRepeatIntervalFrames(fps, heldFrames)
+function common.repeatMsToFrames(fps, ms)
   local safeFps = math.max(1, tonumber(fps) or 60)
-  local startHz = tonumber(common.REPEAT_START_HZ) or 3
-  local endHz = tonumber(common.REPEAT_END_HZ) or 12
-  if startHz < 0.1 then startHz = 0.1 end
-  if endHz < 0.1 then endHz = 0.1 end
-  local accelFrames = math.max(1, math.floor((tonumber(common.REPEAT_ACCEL_SECONDS) or 4) * safeFps + 0.5))
-  local t = (tonumber(heldFrames) or 0) / accelFrames
-  if t < 0 then t = 0 end
-  if t > 1 then t = 1 end
-  local hz = startHz + ((endHz - startHz) * t)
-  if hz < 0.1 then hz = 0.1 end
-  return math.max(1, math.floor((safeFps / hz) + 0.5))
+  local safeMs = math.max(1, tonumber(ms) or 1)
+  return math.max(1, math.floor(((safeFps * safeMs) / 1000) + 0.5))
+end
+
+function common.getRepeatIntervalFrames(fps, heldFrames, repeatCount)
+  local repeats = tonumber(repeatCount)
+  if repeats ~= nil then
+    if repeats <= 0 then
+      return common.repeatMsToFrames(fps, common.REPEAT_INITIAL_DELAY_MS)
+    end
+    if repeats <= (tonumber(common.REPEAT_EARLY_COUNT) or 20) then
+      return common.repeatMsToFrames(fps, common.REPEAT_EARLY_DELAY_MS)
+    end
+    return common.repeatMsToFrames(fps, common.REPEAT_FAST_DELAY_MS)
+  end
+
+  local held = math.max(0, tonumber(heldFrames) or 0)
+  local initialFrames = common.repeatMsToFrames(fps, common.REPEAT_INITIAL_DELAY_MS)
+  if held < initialFrames then
+    return initialFrames
+  end
+  local earlyFrames = common.repeatMsToFrames(fps, common.REPEAT_EARLY_DELAY_MS)
+  local fastStartFrame = initialFrames + (math.max(0, tonumber(common.REPEAT_EARLY_COUNT) or 20) * earlyFrames)
+  if held < fastStartFrame then
+    return earlyFrames
+  end
+  return common.repeatMsToFrames(fps, common.REPEAT_FAST_DELAY_MS)
 end
 
 -- Generic hold-to-repeat helper for one action key.
@@ -2307,13 +2324,14 @@ function common.consumeHeldRepeat(ctx, repeatKey, isHeld, opts)
   local key = tostring(repeatKey)
   local st = store[key]
   if type(st) ~= "table" then
-    st = { wasHeld = false, heldFrames = 0, countdown = 0 }
+    st = { wasHeld = false, heldFrames = 0, countdown = 0, repeatCount = 0 }
     store[key] = st
   end
   if not held then
     st.wasHeld = false
     st.heldFrames = 0
     st.countdown = 0
+    st.repeatCount = 0
     return false
   end
 
@@ -2324,8 +2342,8 @@ function common.consumeHeldRepeat(ctx, repeatKey, isHeld, opts)
   local speed = tonumber(opts and opts.speed) or 1
   if speed <= 0 then speed = 1 end
 
-  local function intervalForFrame(frame)
-    local base = common.getRepeatIntervalFrames(fps, frame)
+  local function intervalForFrame(frame, repeats)
+    local base = common.getRepeatIntervalFrames(fps, frame, repeats)
     if speed == 1 then return base end
     return math.max(1, math.floor((base / speed) + 0.5))
   end
@@ -2333,18 +2351,20 @@ function common.consumeHeldRepeat(ctx, repeatKey, isHeld, opts)
   if not st.wasHeld then
     st.wasHeld = true
     st.heldFrames = 0
-    st.countdown = intervalForFrame(0)
+    st.repeatCount = 0
+    st.countdown = intervalForFrame(0, 0)
     return true
   end
 
   st.heldFrames = st.heldFrames + 1
-  local targetInterval = intervalForFrame(st.heldFrames)
+  local targetInterval = intervalForFrame(st.heldFrames, st.repeatCount or 0)
   if st.countdown > targetInterval then
     st.countdown = targetInterval
   end
   st.countdown = st.countdown - 1
   if st.countdown <= 0 then
-    st.countdown = targetInterval
+    st.repeatCount = (tonumber(st.repeatCount) or 0) + 1
+    st.countdown = intervalForFrame(st.heldFrames, st.repeatCount)
     return true
   end
   return false
@@ -2504,8 +2524,8 @@ function common.runSceneLoop(ctx, sceneName, runHandler)
   end
 end
 
--- Get pad with repeat logic; updates ctx.prevPad/ctx.holdFrameCount/ctx.holdRepeatCountdown.
--- Repeat ramps from REPEAT_START_HZ to REPEAT_END_HZ over REPEAT_ACCEL_SECONDS while held.
+-- Get pad with repeat logic; updates ctx.prevPad/ctx.holdFrameCount/ctx.holdRepeatCountdown/ctx.holdRepeatCount.
+-- Repeat matches wLaunchELF: immediate press, 400ms hold delay, ~12Hz for 20 repeats, then ~25Hz.
 function common.getPadEffective(ctx)
   local pad = Pads.get(0)
   if type(ctx) == "table" then
@@ -2522,31 +2542,35 @@ function common.getPadEffective(ctx)
   local nominalFps = (sceneH >= 500) and 50 or 60
   ctx.holdFrameCount = tonumber(ctx.holdFrameCount) or 0
   ctx.holdRepeatCountdown = tonumber(ctx.holdRepeatCountdown) or 0
+  ctx.holdRepeatCount = tonumber(ctx.holdRepeatCount) or 0
   local padRepeat = 0
   local heldMask = pad & common.REPEATABLE_MASK
   local prevHeldMask = prevPad & common.REPEATABLE_MASK
   if heldMask ~= 0 then
-    if prevHeldMask == 0 then
+    if prevHeldMask == 0 or prevHeldMask ~= heldMask then
       local fps = common.getRepeatFps(ctx, nominalFps)
-      -- New hold starts now: first repeat at start-rate interval.
+      -- New hold starts now: first repeat after the wLaunchELF-style hold delay.
       ctx.holdFrameCount = 0
-      ctx.holdRepeatCountdown = common.getRepeatIntervalFrames(fps, 0)
+      ctx.holdRepeatCount = 0
+      ctx.holdRepeatCountdown = common.getRepeatIntervalFrames(fps, 0, 0)
     else
       local fps = common.getRepeatFps(ctx, nominalFps)
       ctx.holdFrameCount = ctx.holdFrameCount + 1
-      local targetInterval = common.getRepeatIntervalFrames(fps, ctx.holdFrameCount)
+      local targetInterval = common.getRepeatIntervalFrames(fps, ctx.holdFrameCount, ctx.holdRepeatCount)
       if ctx.holdRepeatCountdown > targetInterval then
         ctx.holdRepeatCountdown = targetInterval
       end
       ctx.holdRepeatCountdown = ctx.holdRepeatCountdown - 1
       if ctx.holdRepeatCountdown <= 0 then
         padRepeat = heldMask
-        ctx.holdRepeatCountdown = targetInterval
+        ctx.holdRepeatCount = ctx.holdRepeatCount + 1
+        ctx.holdRepeatCountdown = common.getRepeatIntervalFrames(fps, ctx.holdFrameCount, ctx.holdRepeatCount)
       end
     end
   else
     ctx.holdFrameCount = 0
     ctx.holdRepeatCountdown = 0
+    ctx.holdRepeatCount = 0
   end
   ctx.prevPad = pad
   local effective = common.remapCrossCircleMask(padJust | padRepeat)
@@ -2572,6 +2596,18 @@ function common.beginTextInput(ctx, opts)
   if not ctx or type(opts) ~= "table" then return end
   -- Reset per-key held-repeat state so each text-input session starts clean.
   ctx._holdRepeatStates = nil
+  ctx.textInputCursorPrevHeldMask = nil
+  ctx.textInputCursorHoldFrames = nil
+  ctx.textInputCursorHoldCountdown = nil
+  ctx.textInputCursorHoldRepeatCount = nil
+  ctx.textInputBackspacePrevHeldMask = nil
+  ctx.textInputBackspaceHoldFrames = nil
+  ctx.textInputBackspaceHoldCountdown = nil
+  ctx.textInputBackspaceHoldRepeatCount = nil
+  ctx.textInputGridHorizontalPrevHeldMask = nil
+  ctx.textInputGridHorizontalHoldFrames = nil
+  ctx.textInputGridHorizontalHoldCountdown = nil
+  ctx.textInputGridHorizontalHoldRepeatCount = nil
   local suppressCrossOnEntry = false
   local entryRawPad = nil
   if Pads and Pads.get then
@@ -2626,6 +2662,7 @@ function common.beginTextInput(ctx, opts)
   -- text input while Enter is still physically held.
   ctx.holdFrameCount = 0
   ctx.holdRepeatCountdown = 0
+  ctx.holdRepeatCount = 0
   if type(entryRawPad) == "number" then
     ctx.prevPad = entryRawPad
     ctx._rawPadNow = entryRawPad
