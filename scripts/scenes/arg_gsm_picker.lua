@@ -204,16 +204,14 @@ function arg_gsm_picker.run(ctx, opts)
     nil, _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
 
   if (_.padEffective & _.PAD_UP) ~= 0 then
-    sel = sel - 1
-    if sel < 1 then sel = selectableTotal end
+    sel = _.common.moveListSelection(sel, selectableTotal, -1, { ctx = ctx })
     ctx[keys.selKey] = sel
     if keys.lastVideoKey and sel >= 1 and sel <= NUM_VIDEO_OPTS then
       ctx[keys.lastVideoKey] = sel + 1
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
-    sel = sel + 1
-    if sel > selectableTotal then sel = 1 end
+    sel = _.common.moveListSelection(sel, selectableTotal, 1, { ctx = ctx })
     ctx[keys.selKey] = sel
     if keys.lastVideoKey and sel >= 1 and sel <= NUM_VIDEO_OPTS then
       ctx[keys.lastVideoKey] = sel + 1

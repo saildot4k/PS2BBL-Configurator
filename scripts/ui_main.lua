@@ -1067,10 +1067,10 @@ local function runMain(s, pad)
     common.drawHintLine(s.font, s.drawMode, M, H, 0.7, hintItems, nil, common.DIM_COLOR)
     if not closing then
       if (pad & PAD_UP) ~= 0 then
-        s.mainLangSel = common.wrapListSelection(s.mainLangSel, total, -1)
+        s.mainLangSel = common.moveListSelection(s.mainLangSel, total, -1, { ctx = s })
       end
       if (pad & PAD_DOWN) ~= 0 then
-        s.mainLangSel = common.wrapListSelection(s.mainLangSel, total, 1)
+        s.mainLangSel = common.moveListSelection(s.mainLangSel, total, 1, { ctx = s })
       end
       if (pad & PAD_CROSS) ~= 0 then
         applyLanguageIndex(s, s.mainLangSel)
@@ -1250,10 +1250,10 @@ local function runMain(s, pad)
   local prevSel = s.mainSel
   local navDir = nil
   if (pad & PAD_UP) ~= 0 then
-    s.mainSel = common.wrapListSelection(s.mainSel, #s.main, -1)
+    s.mainSel = common.moveListSelection(s.mainSel, #s.main, -1, { ctx = s })
     navDir = "up"
   elseif (pad & PAD_DOWN) ~= 0 then
-    s.mainSel = common.wrapListSelection(s.mainSel, #s.main, 1)
+    s.mainSel = common.moveListSelection(s.mainSel, #s.main, 1, { ctx = s })
     navDir = "down"
   end
   local newKey = getMainOverlayLogoKey(s.mainSel)
@@ -1349,10 +1349,10 @@ local function runChooseMc(s, pad)
       dlr(M + 20, y, i == s.mcSel, label, col)
     end
     if (pad & PAD_UP) ~= 0 then
-      s.mcSel = s.mcSel - 1; if s.mcSel < 1 then s.mcSel = #slots end
+      s.mcSel = common.moveListSelection(s.mcSel, #slots, -1, { ctx = s })
     end
     if (pad & PAD_DOWN) ~= 0 then
-      s.mcSel = s.mcSel + 1; if s.mcSel > #slots then s.mcSel = 1 end
+      s.mcSel = common.moveListSelection(s.mcSel, #slots, 1, { ctx = s })
     end
     if (pad & PAD_CROSS) ~= 0 then
       s.chosenMcSlot = slots[s.mcSel]
@@ -1714,12 +1714,10 @@ local function runSelectConfig(s, pad)
       end
 
       if (pad & PAD_UP) ~= 0 then
-        sel = sel - 1
-        if sel < 1 then sel = #options end
+        sel = common.moveListSelection(sel, #options, -1, { ctx = s })
       end
       if (pad & PAD_DOWN) ~= 0 then
-        sel = sel + 1
-        if sel > #options then sel = 1 end
+        sel = common.moveListSelection(sel, #options, 1, { ctx = s })
       end
       setOsdmenuConfigDeviceSel(s, sel)
 
@@ -1786,12 +1784,10 @@ local function runSelectConfig(s, pad)
       end
 
       if (pad & PAD_UP) ~= 0 then
-        sel = sel - 1
-        if sel < 1 then sel = #options end
+        sel = common.moveListSelection(sel, #options, -1, { ctx = s })
       end
       if (pad & PAD_DOWN) ~= 0 then
-        sel = sel + 1
-        if sel > #options then sel = 1 end
+        sel = common.moveListSelection(sel, #options, 1, { ctx = s })
       end
       setMbrConfigDeviceSel(s, sel)
 
@@ -1844,12 +1840,10 @@ local function runSelectConfig(s, pad)
     end
 
     if (pad & PAD_UP) ~= 0 then
-      sel = sel - 1
-      if sel < 1 then sel = #options end
+      sel = common.moveListSelection(sel, #options, -1, { ctx = s })
     end
     if (pad & PAD_DOWN) ~= 0 then
-      sel = sel + 1
-      if sel > #options then sel = 1 end
+      sel = common.moveListSelection(sel, #options, 1, { ctx = s })
     end
     setSelectConfigSel(s, sel)
 
@@ -1952,10 +1946,10 @@ local function runSelectConfig(s, pad)
       dlr(M + 20, y, i == sel, opt.label or "", col)
     end
     if (pad & PAD_UP) ~= 0 then
-      sel = common.wrapListSelection(sel, #options, -1)
+      sel = common.moveListSelection(sel, #options, -1, { ctx = s })
     end
     if (pad & PAD_DOWN) ~= 0 then
-      sel = common.wrapListSelection(sel, #options, 1)
+      sel = common.moveListSelection(sel, #options, 1, { ctx = s })
     end
     setSelectConfigSel(s, sel)
 
@@ -2041,10 +2035,10 @@ local function runSelectConfig(s, pad)
     dlr(M + 20, y, i == sel, opt.label or "", col)
   end
   if (pad & PAD_UP) ~= 0 then
-    sel = common.wrapListSelection(sel, #options, -1)
+    sel = common.moveListSelection(sel, #options, -1, { ctx = s })
   end
   if (pad & PAD_DOWN) ~= 0 then
-    sel = common.wrapListSelection(sel, #options, 1)
+    sel = common.moveListSelection(sel, #options, 1, { ctx = s })
   end
   setSelectConfigSel(s, sel)
 
@@ -2393,10 +2387,10 @@ local function runChooseLoad(s, pad)
   end
   common.drawHintLine(s.font, s.drawMode, M, H, 0.7, main_str.cross_load_circle_back_items, nil, common.DIM_COLOR)
   if (pad & PAD_UP) ~= 0 then
-    s.loadSel = s.loadSel - 1; if s.loadSel < 1 then s.loadSel = #choices end
+    s.loadSel = common.moveListSelection(s.loadSel, #choices, -1, { ctx = s })
   end
   if (pad & PAD_DOWN) ~= 0 then
-    s.loadSel = s.loadSel + 1; if s.loadSel > #choices then s.loadSel = 1 end
+    s.loadSel = common.moveListSelection(s.loadSel, #choices, 1, { ctx = s })
   end
   if (pad & PAD_CROSS) ~= 0 and #choices > 0 then
     local chosen = choices[s.loadSel]

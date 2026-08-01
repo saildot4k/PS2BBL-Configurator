@@ -1233,10 +1233,10 @@ local function run(ctx)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, categoryHints, nil,
       _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, -1)
+      ctx.optSel = _.common.moveListSelection(ctx.optSel, #cats, -1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.optSel = _.common.wrapListSelection(ctx.optSel, #cats, 1)
+      ctx.optSel = _.common.moveListSelection(ctx.optSel, #cats, 1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_CROSS) ~= 0 and #cats > 0 then
       local cat = cats[ctx.optSel]
@@ -2237,7 +2237,7 @@ local function run(ctx)
       if count <= 0 then return end
       local idx = _.common.clampListSelection(ctx.optSel or 1, count)
       for _scan = 1, count do
-        idx = _.common.wrapListSelection(idx, count, step)
+        idx = _.common.moveListSelection(idx, count, step, { ctx = ctx })
         local candidate = ctx.optList[idx]
         if candidate and candidate.optType ~= "header" and not isTemporarilyDisabledEditorOption(ctx, _, candidate) then
           ctx.optSel = idx

@@ -463,14 +463,14 @@ local function run(ctx)
     if ctx.bblArgGrab then
       moveSelectedArg(-1)
     else
-      ctx.bblArgSel = _.common.wrapListSelection(ctx.bblArgSel, total, -1)
+      ctx.bblArgSel = _.common.moveListSelection(ctx.bblArgSel, total, -1, { ctx = ctx })
     end
   end
   if total > 0 and (_.padEffective & _.PAD_DOWN) ~= 0 then
     if ctx.bblArgGrab then
       moveSelectedArg(1)
     else
-      ctx.bblArgSel = _.common.wrapListSelection(ctx.bblArgSel, total, 1)
+      ctx.bblArgSel = _.common.moveListSelection(ctx.bblArgSel, total, 1, { ctx = ctx })
     end
   end
 

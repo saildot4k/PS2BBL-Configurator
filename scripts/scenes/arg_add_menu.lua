@@ -63,10 +63,13 @@ function arg_add_menu.run(ctx, opts)
     return row ~= nil and (not rowDisabled(row))
   end
 
-  local function moveSelection(step)
+  local function moveSelection(step, moveOpts)
     local idx = ctx[selKey] or 1
     for attempt = 1, #rows do
-      idx = _.common.wrapListSelection(idx, #rows, step)
+      idx = _.common.moveListSelection(idx, #rows, step, {
+        ctx = ctx,
+        allowRepeatWrap = moveOpts and moveOpts.allowRepeatWrap == true,
+      })
       if isSelectable(idx) then
         ctx[selKey] = idx
         return
@@ -76,7 +79,7 @@ function arg_add_menu.run(ctx, opts)
 
   ctx[selKey] = _.common.clampListSelection(ctx[selKey] or 1, #rows)
   if not isSelectable(ctx[selKey]) then
-    moveSelection(1)
+    moveSelection(1, { allowRepeatWrap = true })
   end
   ctx[scrollKey] = _.common.centeredListScroll(ctx[selKey], #rows, maxVisible)
 

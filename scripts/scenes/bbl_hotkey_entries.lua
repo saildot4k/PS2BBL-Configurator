@@ -426,16 +426,14 @@ local function run(ctx)
     if ctx.bblEntryGrab and isEntrySel then
       moveSelectedEntry(-1)
     else
-      ctx.bblEntrySel = ctx.bblEntrySel - 1
-      if ctx.bblEntrySel < 1 then ctx.bblEntrySel = #rows end
+      ctx.bblEntrySel = _.common.moveListSelection(ctx.bblEntrySel, #rows, -1, { ctx = ctx })
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     if ctx.bblEntryGrab and isEntrySel then
       moveSelectedEntry(1)
     else
-      ctx.bblEntrySel = ctx.bblEntrySel + 1
-      if ctx.bblEntrySel > #rows then ctx.bblEntrySel = 1 end
+      ctx.bblEntrySel = _.common.moveListSelection(ctx.bblEntrySel, #rows, 1, { ctx = ctx })
     end
   end
 

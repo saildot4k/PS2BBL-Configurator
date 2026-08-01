@@ -1494,7 +1494,7 @@ local function run(ctx)
         if (_.padEffective & _.PAD_UP) ~= 0 then
           local idx = ctx.pathPickerSel
           for _ = 1, totalCount do
-            idx = idx - 1; if idx < 1 then idx = totalCount end
+            idx = _.common.moveListSelection(idx, totalCount, -1, { ctx = ctx })
             if isSelectableDisplay(idx) then
               ctx.pathPickerSel = idx; break
             end
@@ -1503,7 +1503,7 @@ local function run(ctx)
         if (_.padEffective & _.PAD_DOWN) ~= 0 then
           local idx = ctx.pathPickerSel
           for _ = 1, totalCount do
-            idx = idx + 1; if idx > totalCount then idx = 1 end
+            idx = _.common.moveListSelection(idx, totalCount, 1, { ctx = ctx })
             if isSelectableDisplay(idx) then
               ctx.pathPickerSel = idx; break
             end
@@ -1705,10 +1705,10 @@ local function run(ctx)
           _.path_str.cross_open_circle_back_items)
     _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, partHint, nil, _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
     if (_.padEffective & _.PAD_UP) ~= 0 then
-      ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #parts end
+      ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #parts, -1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_DOWN) ~= 0 then
-      ctx.pathPickerSel = ctx.pathPickerSel + 1; if ctx.pathPickerSel > #parts then ctx.pathPickerSel = 1 end
+      ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #parts, 1, { ctx = ctx })
     end
     if (_.padEffective & _.PAD_LEFT) ~= 0 then
       ctx.pathPickerSel = math.max(1, ctx.pathPickerSel - maxVis)
@@ -1904,10 +1904,10 @@ local function run(ctx)
     end
     if #show > 0 then
       if (_.padEffective & _.PAD_UP) ~= 0 then
-        ctx.pathPickerSel = ctx.pathPickerSel - 1; if ctx.pathPickerSel < 1 then ctx.pathPickerSel = #show end
+        ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #show, -1, { ctx = ctx })
       end
       if (_.padEffective & _.PAD_DOWN) ~= 0 then
-        ctx.pathPickerSel = ctx.pathPickerSel + 1; if ctx.pathPickerSel > #show then ctx.pathPickerSel = 1 end
+        ctx.pathPickerSel = _.common.moveListSelection(ctx.pathPickerSel, #show, 1, { ctx = ctx })
       end
       if (_.padEffective & _.PAD_LEFT) ~= 0 then
         ctx.pathPickerSel = math.max(1, ctx.pathPickerSel - maxVis)

@@ -388,14 +388,14 @@ local function run(ctx)
     if isFmcbEntry and ctx.fmcbEntryPathGrab then
       swapSelectedPath(-1)
     else
-      ctx.entryEditSub = ctx.entryEditSub - 1; if ctx.entryEditSub < 1 then ctx.entryEditSub = #subRows end
+      ctx.entryEditSub = _.common.moveListSelection(ctx.entryEditSub, #subRows, -1, { ctx = ctx })
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     if isFmcbEntry and ctx.fmcbEntryPathGrab then
       swapSelectedPath(1)
     else
-      ctx.entryEditSub = ctx.entryEditSub + 1; if ctx.entryEditSub > #subRows then ctx.entryEditSub = 1 end
+      ctx.entryEditSub = _.common.moveListSelection(ctx.entryEditSub, #subRows, 1, { ctx = ctx })
     end
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 then

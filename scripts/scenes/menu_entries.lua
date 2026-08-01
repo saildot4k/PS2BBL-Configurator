@@ -496,8 +496,7 @@ local function run(ctx)
         ctx.entrySel = ctx.entrySel - 1
       end
     else
-      ctx.entrySel = ctx.entrySel - 1
-      if ctx.entrySel < 1 then ctx.entrySel = total end
+      ctx.entrySel = _.common.moveListSelection(ctx.entrySel, total, -1, { ctx = ctx })
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
@@ -510,8 +509,7 @@ local function run(ctx)
         ctx.entrySel = ctx.entrySel + 1
       end
     else
-      ctx.entrySel = ctx.entrySel + 1
-      if ctx.entrySel > total then ctx.entrySel = 1 end
+      ctx.entrySel = _.common.moveListSelection(ctx.entrySel, total, 1, { ctx = ctx })
     end
   end
 

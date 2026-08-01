@@ -288,12 +288,10 @@ local function run(ctx)
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, hint, nil, _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
 
   if (_.padEffective & _.PAD_UP) ~= 0 then
-    ctx.bblHotkeySel = ctx.bblHotkeySel - 1
-    if ctx.bblHotkeySel < 1 then ctx.bblHotkeySel = #hotkeys end
+    ctx.bblHotkeySel = _.common.moveListSelection(ctx.bblHotkeySel, #hotkeys, -1, { ctx = ctx })
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
-    ctx.bblHotkeySel = ctx.bblHotkeySel + 1
-    if ctx.bblHotkeySel > #hotkeys then ctx.bblHotkeySel = 1 end
+    ctx.bblHotkeySel = _.common.moveListSelection(ctx.bblHotkeySel, #hotkeys, 1, { ctx = ctx })
   end
   local function beginFirstPathPickerForHotkey(keyId, slotDisabled)
     if not keyId or not _.config_parse.insertBblHotkeySlotBelow then return false end

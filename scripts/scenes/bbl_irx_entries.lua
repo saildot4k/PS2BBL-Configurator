@@ -314,16 +314,14 @@ local function run(ctx)
     if ctx.bblIrxGrab then
       moveSelectedIrx(-1)
     else
-      ctx.bblIrxSel = ctx.bblIrxSel - 1
-      if ctx.bblIrxSel < 1 then ctx.bblIrxSel = total end
+      ctx.bblIrxSel = _.common.moveListSelection(ctx.bblIrxSel, total, -1, { ctx = ctx })
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 and total > 0 then
     if ctx.bblIrxGrab then
       moveSelectedIrx(1)
     else
-      ctx.bblIrxSel = ctx.bblIrxSel + 1
-      if ctx.bblIrxSel > total then ctx.bblIrxSel = 1 end
+      ctx.bblIrxSel = _.common.moveListSelection(ctx.bblIrxSel, total, 1, { ctx = ctx })
     end
   end
 

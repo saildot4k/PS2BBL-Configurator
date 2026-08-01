@@ -434,16 +434,14 @@ local function run(ctx)
     if ctx.entryPathGrab and hasPathSelection then
       swapSelectedPath(-1)
     else
-      ctx.entryPathSel = ctx.entryPathSel - 1
-      if ctx.entryPathSel < 1 then ctx.entryPathSel = total end
+      ctx.entryPathSel = _.common.moveListSelection(ctx.entryPathSel, total, -1, { ctx = ctx })
     end
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
     if ctx.entryPathGrab and hasPathSelection then
       swapSelectedPath(1)
     else
-      ctx.entryPathSel = ctx.entryPathSel + 1
-      if ctx.entryPathSel > total then ctx.entryPathSel = 1 end
+      ctx.entryPathSel = _.common.moveListSelection(ctx.entryPathSel, total, 1, { ctx = ctx })
     end
   end
 

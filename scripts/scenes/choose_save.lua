@@ -43,10 +43,10 @@ local function run(ctx)
   _.common.drawHintLine(_.font, _.drawMode, _.MARGIN_X, _.HINT_Y, 0.7, _.editor_str.cross_save_circle_cancel_items, nil,
     _.DIM_COLOR, _.w - 2 * _.MARGIN_X)
   if (_.padEffective & _.PAD_UP) ~= 0 then
-    ctx.saveSel = ctx.saveSel - 1; if ctx.saveSel < 1 then ctx.saveSel = #choices end
+    ctx.saveSel = _.common.moveListSelection(ctx.saveSel, #choices, -1, { ctx = ctx })
   end
   if (_.padEffective & _.PAD_DOWN) ~= 0 then
-    ctx.saveSel = ctx.saveSel + 1; if ctx.saveSel > #choices then ctx.saveSel = 1 end
+    ctx.saveSel = _.common.moveListSelection(ctx.saveSel, #choices, 1, { ctx = ctx })
   end
   if (_.padEffective & _.PAD_CROSS) ~= 0 and #choices > 0 then
     local path = choices[ctx.saveSel]

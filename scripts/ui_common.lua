@@ -2388,7 +2388,11 @@ function common.resetPadRepeatState(ctx, rawPad)
   ctx.holdFrameCount = 0
   ctx.holdRepeatCountdown = 0
   ctx.holdRepeatCount = 0
+  ctx._rawPadJustNow = 0
+  ctx._rawPadRepeatNow = 0
   ctx._rawPadEffectiveNow = 0
+  ctx._padJustLogicalNow = 0
+  ctx._padRepeatLogicalNow = 0
   if type(rawPad) == "number" then
     ctx.prevPad = rawPad
     ctx._rawPadNow = rawPad
@@ -2396,6 +2400,13 @@ function common.resetPadRepeatState(ctx, rawPad)
     if _G and _G.CONFIG_UI then
       _G.CONFIG_UI.currentRawPad = rawPad
     end
+  end
+  if _G and _G.CONFIG_UI then
+    _G.CONFIG_UI.currentRawPadJust = 0
+    _G.CONFIG_UI.currentRawPadRepeat = 0
+    _G.CONFIG_UI.currentRawPadEffective = 0
+    _G.CONFIG_UI.currentPadJustMask = 0
+    _G.CONFIG_UI.currentPadRepeatMask = 0
   end
 end
 
@@ -2602,9 +2613,22 @@ function common.getPadEffective(ctx)
     ctx.holdRepeatCount = 0
   end
   ctx.prevPad = pad
-  local effective = common.remapCrossCircleMask(padJust | padRepeat)
+  local padJustLogical = common.remapCrossCircleMask(padJust)
+  local padRepeatLogical = common.remapCrossCircleMask(padRepeat)
+  local effective = padJustLogical | padRepeatLogical
   if type(ctx) == "table" then
+    ctx._rawPadJustNow = padJust
+    ctx._rawPadRepeatNow = padRepeat
     ctx._rawPadEffectiveNow = padJust | padRepeat
+    ctx._padJustLogicalNow = padJustLogical
+    ctx._padRepeatLogicalNow = padRepeatLogical
+  end
+  if _G and _G.CONFIG_UI then
+    _G.CONFIG_UI.currentRawPadJust = padJust
+    _G.CONFIG_UI.currentRawPadRepeat = padRepeat
+    _G.CONFIG_UI.currentRawPadEffective = padJust | padRepeat
+    _G.CONFIG_UI.currentPadJustMask = padJustLogical
+    _G.CONFIG_UI.currentPadRepeatMask = padRepeatLogical
   end
   return effective
 end
@@ -2776,6 +2800,39 @@ function common.wrapListSelection(sel, total, step)
   while idx < 1 do idx = idx + count end
   while idx > count do idx = idx - count end
   return idx
+end
+
+function common.getCurrentPadRepeatMask(ctx)
+  if type(ctx) == "table" and ctx._padRepeatLogicalNow ~= nil then
+    return tonumber(ctx._padRepeatLogicalNow) or 0
+  end
+  local runtime = _G and _G.CONFIG_UI
+  return tonumber(runtime and runtime.currentPadRepeatMask) or 0
+end
+
+function common.isCurrentDirectionalRepeat(step, ctx)
+  local delta = math.floor(tonumber(step) or 0)
+  if delta == 0 then return false end
+  local mask = common.getCurrentPadRepeatMask(ctx)
+  if delta < 0 then
+    return (mask & common.PAD_UP) ~= 0
+  end
+  return (mask & common.PAD_DOWN) ~= 0
+end
+
+function common.moveListSelection(sel, total, step, opts)
+  local count = math.max(0, math.floor(tonumber(total) or 0))
+  if count <= 0 then return 1 end
+  local idx = common.clampListSelection(sel, count)
+  local delta = math.floor(tonumber(step) or 0)
+  if delta == 0 then return idx end
+  local nextIdx = idx + delta
+  if not (opts and opts.allowRepeatWrap == true) and common.isCurrentDirectionalRepeat(delta, opts and opts.ctx) then
+    return common.clampListSelection(nextIdx, count)
+  end
+  while nextIdx < 1 do nextIdx = nextIdx + count end
+  while nextIdx > count do nextIdx = nextIdx - count end
+  return nextIdx
 end
 
 -- Centered list scroll start for rendering [scroll+1 .. scroll+maxVisible].
