@@ -125,9 +125,18 @@ local function pfsToPartitionPath(pfsPath, partitionPath)
   return part .. ":pfs:" .. rest
 end
 
--- IOP reset (mx4sio/mmce) unloads all device drivers; clear all loaded flags.
+-- IOP reset unloads all device drivers; clear all loaded flags.
 local function clearLoadedIfIopReset(ctx)
   ctx.pathPickerLoadedDeviceTypes = {}
+end
+
+local function resetIopForMc1AfterSlotDriver(ctx, e)
+  if not (ctx and e and e.name == "mc1:") then return end
+  local loaded = ctx.pathPickerLoadedDeviceTypes
+  if not (loaded and (loaded["mx4sio"] or loaded["mmce"])) then return end
+  if not (System and System.resetIOP) then return end
+  System.resetIOP()
+  clearLoadedIfIopReset(ctx)
 end
 
 local function isConfigOpenTarget(ctx)
@@ -1103,6 +1112,7 @@ local function beginBrowseForDevice(ctx, e)
     -- Static device (mc, mmce) without deviceId: use name as path. Load MMCE module when selecting mmce.
     ctx.pathPickerLoadedDeviceTypes = ctx.pathPickerLoadedDeviceTypes or {}
     if e.deviceType == "mmce" and ctx.pathPickerLoadedDeviceTypes["mx4sio"] then clearLoadedIfIopReset(ctx) end
+    resetIopForMc1AfterSlotDriver(ctx, e)
     if e.deviceType and System and System.loadModules then System.loadModules(e.deviceType) end
     local browsePath = e.name or ""
     if browsePath and browsePath ~= "" and browsePath:find(":") then

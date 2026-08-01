@@ -221,10 +221,19 @@ FIO_MT_RDONLY = 0x01;
 --- @overload fun():table
 function System.listHddPartitions(hddNum) end
 
---- Loads an embedded IOP module by name. Dependencies (bitmask in irx_requires) are loaded automatically. Names: "usbd_mini", "bdm", "bdmfs_fatfs", "usbmass_bd_mini", "mx4sio_bd_mini", "mmceman", "ps2dev9", "ata_bd", "ps2hdd", "ps2fs". For HDD (hdd0: partitions) load "ata_bd" then "ps2hdd" and "ps2fs".
+--- Loads supported embedded IOP device stacks by type. Lua accepts: "mc", "xfrom", "mmce", "hdd", "usb", "mx4sio".
+--- Native mappings include: "mc" basic MC/pad/file services; "mmce" mmceman; "usb" BDM/FATFS/usbd_mini/usbmass_bd_mini;
+--- "mx4sio" BDM/FATFS/mx4sio_bd_mini; "hdd" DEV9/BDM/FATFS/ATA via ata_bd plus APA via ps2hdd/ps2fs;
+--- "xfrom" DEV9/extflash/xfromman. Browser ATA/exFAT entries such as ata0/ata1 use the "hdd" stack.
+--- Already-loaded modules are skipped. Loading MX4SIO after MMCE, or MMCE after MX4SIO, reinitializes IOP first.
 --- @param name string module name
 --- @return integer 0 success, -1 unknown name, -2 load failed
 function System.loadModules(name) end
+
+--- Reboots the IOP and reloads the basic memory card/pad/file services.
+--- The path picker uses this before browsing mc1 after MMCE or MX4SIO has been loaded.
+--- @return integer 0 success, negative value on failure
+function System.resetIOP() end
 
 --- Resolves logical deviceId (ata0, ata1, usb0, usb1, mx4sio) to current mountpoint (e.g. mass0:). Returns nil if not found.
 --- @param deviceId string e.g. "ata0", "usb0"
