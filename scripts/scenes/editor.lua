@@ -121,7 +121,7 @@ local R3_BUTTON_COLOR_PRESET = {
   selected_dim = "003250",
   unselected = "C8C8C8",
   dim = "606060",
-  background = "141414",
+  background = "000000",
 }
 
 local R3_DEFAULT_COLOR_PRESET = {
@@ -133,7 +133,7 @@ local R3_DEFAULT_COLOR_PRESET = {
   selected_dim = "003250",
   unselected = "C8C8C8",
   dim = "606060",
-  background = "141414",
+  background = "000000",
 }
 
 local function parseR3HexColor(raw)

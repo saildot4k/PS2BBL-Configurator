@@ -5,7 +5,7 @@ extern unsigned int size_title_png;
 extern unsigned char loading_png[];
 extern unsigned int size_loading_png;
 
-static const uint64_t SPLASH_BG_RGBAQ = GS_SETREG_RGBAQ(0x14, 0x14, 0x14, 0x80, 0x00);
+static const uint64_t SPLASH_BG_RGBAQ = GS_SETREG_RGBAQ(0x00, 0x00, 0x00, 0x80, 0x00);
 
 // Implemented in graphics.cpp
 void showSplashScreen(void) {

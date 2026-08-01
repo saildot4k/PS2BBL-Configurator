@@ -470,7 +470,7 @@ function actions_menu.run(ctx, opts)
     hintItems = buildOverlayHints(_, opts.hints, anchorPad, anchorLabel)
   end
   if _.Graphics and _.Graphics.drawRect then
-    local hintBg = (_.common and _.common.BACKGROUND_COLOR) or Color.new(20, 20, 20, 0x80)
+    local hintBg = (_.common and _.common.BACKGROUND_COLOR) or Color.new(0, 0, 0, 0x80)
     local hintRowH = math.max(14, math.floor(((_.common and _.common.PAD_HINT_ROW_H) or 28) * textScale + 0.5))
     local hintRowTop = math.floor(_.HINT_Y) - hintRowH
     local hintW = (_.w or 640) - (2 * (_.MARGIN_X or 0))
