@@ -26,8 +26,10 @@ end
 local function formatLaunchPathSummary(_, paths)
   local activePaths = {}
   for i = 1, #(paths or {}) do
-    local value = type(paths[i]) == "table" and paths[i].value or paths[i]
-    if trimPathValue(value) ~= "" then
+    local item = paths[i]
+    local value = type(item) == "table" and item.value or item
+    local disabled = type(item) == "table" and item.disabled == true
+    if not disabled and trimPathValue(value) ~= "" then
       activePaths[#activePaths + 1] = value
     end
   end
@@ -534,6 +536,7 @@ local function makeFrameParseCache(_, lines)
   local getWithCommentCache = {}
   local getMultiCache = {}
   local getBootPathsCache = {}
+  local getBootPathEntriesCache = {}
   local getBblSlotCache = {}
   local isBootKeyDisabledCache = {}
 
@@ -569,6 +572,13 @@ local function makeFrameParseCache(_, lines)
         getBootPathsCache[key] = _.config_parse.getBootPaths(lines, key)
       end
       return getBootPathsCache[key]
+    end,
+    getBootPathEntries = function(_ignored, key)
+      if key == nil then return {} end
+      if getBootPathEntriesCache[key] == nil then
+        getBootPathEntriesCache[key] = _.config_parse.getBootPathEntries(lines, key)
+      end
+      return getBootPathEntriesCache[key]
     end,
     getBblHotkeySlot = function(_ignored, keyId, slot)
       if keyId == nil or slot == nil then return nil end
@@ -1063,6 +1073,7 @@ local function run(ctx)
   local cachedGetWithComment = frameParse.getWithComment
   local cachedGetMulti = frameParse.getMulti
   local cachedGetBootPaths = frameParse.getBootPaths
+  local cachedGetBootPathEntries = frameParse.getBootPathEntries
   local cachedGetBblHotkeySlot = frameParse.getBblHotkeySlot
   local cachedIsBootKeyDisabled = frameParse.isBootKeyDisabled
   if _.common.handleLeaveSavePrompt(ctx, {
@@ -1315,12 +1326,13 @@ local function run(ctx)
         valDisplay = (v == "1") and _.common_str.on or _.common_str.off
       elseif o.optType == "boot_paths" then
         bootKeyDisabled = cachedIsBootKeyDisabled(ctx.lines, o.key)
-        local paths = cachedGetBootPaths(ctx.lines, o.key)
-        local count = paths and #paths or 0
         if ctx.fileType == "osdmbr_cnf" then
+          local paths = cachedGetBootPathEntries(ctx.lines, o.key)
           bootPathSummary = formatLaunchPathSummary(_, paths)
           valDisplay = nil
         else
+          local paths = cachedGetBootPaths(ctx.lines, o.key)
+          local count = paths and #paths or 0
           if count <= 0 then
             valDisplay = ""
           else
