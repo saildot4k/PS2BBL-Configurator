@@ -1165,6 +1165,10 @@ local function updateVisibleScenePageTransition(ctx, sceneName)
   if ctx._lastVisibleScenePageKey == key then return end
   ctx._lastVisibleScenePageKey = key
   ctx._sceneEpoch = (tonumber(ctx._sceneEpoch) or 0) + 1
+  if common.resetPadRepeatState then
+    local rawPad = common.peekRawPad and common.peekRawPad(0) or nil
+    common.resetPadRepeatState(ctx, rawPad)
+  end
   if common.isSceneTransitionInActive and common.isSceneTransitionInActive(ctx) then
     return
   end
@@ -2498,6 +2502,10 @@ local function mainLoop()
   local function runSceneTransitionOnStateChange(c, prevScene, nextScene)
     if not c then return end
     if type(prevScene) ~= "string" or type(nextScene) ~= "string" or prevScene == nextScene then return end
+    if common.resetPadRepeatState then
+      local rawPad = common.peekRawPad and common.peekRawPad(0) or nil
+      common.resetPadRepeatState(c, rawPad)
+    end
     if prevScene == KATAMARI_EASTER_EGG_STATE or nextScene == KATAMARI_EASTER_EGG_STATE then
       c.sceneTransitionIn = nil
       return c

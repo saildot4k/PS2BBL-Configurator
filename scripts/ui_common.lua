@@ -2370,6 +2370,35 @@ function common.consumeHeldRepeat(ctx, repeatKey, isHeld, opts)
   return false
 end
 
+function common.peekRawPad(port)
+  if not (Pads and Pads.get) then
+    return nil
+  end
+  local ok, pad = pcall(Pads.get, port or 0)
+  if ok and type(pad) == "number" then
+    return pad
+  end
+  return nil
+end
+
+function common.resetPadRepeatState(ctx, rawPad)
+  if type(ctx) ~= "table" then
+    return
+  end
+  ctx.holdFrameCount = 0
+  ctx.holdRepeatCountdown = 0
+  ctx.holdRepeatCount = 0
+  ctx._rawPadEffectiveNow = 0
+  if type(rawPad) == "number" then
+    ctx.prevPad = rawPad
+    ctx._rawPadNow = rawPad
+    ctx._rawPadLogicalNow = common.remapCrossCircleMask(rawPad)
+    if _G and _G.CONFIG_UI then
+      _G.CONFIG_UI.currentRawPad = rawPad
+    end
+  end
+end
+
 -- Update ctx with layout values from current screen mode (for scene runner).
 function common.computeVisibleRows(ctx, startY, rowH, fallback, opts)
   local safeStartY = math.floor(tonumber(startY) or 0)
