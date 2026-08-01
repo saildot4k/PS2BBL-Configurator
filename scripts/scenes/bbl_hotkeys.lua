@@ -7,6 +7,13 @@ local function formatPathCount(count)
   return tostring(count) .. " paths"
 end
 
+local function formatSinglePath(_, pathVal)
+  if _.common and _.common.formatDisplayPathWithCommands then
+    return _.common.formatDisplayPathWithCommands(_, pathVal)
+  end
+  return tostring(pathVal or "")
+end
+
 local function canonicalHotkeyId(raw, hotkeySet)
   if type(raw) ~= "string" then return nil end
   local upper = raw:upper()
@@ -34,6 +41,7 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
       name = "",
       pathCount = 0,
       activePathCount = 0,
+      singlePath = "",
       slotState = {},
     }
   end
@@ -68,11 +76,12 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
             if slot and slot >= 1 and slot <= cap then
               local slotState = s.slotState[slot]
               if not slotState then
-                slotState = { defined = false, active = false }
+                slotState = { defined = false, active = false, path = "" }
                 s.slotState[slot] = slotState
               end
               if hasUsablePathValue(entry.value) then
                 slotState.defined = true
+                slotState.path = entry.value or ""
                 if not entry.comment then
                   slotState.active = true
                 end
@@ -101,11 +110,15 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
     if s and s.slotState then
       local pathCount = 0
       local activePathCount = 0
+      local singlePath = ""
       for slot = 1, cap do
         local slotState = s.slotState[slot]
         if slotState then
           if slotState.defined then
             pathCount = pathCount + 1
+            if pathCount == 1 then
+              singlePath = slotState.path or ""
+            end
           end
           if slotState.active then
             activePathCount = activePathCount + 1
@@ -114,6 +127,7 @@ local function buildHotkeySummary(lines, hotkeys, maxEntries)
       end
       s.pathCount = pathCount
       s.activePathCount = activePathCount
+      s.singlePath = (pathCount == 1) and singlePath or ""
       if activePathCount > 0 then
         s.disabled = false
       elseif pathCount > 0 then
@@ -208,6 +222,8 @@ local function run(ctx)
     if isFmcb then
       if pathCount <= 0 then
         disp = _.common_str.empty
+      elseif pathCount == 1 then
+        disp = formatSinglePath(_, info.singlePath)
       else
         disp = formatPathCount(pathCount)
       end
@@ -221,6 +237,9 @@ local function run(ctx)
       disp = nameVal .. " (" .. formatPathCount(pathCount) .. ")"
     end
     local line = disp
+    if _.common and _.common.formatBelForDisplay then
+      line = _.common.formatBelForDisplay(line)
+    end
     local lineMaxW = maxLabelW - iconW - iconGap
     if _.common.fitListRowText then
       line = _.common.fitListRowText(ctx, "bbl_hotkeys_row_" .. tostring(i), _.font, line, lineMaxW, _.FONT_SCALE,

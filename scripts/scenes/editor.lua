@@ -19,6 +19,31 @@ local function formatArgCount(n)
   return "(" .. tostring(count) .. " args)"
 end
 
+local function trimPathValue(pathVal)
+  return tostring(pathVal or ""):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function formatLaunchPathSummary(_, paths)
+  local activePaths = {}
+  for i = 1, #(paths or {}) do
+    local value = type(paths[i]) == "table" and paths[i].value or paths[i]
+    if trimPathValue(value) ~= "" then
+      activePaths[#activePaths + 1] = value
+    end
+  end
+
+  if #activePaths <= 0 then
+    return (_.common_str and _.common_str.empty) or "(empty)"
+  end
+  if #activePaths == 1 then
+    if _.common and _.common.formatDisplayPathWithCommands then
+      return _.common.formatDisplayPathWithCommands(_, activePaths[1])
+    end
+    return tostring(activePaths[1] or "")
+  end
+  return tostring(#activePaths) .. " paths"
+end
+
 local function getOsdmbrHotkeyPadName(key)
   local commonRef = _G and _G.CONFIG_UI and _G.CONFIG_UI.common
   if commonRef and commonRef.bootKeyToPadName then
@@ -1265,6 +1290,7 @@ local function run(ctx)
       local lab = (_.strings.options and _.strings.options[o.key] and _.strings.options[o.key].label) or o.label
       lab = prettifyBblGlobalLabel(ctx, o, lab)
       local valDisplay
+      local bootPathSummary
       local optionDisabled = isTemporarilyDisabledEditorOption(ctx, _, o)
       if o.optType == "header" or o.optType == "action" then
         valDisplay = ""
@@ -1278,13 +1304,8 @@ local function run(ctx)
         local paths = cachedGetBootPaths(ctx.lines, o.key)
         local count = paths and #paths or 0
         if ctx.fileType == "osdmbr_cnf" then
-          if count <= 0 then
-            valDisplay = _.common_str.not_set
-          elseif count == 1 then
-            valDisplay = "(1 path)"
-          else
-            valDisplay = "(" .. tostring(count) .. " paths)"
-          end
+          bootPathSummary = formatLaunchPathSummary(_, paths)
+          valDisplay = nil
         else
           if count <= 0 then
             valDisplay = ""
@@ -1355,9 +1376,13 @@ local function run(ctx)
         end
       end
       if bootHotkeyIcon then
-        lab = (_.menu_str.launch_key_label or "Launch Key")
+        lab = bootPathSummary or (_.common_str.empty or "(empty)")
       end
-      if o.key == "NAME_AUTO" then
+      if ctx.fileType == "osdmbr_cnf" and o.optType == "boot_paths" and o.key == "boot_auto" then
+        inlineAutoRow = true
+        lab = "Auto: " .. (bootPathSummary or (_.common_str.empty or "(empty)"))
+        valDisplay = ""
+      elseif o.key == "NAME_AUTO" then
         inlineAutoRow = true
         local nameVal = cachedGet(ctx.lines, o.key) or o.default or ""
         local nameDisp = (nameVal ~= "" and nameVal) or (_.common_str.name_not_defined or _.common_str.empty)
@@ -1449,7 +1474,8 @@ local function run(ctx)
         else
           _.Graphics.drawImage(bootHotkeyIcon, rowX, iconY)
         end
-        _.drawText(_.font, _.drawMode, rowX + bootHotkeyIconW + bootHotkeyIconGap, y, _.FONT_SCALE, lab, col)
+        _.drawText(_.font, _.drawMode, rowX + bootHotkeyIconW + bootHotkeyIconGap, y, _.FONT_SCALE,
+          formatBelForDisplay(lab), col)
       else
         lab = formatBelForDisplay(lab)
         _.drawListRow(_.MARGIN_X + 16, y, i == ctx.optSel, lab, col)
