@@ -1493,7 +1493,7 @@ local function run(ctx)
         end
         if (_.padEffective & _.PAD_UP) ~= 0 then
           local idx = ctx.pathPickerSel
-          for _ = 1, totalCount do
+          for _i = 1, totalCount do
             idx = _.common.moveListSelection(idx, totalCount, -1, { ctx = ctx })
             if isSelectableDisplay(idx) then
               ctx.pathPickerSel = idx; break
@@ -1502,7 +1502,7 @@ local function run(ctx)
         end
         if (_.padEffective & _.PAD_DOWN) ~= 0 then
           local idx = ctx.pathPickerSel
-          for _ = 1, totalCount do
+          for _i = 1, totalCount do
             idx = _.common.moveListSelection(idx, totalCount, 1, { ctx = ctx })
             if isSelectableDisplay(idx) then
               ctx.pathPickerSel = idx; break
